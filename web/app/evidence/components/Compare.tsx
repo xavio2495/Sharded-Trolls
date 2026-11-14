@@ -38,7 +38,7 @@ function Card({ col, r, control }: { col: (typeof COLS)[number]; r: RunSummary |
       : "could not keep up: a backlog built up and drained after the load stopped";
   return (
     <div className="slab p-5">
-      <h3 className="font-display text-2xl text-ink-0">{col.title}</h3>
+      <h3 className="font-display text-2xl text-ink-0 lg:min-h-[2lh]">{col.title}</h3>
       <p className="mt-1 text-sm text-ink-2">{col.sub}</p>
       <p className="mt-5 font-display text-5xl leading-none text-ink-0 tabular-nums">
         {r.executed_per_s.toLocaleString("en-US")}
