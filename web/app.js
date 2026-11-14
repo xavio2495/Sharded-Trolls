@@ -2,6 +2,7 @@
 // probe transactions the network rejected); live mode polls a node and reads the root and trolls.
 import { TrollClient, shardSample } from '../packages/client/index.js';
 import { shardOf, place } from '../packages/layout/index.js';
+import { renderCompare } from './compare.js';
 
 const RUNS = [
   { id: 'trolls-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 2,000 transfers/s for 90 s' },
@@ -238,9 +239,22 @@ document.querySelectorAll('.modes button').forEach((b) => (b.onclick = () => {
   document.querySelectorAll('.modes button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
   $('replay-controls').hidden = S.mode !== 'replay';
   $('live-controls').hidden = S.mode !== 'live';
-  if (S.mode === 'replay') { if (S.live) S.live.stop = true; loadRun(RUNS.find((r) => r.id === $('run').value)); }
+  $('compare').hidden = S.mode !== 'compare';
+  document.querySelector('main').hidden = S.mode === 'compare';
+  if (S.mode !== 'live' && S.live) S.live.stop = true;
+  if (S.mode === 'replay') loadRun(RUNS.find((r) => r.id === $('run').value));
+  else if (S.mode === 'compare') showCompare();
   else { S.blocks = []; render(); }
 }));
+
+let rate = 2000;
+function showCompare() {
+  $('honest').textContent = 'Single-node localnet with mainnet\'s shard layout, synthetic load (measured 2026-11-14). Control = one NEP-141 contract on one shard. '
+    + 'Same-shard transfers are not faster; the gain is throughput and no congestion rejections.';
+  document.querySelectorAll('.rate').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.rate) === rate)));
+  renderCompare($('compare'), rate);
+}
+document.querySelectorAll('.rate').forEach((b) => (b.onclick = () => { rate = Number(b.dataset.rate); showCompare(); }));
 
 const params = new URLSearchParams(location.search);
 if (params.get('mode') === 'live') {
@@ -248,6 +262,9 @@ if (params.get('mode') === 'live') {
   if (params.has('rpc')) $('rpc').value = params.get('rpc');
   if (params.has('root')) $('root').value = params.get('root');
   await connectLive($('rpc').value.trim(), $('root').value.trim());
+} else if (params.get('mode') === 'compare') {
+  if (params.has('rate')) rate = Number(params.get('rate'));
+  document.querySelector('.modes button[data-mode="compare"]').click();
 } else {
   if (params.has('run')) $('run').value = params.get('run');
   await loadRun(RUNS.find((r) => r.id === $('run').value));

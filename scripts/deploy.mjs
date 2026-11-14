@@ -4,8 +4,11 @@
 // deployed on the parent account. Writes target/deploy-<network>.json for the other scripts.
 // Usage: node --dns-result-order=ipv4first scripts/deploy.mjs [--network localnet|testnet]
 //          [--parent sandbox] [--signer <parent>] [--key-file target/localnet/validator_key.json]
-//          [--epoch-ms 300000] [--symbol TROLL] [--troll-near 5]
-// Mainnet is refused here: humans approve every mainnet transaction.
+//          [--epoch-ms 300000] [--symbol TROLL] [--troll-near 5] [--start-ms <unix ms, default now>]
+//          [--wrapper <prefix>]
+// --start-ms sets epoch 0 and the launch window start (a chosen launch time; default: now).
+// --wrapper deploys the single-contract NEP-141 wrapper at <prefix>.<parent>, bound to its home
+// troll, and registers it there. Mainnet is refused here: humans approve every mainnet transaction.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -19,7 +22,7 @@ const RPC = { localnet: 'http://127.0.0.1:3040', testnet: 'https://rpc.testnet.f
 const { values } = parseArgs({ options: {
   network: { type: 'string', default: 'localnet' }, parent: { type: 'string' }, signer: { type: 'string' },
   'key-file': { type: 'string' }, 'epoch-ms': { type: 'string', default: '300000' }, symbol: { type: 'string', default: 'TROLL' },
-  'troll-near': { type: 'string', default: '5' },
+  'troll-near': { type: 'string', default: '5' }, 'start-ms': { type: 'string' }, wrapper: { type: 'string' },
 } });
 const net = values.network;
 if (!RPC[net]) throw new Error(`unsupported network ${net}`);
@@ -49,7 +52,8 @@ if (trolls.length !== P.troll_count) throw new Error(`only ${trolls.length} reac
 const rangeBounds = bounds(trolls, layout);
 for (const t of trolls) if (await near.accountExists(t.account)) throw new Error(`${t.account} already exists`);
 const trollIds = trolls.map((t) => t.account);
-const startMs = Date.now();
+const startMs = values['start-ms'] ? Number(values['start-ms']) : Date.now();
+if (!Number.isSafeInteger(startMs) || startMs <= 0) throw new Error('--start-ms must be unix milliseconds');
 
 const trollCode = readFileSync(resolve(ROOT, 'target/near/troll/troll.wasm'));
 const rootCode = readFileSync(resolve(ROOT, 'target/near/root/root.wasm'));
@@ -74,7 +78,21 @@ for (const t of trolls) {
   console.log(`  ${t.account.padEnd(28)} shard ${t.shard}`);
 }
 
+let wrapper = null;
+if (values.wrapper) {
+  const id = `${values.wrapper}.${parent}`;
+  const code = readFileSync(resolve(ROOT, 'target/near/wrapper/wrapper.wasm'));
+  const home = await near.view(parent, 'home_troll', { account_id: id });
+  const wmeta = { ...metadata, name: 'Wrapped Sharded Trolls', symbol: `w${values.symbol}` };
+  await signer.send(id, [action.createAccount(), action.transfer(3n * NEAR), action.deployContract(code), action.functionCall('new', { troll: home, metadata: wmeta }, 100n * TGAS)]);
+  const { min } = await near.view(home, 'storage_balance_bounds');
+  await signer.call(home, 'storage_deposit', { account_id: id, registration_only: true }, { gas: 10n * TGAS, deposit: BigInt(min) });
+  wrapper = { account: id, home_troll: home, code_hash: createHash('sha256').update(code).digest('hex') };
+  console.log(`wrapper ${id} -> home troll ${home}`);
+}
+
 const out = {
+  wrapper,
   network: net, rpc: RPC[net], root: parent, trolls, bounds: rangeBounds, params, start_ms: startMs,
   total_supply: totalSupply, launch_supply: launchSupply, troll_code_hash: codeHash.toString('hex'),
   root_code_hash: createHash('sha256').update(rootCode).digest('hex'),

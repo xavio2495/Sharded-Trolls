@@ -160,8 +160,15 @@ async function run() {
   await Promise.all([firing, probing, refresher]);
 
   // Settle: wait for in-flight credits to resolve, then compare with what the accepted fires imply.
-  let after;
-  for (let i = 0; i < 60; i++) { await sleep(2000); after = await snapshot(S, target); if (after.in_flight === 0n && i >= 2) break; }
+  // Wait until nothing is in flight and receiver balances stop changing (a congested shard can take
+  // minutes to drain its delayed receipts after the load stops).
+  let after, prev = null, stable = 0;
+  for (let i = 0; i < 150 && stable < 3; i++) {
+    await sleep(2000);
+    after = await snapshot(S, target);
+    stable = after.in_flight === 0n && prev && after.landed === prev.landed ? stable + 1 : 0;
+    prev = after;
+  }
   // Inclusion: send_tx with wait NONE accepts a transaction that may never be included, so look
   // every fire up afterwards. Dropped fires explain any landed shortfall.
   const fireOk = log.fires.filter((f) => f.ok);

@@ -12,6 +12,7 @@
     <p class="sub">A memecoin whose ledger is split across eight contracts, one on each reachable NEAR shard.</p>
     <nav class="modes" role="tablist">
       <button role="tab" data-mode="replay" aria-selected="true">Replay a measured run</button>
+      <button role="tab" data-mode="compare" aria-selected="false">Compare</button>
       <button role="tab" data-mode="live" aria-selected="false">Live</button>
     </nav>
     <div id="replay-controls" class="controls">
@@ -28,6 +29,20 @@
     </form>
     <p class="honest" id="honest"></p>
   </header>
+
+  <section id="compare" class="compare" hidden>
+    <div class="controls">
+      <span>Offered load</span>
+      <button class="rate" data-rate="2000" aria-pressed="true">2,000 transfers/s</button>
+      <button class="rate" data-rate="1000" aria-pressed="false">1,000 transfers/s</button>
+    </div>
+    <h2 id="cmp-title"></h2>
+    <div id="cmp-cards" class="ccards"></div>
+    <p id="cmp-ceiling" class="note"></p>
+    <h3>Highest shard congestion over time</h3>
+    <div id="cmp-chart" class="chart"></div>
+    <p class="muted" id="cmp-foot"></p>
+  </section>
 
   <main>
     <section class="tiles" aria-label="Headline numbers">

@@ -56,3 +56,23 @@ section { background: var(--surface); border: 1px solid var(--border); border-ra
 .log { font-size: 13px; color: var(--ink2); max-height: 200px; overflow: auto; padding-left: 20px; margin: 0; }
 .streak { margin-top: 8px; display: flex; align-items: baseline; gap: 8px; }
 .streak .value.empty { font-size: 14px; font-weight: 400; color: var(--muted); }
+
+.compare { max-width: 1000px; margin: 0 auto 16px; }
+.compare .controls { margin-bottom: 12px; }
+.rate { border: 1px solid var(--border); background: var(--surface); color: var(--ink2); padding: 6px 12px; border-radius: 8px; font: inherit; cursor: pointer; }
+.rate[aria-pressed="true"] { color: var(--ink); border-color: var(--ink2); font-weight: 600; }
+.ccards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 10px 0 18px; }
+.ccard { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--page); }
+.ccard h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.ccard .big { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 10px; }
+.ccard .unit { font-size: 13px; font-weight: 400; color: var(--ink2); }
+.ccard dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; margin: 10px 0 0; }
+.ccard dt { color: var(--ink2); } .ccard dd { margin: 0; font-variant-numeric: tabular-nums; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+:root { --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; }
+@media (prefers-color-scheme: dark) { :root { --c1: #3987e5; --c2: #d95926; --c3: #199e70; } }
+.swatch.s1 { background: var(--c1); } .swatch.s2 { background: var(--c2); } .swatch.s3 { background: var(--c3); }
+.chart .cline { fill: none; stroke-width: 2; }
+.chart .cline.s1 { stroke: var(--c1); } .chart .cline.s2 { stroke: var(--c2); } .chart .cline.s3 { stroke: var(--c3); }
+.ccard .note { font-size: 13px; color: var(--ink2); min-height: 18px; margin: 2px 0 8px; }
+#cmp-ceiling { font-size: 13px; color: var(--ink2); margin: 0 0 14px; }
