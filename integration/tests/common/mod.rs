@@ -61,7 +61,11 @@ fn connect(sandbox: Sandbox) -> testresult::TestResult<Env> {
 }
 
 /// Builds `contracts/<name>` with cargo-near and returns the wasm bytes.
+/// Set `<NAME>_WASM` (e.g. `TROLL_WASM`) to test a prebuilt binary, such as a reproducible build.
 pub fn wasm(name: &str) -> testresult::TestResult<Vec<u8>> {
+    if let Ok(path) = std::env::var(format!("{}_WASM", name.to_uppercase())) {
+        return Ok(std::fs::read(path)?);
+    }
     let manifest = format!("{}/../contracts/{name}/Cargo.toml", env!("CARGO_MANIFEST_DIR"));
     let opts = cargo_near_build::BuildOpts::builder()
         .manifest_path(manifest)
