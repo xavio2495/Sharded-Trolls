@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SLIDE_TEXT, type SlideText } from "./slides";
 import { isValidElement, useCallback, useEffect, useState } from "react";
 
 // The judges' deck: how it is built and what is proven. The landing page is the experience; this is the engineering.
@@ -208,96 +209,25 @@ function KitCommand() {
   );
 }
 
-type Slide = { title: string; body?: string; points?: string[]; visual?: React.ReactNode };
+type Slide = SlideText & { visual: React.ReactNode };
 
-const SLIDES: Slide[] = [
-  {
-    title: "Sharded Trolls",
-    body: "A token ledger split across eight NEAR shards, live on testnet, with a memecoin on top.",
-    visual: <Image src="/art/hero-v5.webp" alt="Eight streams flowing out of one lake, each kept by a troll." width={1536} height={1024} priority />,
-  },
-  {
-    title: "Claim rushes fill a shard.",
-    visual: <Stats items={[{ big: "42.5%", small: "full on the HOT shard before its split, vs 10.2% elsewhere" }, { big: "66%", small: "of receipts went to three KaiChing accounts before its split", moss: true }]} />,
-    points: [
-      "HOT, before its 2024-03-21 split: the shard holding game.hot.tg ran 42.5% full against 10.2% elsewhere.",
-      "KaiChing, before its 2025-03-19 split: three accounts took 66% of sampled receipts.",
-      "A token launch is that kind of load: thousands of accounts calling one contract at once.",
-    ],
-  },
-  {
-    title: "NEAR never splits a contract.",
-    visual: <OneVsEight />,
-    points: [
-      "Shards split only between accounts, so one contract always sits on one shard. Dynamic resharding is off.",
-      "To use more than one shard, a token has to be more than one contract.",
-      "NEP-636 (draft) uses one wallet per holder at 0s… ids, all of which sort onto one shard under today's layout.",
-    ],
-  },
-  { title: "Eight ledgers on eight shards.", body: "Each troll holds the balances of the accounts that live there. The root only settles the day; transfers never touch it.", visual: <Architecture /> },
-  {
-    title: "Homes by hash.",
-    visual: <HomesBars />,
-    points: [
-      "home = first 16 bytes of sha256(account id), big-endian, mod 8. Uniform, and independent of the shard layout.",
-      "Our first version used account-name ranges. Random implicit accounts then landed 39.5 / 29.3 / 23.2 / 8.1% on trolls 0–3 and 0% on 4–7.",
-      "Same troll: one receipt, no other shard involved.",
-    ],
-  },
-  { title: "Crossing a shard, safely.", body: "Asynchronous by nature, so the protocol is built around what can fail.", visual: <Sequence /> },
-  {
-    title: "Settling the day.",
-    visual: <SettleFlow />,
-    points: [
-      "Anyone calls settle: the root asks all eight trolls for reports, decides fed or starved, then applies the outcome.",
-      "Rewards come from tolls eaten first, then the launch pool, and are minted only when both are empty.",
-      "The settler earns 0.005 NEAR, paid only from forwarded claim fees.",
-      "250 Tgas minimum; a stuck settlement restarts after 600 blocks; a troll refuses any outcome above the fixed parameters.",
-    ],
-  },
-  {
-    title: "Proven on testnet.",
-    visual: <Stats items={[{ big: "8 shards", small: "one global code by hash, deploy 24.21 NEAR" }, { big: "50 / 50", small: "transfers from one transaction, 0 failed", moss: true }, { big: "625,000", small: "STRL burned by a starving troll, on chain" }]} />,
-    points: [
-      "One global code by hash on 8 distinct shards; deploy 24.21 NEAR.",
-      "Fan-out: 50 of 50 and 25 of 25 transfers from one transaction, 0 failed.",
-      "Refund, transfer-and-call and the 4 KB message bound behave as specified; supply conserved after every step.",
-      "A full Feeding cycle on chain: fed, bounty paid, claims, then a starve that burned 625,000 STRL.",
-    ],
-  },
-  {
-    title: "Under synthetic load.",
-    visual: <LoadBars />,
-    points: [
-      "Local network with mainnet's 10-shard layout, offered 2,000 transfers/s.",
-      "One ordinary token: 703/s, and 280 of 728 direct transfers rejected for congestion.",
-      "The trolls: 1,980/s same-troll and 1,358–1,663/s mixed, none rejected. Ceiling about 6× the control.",
-    ],
-  },
-  {
-    title: "Hardened before deploying.",
-    visual: <Stats items={[{ big: "5", small: "audit passes; critical and high all fixed" }, { big: "30 / 30", small: "rehearsal checks, twice, with injected faults", moss: true }]} />,
-    points: [
-      "Five audit passes; every critical and high finding fixed, every medium fixed or disclosed.",
-      "Property runs of 30-epoch lifecycles with restarts, expiry and sweeps; books checked at every step.",
-      "Every deployment path rehearsed twice on mainnet's layout, with injected faults: 30 of 30 checks, twice.",
-    ],
-  },
-  {
-    title: "A kit, not a one-off.",
-    visual: <KitCommand />,
-    body: "The troll code is published once. A second token reuses it by hash and costs about 3.65 NEAR on testnet: a root and eight small accounts.",
-  },
-  {
-    title: "Limits, and next.",
-    visual: <Image src="/art/trolls-v3/troll-5.webp" alt="The spectacled troll reading a book" width={720} height={720} />,
-    points: [
-      "Not faster per transfer: one block same-troll, two across. Mixed traffic gains ~1.9–2.4×.",
-      "Wallets list one entry per troll. The Feeding is a game, not Sybil-proof.",
-      "Next: optimistic credit (two receipts instead of three), a stake-weighted reward, the wrapper on a DEX, and mainnet.",
-    ],
-  },
+// one visual per slide, in order; the words live in slides.ts
+const VISUALS: React.ReactNode[] = [
+  <Image key="v1" src="/art/hero-v5.webp" alt="Eight streams flowing out of one lake, each kept by a troll." width={1536} height={1024} priority />,
+  <Stats key="v2" items={[{ big: "42.5%", small: "full on the HOT shard before its split, vs 10.2% elsewhere" }, { big: "66%", small: "of receipts went to three KaiChing accounts before its split", moss: true }]} />,
+  <OneVsEight key="v3" />,
+  <Architecture key="v4" />,
+  <HomesBars key="v5" />,
+  <Sequence key="v6" />,
+  <SettleFlow key="v7" />,
+  <Stats key="v8" items={[{ big: "8 shards", small: "one global code by hash, deploy 24.21 NEAR" }, { big: "50 / 50", small: "transfers from one transaction, 0 failed", moss: true }, { big: "625,000", small: "STRL burned by a starving troll, on chain" }]} />,
+  <LoadBars key="v9" />,
+  <Stats key="v10" items={[{ big: "5", small: "audit passes; critical and high all fixed" }, { big: "30 / 30", small: "rehearsal checks, twice, with injected faults", moss: true }]} />,
+  <KitCommand key="v11" />,
+  <Image key="v12" src="/art/trolls-v3/troll-5.webp" alt="The spectacled troll reading a book" width={720} height={720} />,
 ];
+
+const SLIDES: Slide[] = SLIDE_TEXT.map((t, k) => ({ ...t, visual: VISUALS[k] }));
 
 export default function Deck() {
   const [i, setI] = useState(0);

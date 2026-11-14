@@ -28,7 +28,12 @@ export default function Closing() {
       </div>
       <footer className="mt-28 flex flex-wrap items-center justify-between gap-4">
         <span className="font-display text-xl">Sharded Trolls</span>
-        <span className="tag text-ink-1">MIT · live on NEAR testnet</span>
+        <span className="tag text-ink-1">
+          MIT · live on NEAR testnet ·{" "}
+          <a href="/llms.txt" className="underline underline-offset-4">
+            for agents: llms.txt
+          </a>
+        </span>
       </footer>
     </section>
   );

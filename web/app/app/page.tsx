@@ -4,6 +4,7 @@ import { Dashboard } from "./components/Dashboard";
 
 export const metadata: Metadata = {
   title: "The Feeding · Sharded Trolls",
+  alternates: { types: { "text/markdown": "/app.md" } },
   description: "Live state of the eight trolls on NEAR testnet: feeders, food, hoards, your home troll, and the daily settlement.",
 };
 

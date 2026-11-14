@@ -21,6 +21,8 @@ const text = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://strl.xavio.dev"),
+  alternates: { types: { "text/markdown": "/index.md" } },
   title: "Sharded Trolls: pay the troll",
   description:
     "A NEAR memecoin split across eight shards: eight streams, eight troll keepers. Cross a stream, pay the troll. Feed them all, or they starve.",

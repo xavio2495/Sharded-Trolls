@@ -4,6 +4,7 @@ import Header from "@/app/components/shell/Header";
 
 export const metadata: Metadata = {
   title: "Litepaper · Sharded Trolls",
+  alternates: { types: { "text/markdown": "/paper.md" } },
   description:
     "A token ledger split across eight NEAR shards: the design, the cross-shard transfer protocol, the token mechanics, security work, and the measured results.",
 };

@@ -4,6 +4,7 @@ import { EvidenceTabs } from "./components/EvidenceTabs";
 
 export const metadata: Metadata = {
   title: "Evidence · Sharded Trolls",
+  alternates: { types: { "text/markdown": "/evidence.md" } },
   description:
     "Measured, not simulated: load tests of one token contract against eight trolls on a local network with mainnet's shard layout, and the final contracts checked on NEAR testnet.",
 };

@@ -9,3 +9,6 @@ node_modules/
 
 .env
 *.md
+
+# route folders that serve each page as markdown (code, not docs)
+!/web/app/*.md/
