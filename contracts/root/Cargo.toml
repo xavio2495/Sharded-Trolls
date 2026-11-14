@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk.workspace = true
 troll-types.workspace = true
+near-contract-standards.workspace = true
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
 

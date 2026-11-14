@@ -1689,6 +1689,7 @@ dependencies = [
  "cargo-near-build",
  "near-api",
  "near-sandbox",
+ "serde",
  "serde_json",
  "testresult",
  "tokio",
@@ -2968,6 +2969,7 @@ dependencies = [
 name = "root"
 version = "0.1.0"
 dependencies = [
+ "near-contract-standards",
  "near-sdk",
  "troll-types",
 ]
@@ -3964,7 +3966,9 @@ dependencies = [
 name = "troll"
 version = "0.1.0"
 dependencies = [
+ "near-contract-standards",
  "near-sdk",
+ "root",
  "troll-types",
 ]
 
@@ -4440,6 +4444,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3b93199df0ab874cdf0c6a94f0a0dc3423fe41f1cafb62b8bd7b1deb277aef"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "wrapper"
+version = "0.1.0"
+dependencies = [
+ "near-contract-standards",
+ "near-sdk",
 ]
 
 [[package]]

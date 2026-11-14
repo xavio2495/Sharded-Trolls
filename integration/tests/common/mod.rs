@@ -70,12 +70,26 @@ pub fn wasm(name: &str) -> testresult::TestResult<Vec<u8>> {
     Ok(std::fs::read(path)?)
 }
 
+/// Creates `id` (a sub-account of the genesis account `sandbox`) with a real
+/// transaction, so it also works when the new account lives on another shard.
 pub async fn create_account(env: &Env, id: &str) -> testresult::TestResult<Account> {
     let account_id: AccountId = id.parse()?;
-    env.sandbox
-        .create_account(account_id.as_str().parse()?)
-        .initial_balance(NearToken::from_near(10))
-        .send()
-        .await?;
-    Ok(Account(account_id))
+    let key: near_api::types::PublicKey =
+        near_sandbox::config::DEFAULT_GENESIS_ACCOUNT_PUBLIC_KEY.parse()?;
+    Account::create_account(account_id.clone())
+        .fund_myself("sandbox".parse()?, NearToken::from_near(10))
+        .with_public_key(key)
+        .with_signer(env.signer.clone())
+        .send_to(&env.network)
+        .await?
+        .assert_success();
+    let mut last = String::new();
+    for _ in 0..50 {
+        match Account(account_id.clone()).view().fetch_from(&env.network).await {
+            Ok(_) => return Ok(Account(account_id)),
+            Err(e) => last = e.to_string(),
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
+    Err(format!("account {account_id} did not appear: {last}").into())
 }
