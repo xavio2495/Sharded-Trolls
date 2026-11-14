@@ -1,0 +1,76 @@
+{
+  "parent_funded_near": "30",
+  "parent_left_near": "6.4370",
+  "parent_storage_bytes": 187082,
+  "parent_spent_near": "23.5630",
+  "troll_near_each": "0.2",
+  "troll_code_bytes": 219012,
+  "troll_code_hash": "eea98db9b0a590431f8e7070bb36610511d61e5281fcb77c5537568db8c42ffd",
+  "trolls": [
+    {
+      "account": "0.dr.sandbox",
+      "shard": 10,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "7.dr.sandbox",
+      "shard": 11,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "ax.dr.sandbox",
+      "shard": 8,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "f.dr.sandbox",
+      "shard": 9,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "h.dr.sandbox",
+      "shard": 7,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "kz.dr.sandbox",
+      "shard": 4,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "u.dr.sandbox",
+      "shard": 12,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    },
+    {
+      "account": "wz.dr.sandbox",
+      "shard": 13,
+      "storage_usage": 659,
+      "code_hash": "11111111111111111111111111111111",
+      "global_contract_hash": "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+    }
+  ],
+  "conservation_at_start": {
+    "supply": "1000000000000000000000000000000000",
+    "in_flight": "0",
+    "burned": "0",
+    "minted": "0",
+    "total_supply": "1000000000000000000000000000000000",
+    "conserved": true
+  },
+  "at": "2026-11-14T15:08:45.081Z"
+}
