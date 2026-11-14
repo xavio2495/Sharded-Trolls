@@ -13,8 +13,8 @@
 // --wrapper deploys the single-contract NEP-141 wrapper at <prefix>.<parent>, bound to its home
 // troll, and registers it there. Mainnet is refused here: humans approve every mainnet transaction.
 // --global-hash reuses troll code already published as a global contract (a second token on the same
-// code): no code is published, the hash goes straight to UseGlobalContract, and a local troll.wasm
-// with a different sha256 only gives a warning.
+// code): no code is published and the hash goes straight to UseGlobalContract. A local troll.wasm with
+// a different sha256 stops the deploy unless --allow-hash-mismatch is given.
 // --feed-target and --label override and tag parameters for demo deployments.
 // Before anything is sent, the signer's balance is checked against the whole deployment; before each
 // transaction the script waits until earlier gas refunds have landed and the up-front gas charge fits.
@@ -33,10 +33,11 @@ const { values } = parseArgs({ options: {
   'key-file': { type: 'string' }, 'epoch-ms': { type: 'string' }, 'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' }, symbol: { type: 'string', default: 'STRL' },
   'troll-near': { type: 'string', default: '5' }, 'start-ms': { type: 'string' }, wrapper: { type: 'string' },
   'global-hash': { type: 'string' }, 'feed-target': { type: 'string' }, label: { type: 'string' },
-  name: { type: 'string', default: 'Sharded Trolls' },
+  name: { type: 'string', default: 'Sharded Trolls' }, rpc: { type: 'string' }, 'allow-hash-mismatch': { type: 'boolean', default: false },
 } });
 const net = values.network;
 if (!RPC[net]) throw new Error(`unsupported network ${net}`);
+if (values.rpc) RPC[net] = values.rpc; // another endpoint for the same network, e.g. when one rate-limits
 const parent = values.parent ?? (net === 'localnet' ? 'sandbox' : undefined);
 if (!parent) throw new Error('--parent is required');
 const signerId = values.signer ?? parent;
@@ -81,7 +82,23 @@ let codeHash = localHash;
 if (values['global-hash']) {
   codeHash = Buffer.from(b58decode(values['global-hash']));
   if (codeHash.length !== 32) throw new Error('--global-hash must be a base58 sha256 (32 bytes)');
-  if (!codeHash.equals(localHash)) console.warn(`WARNING: local troll.wasm sha256 ${b58encode(localHash)} differs from --global-hash ${values['global-hash']}; using the global hash`);
+  // Different troll code under a new root would break settlement, so a mismatch stops the deploy
+  // unless explicitly allowed.
+  if (!codeHash.equals(localHash)) {
+    const msg = `local troll.wasm sha256 ${b58encode(localHash)} differs from --global-hash ${values['global-hash']}`;
+    if (!values['allow-hash-mismatch']) throw new Error(`${msg}; nothing was sent (pass --allow-hash-mismatch to deploy anyway)`);
+    console.warn(`WARNING: ${msg}; using the global hash (--allow-hash-mismatch)`);
+  }
+}
+
+// Signs, prints the hash, then sends: if the RPC fails mid-send, the hash tells whether it landed.
+async function send(receiver, actions) {
+  const signed = await signer.sign(receiver, actions);
+  console.log(`  tx ${signed.hash} -> ${receiver}`);
+  const r = await near.sendSigned(signed, 'EXECUTED_OPTIMISTIC');
+  const failure = r.status?.Failure ?? r.receipts_outcome?.map((o) => o.outcome.status.Failure).find(Boolean);
+  if (failure) throw new Error(`${receiver} tx ${signed.hash} failed: ${JSON.stringify(failure).slice(0, 500)}`);
+  return r;
 }
 
 // ---------- NEAR budget ----------
@@ -128,7 +145,7 @@ async function ready(deposit, tgas, what) {
 if (!values['global-hash']) {
   console.log(`${net}: global troll code ${trollCode.length} bytes`);
   await ready(0n, 0, 'global deploy');
-  await signer.send(signerId, [action.deployGlobalContract(trollCode)]);
+  await send(signerId, [action.deployGlobalContract(trollCode)]);
 } else {
   console.log(`${net}: using global troll code ${values['global-hash']}`);
 }
@@ -137,13 +154,13 @@ console.log(`root ${parent}`);
 const metadata = { spec: 'ft-1.0.0', name: values.name, symbol: values.symbol, icon: null, reference: null, reference_hash: null, decimals: 24 };
 const rootActions = [action.deployContract(rootCode), action.functionCall('new', { params, trolls: trollIds, start_ms: startMs, total_supply: totalSupply, metadata }, 100n * TGAS)];
 await ready(0n, 100, 'root');
-await signer.send(parent, rootActions);
+await send(parent, rootActions);
 
 // Global code becomes usable a block or two after the deploy executes.
 await new Promise((r) => setTimeout(r, 2000));
 for (const t of trolls) {
   await ready(trollNear, 100, t.account);
-  await signer.send(t.account, [
+  await send(t.account, [
     action.createAccount(), action.transfer(trollNear), action.useGlobalContractByHash(codeHash),
     action.functionCall('new', { root: parent, trolls: trollIds, params, metadata, start_ms: startMs, total_supply: totalSupply, launch_supply: launchSupply }, 100n * TGAS),
   ]);
@@ -157,9 +174,9 @@ if (values.wrapper) {
   const home = await near.view(parent, 'home_troll', { account_id: id });
   const wmeta = { ...metadata, name: `Wrapped ${values.name}`, symbol: `w${values.symbol}` };
   await ready(3n * NEAR, 100, id);
-  await signer.send(id, [action.createAccount(), action.transfer(3n * NEAR), action.deployContract(code), action.functionCall('new', { troll: home, metadata: wmeta }, 100n * TGAS)]);
+  await send(id, [action.createAccount(), action.transfer(3n * NEAR), action.deployContract(code), action.functionCall('new', { troll: home, metadata: wmeta }, 100n * TGAS)]);
   const { min } = await near.view(home, 'storage_balance_bounds');
-  await signer.call(home, 'storage_deposit', { account_id: id, registration_only: true }, { gas: 10n * TGAS, deposit: BigInt(min) });
+  await send(home, [action.functionCall('storage_deposit', { account_id: id, registration_only: true }, 10n * TGAS, BigInt(min))]);
   wrapper = { account: id, home_troll: home, code_hash: createHash('sha256').update(code).digest('hex') };
   console.log(`wrapper ${id} -> home troll ${home}`);
 }

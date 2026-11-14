@@ -25,6 +25,12 @@
 //   settle    after epoch 0 ends (--wait polls read-only until it has): settle(0) once at 1 Tgas below
 //             --settle-min-tgas, which must fail up front with `settling` unlocked, then at exactly the minimum,
 //             which must settle (8 applies, books conserved). At most two transactions, no retries.
+//   Feeding demo (A4), after deploy with demo params; each step records views before/after in feeding-*.json:
+//   feeders   8 feeder accounts (one homed at each troll) + a settler account; registered by the parent; each claims
+//   feed      --tag E0|E1 [--skip i]: feeder i sends 100 tokens to feeder i+1 (all cross-troll), except feeder --skip
+//   settle-at --epoch N: waits for the epoch to end, then the settler calls settle(N) with 250 Tgas once
+//   claim-rewards --epoch N: each feeder of epoch N claims its share
+//   feeding-report  writes measurements/testnet-<date>-feeding/feeding.json (--report-dir to change)
 //   k7        read-only: records K7 (parent spend, each troll's global code hash and storage)
 //   report    writes measurements/testnet-<date>/k-tests.json from target/testnet/*.json
 // Env: the funder's seed phrase in SECRET_PHRASE, or the variable named by --key-env (e.g. --funder strl.testnet
@@ -41,23 +47,31 @@ import { Near, Account, KeyPair, action, NEAR, TGAS, b58encode } from './lib/nea
 import { keyPairFromSeedPhrase } from './lib/seed.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const RPC_DEFAULT = 'https://rpc.testnet.fastnear.com';
-const EXPLORER = 'https://testnet.nearblocks.io/txns/';
+// --network localnet runs the same steps against scripts/localnet.mjs (funder: sandbox, its validator key).
+const NETWORKS = {
+  testnet: { rpc: 'https://rpc.testnet.fastnear.com', explorer: 'https://testnet.nearblocks.io/txns/', funder: 'xavio.testnet', dir: 'target/testnet' },
+  localnet: { rpc: 'http://127.0.0.1:3040', explorer: 'localnet:', funder: 'sandbox', dir: 'target/rehearsal' },
+};
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-  send: { type: 'boolean', default: false }, rpc: { type: 'string' }, funder: { type: 'string', default: 'xavio.testnet' },
+  send: { type: 'boolean', default: false }, rpc: { type: 'string' }, funder: { type: 'string' }, network: { type: 'string', default: 'testnet' },
   parent: { type: 'string', default: 'st.xavio.testnet' }, 'parent-near': { type: 'string', default: '38' },
   'troll-near': { type: 'string', default: '1' }, 'epoch-ms': { type: 'string', default: '3600000' },
   'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' },
   reuse: { type: 'string' }, 'report-dir': { type: 'string' }, 'spare-near': { type: 'string' },
-  'topup-near': { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
+  'topup-near': { type: 'string' }, 'feed-target': { type: 'string' }, label: { type: 'string' }, 'global-hash': { type: 'string' },
+  symbol: { type: 'string' }, name: { type: 'string' }, epoch: { type: 'string' }, skip: { type: 'string' }, tag: { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
   'settle-min-tgas': { type: 'string', default: '250' }, wait: { type: 'boolean', default: false },
 } });
 const step = positionals[0] ?? 'plan';
 // --rpc: another public testnet RPC when the default one rate-limits.
-const RPC = values.rpc ?? RPC_DEFAULT;
+const NET = NETWORKS[values.network];
+if (!NET) throw new Error('--network testnet|localnet');
+values.funder ??= NET.funder;
+const EXPLORER = NET.explorer;
+const RPC = values.rpc ?? NET.rpc;
 const SEND = values.send;
 const near = new Near(RPC);
-const DIR = resolve(ROOT, 'target/testnet', values.parent);
+const DIR = resolve(ROOT, NET.dir, values.parent);
 mkdirSync(DIR, { recursive: true });
 const file = (n) => resolve(DIR, n);
 const load = (n) => JSON.parse(readFileSync(file(n)));
@@ -68,14 +82,16 @@ const fmt = (y) => (Number(BigInt(y) / 10n ** 18n) / 1e6).toFixed(4);
 const sha = (b) => createHash('sha256').update(b).digest();
 const wasm = (n) => readFileSync(resolve(ROOT, `target/near/${n}/${n}.wasm`));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const u64le = (v) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); return b; };
 // Decimal NEAR ("0.2") to yocto, micro-NEAR precision.
 const nearToYocto = (v) => BigInt(Math.round(Number(v) * 1e6)) * 10n ** 18n;
 const dep = () => load('deploy.json');
-const reused = () => JSON.parse(readFileSync(resolve(ROOT, 'target/testnet', values.reuse, 'accounts.json')));
+const reused = () => JSON.parse(readFileSync(resolve(ROOT, NET.dir, values.reuse, 'accounts.json')));
 
 // Funder key from the seed phrase in the environment variable --key-env (default SECRET_PHRASE), read
 // from the environment or .env. Derived in memory only; never printed, logged or written.
 function funderKey() {
+  if (values.network === 'localnet') return KeyPair.fromString(JSON.parse(readFileSync(resolve(ROOT, 'target/localnet/validator_key.json'))).secret_key);
   const name = values['key-env'];
   if (!/^[A-Z0-9_]+$/.test(name)) throw new Error('--key-env must be an environment variable name');
   if (!process.env[name] && existsSync(resolve(ROOT, '.env'))) {
@@ -97,6 +113,8 @@ async function balance(id) {
   }
 }
 
+// Every outcome this run sent, for the per-step event replay.
+const SENT = [];
 // Sends unless dry run; returns the full outcome (never throws on receipt failures, the caller checks).
 async function submit(signer, receiver, actions, what) {
   log(`${signer.accountId} -> ${receiver}: ${what}`);
@@ -106,6 +124,7 @@ async function submit(signer, receiver, actions, what) {
   // the explorer or with EXPERIMENTAL_tx_status) before anything is resent.
   console.log(`  tx ${signed.hash}  ${EXPLORER}${signed.hash}`);
   const r = await near.sendSigned(signed, 'FINAL');
+  SENT.push({ ...r, hash: signed.hash });
   return { ...r, hash: signed.hash };
 }
 const failures = (r) => [r.status?.Failure, ...r.receipts_outcome.map((o) => o.outcome.status.Failure)].filter(Boolean);
@@ -132,7 +151,7 @@ if (step === 'plan') {
   // Root state + parent account + key measured on the first run: 183,030 B total storage minus 182,124 B code.
   const rootExtra = 1000n;
   // Registration deposit per holder (fixed by the troll's account record size), read from the earlier deployment.
-  const regMin = values.reuse ? BigInt((await near.view(JSON.parse(readFileSync(resolve(ROOT, 'target/testnet', values.reuse, 'deploy.json'))).trolls[0].account, 'storage_balance_bounds')).min) : 2n * 10n ** 21n;
+  const regMin = values.reuse ? BigInt((await near.view(JSON.parse(readFileSync(resolve(ROOT, NET.dir, values.reuse, 'deploy.json'))).trolls[0].account, 'storage_balance_bounds')).min) : 2n * 10n ** 21n;
   const items = [
     ['global troll code (10x storage, burned)', 10n * perByte * BigInt(troll.length)],
     ['root code + state + parent account (locked on the parent)', perByte * (BigInt(root.length) + rootExtra)],
@@ -175,7 +194,7 @@ if (step === 'plan') {
   // Moves spare NEAR from the earlier parent (--reuse) to this parent; the earlier deployment stays
   // intact (its root keeps its storage reserve).
   if (!values.reuse) throw new Error('--reuse <earlier parent> is required');
-  const from = new Account(near, values.reuse, KeyPair.fromString(JSON.parse(readFileSync(resolve(ROOT, 'target/testnet', values.reuse, 'parent-key.json'))).secret_key));
+  const from = new Account(near, values.reuse, KeyPair.fromString(JSON.parse(readFileSync(resolve(ROOT, NET.dir, values.reuse, 'parent-key.json'))).secret_key));
   const cfg = await near.rpc('EXPERIMENTAL_protocol_config', { finality: 'final' });
   const a = await balance(values.reuse);
   const spare = BigInt(a.amount) - BigInt(cfg.runtime_config.storage_amount_per_byte) * BigInt(a.storage_usage) - 5n * 10n ** 22n; // keep 0.05 NEAR
@@ -220,13 +239,16 @@ if (step === 'plan') {
   if (SEND) save('deploy.json', out);
   console.log(`deploy.json ${SEND ? 'written' : 'would be written'}: ${placed.length} trolls, start ${out.deployed_at}`);
 } else if (step === 'deploy') {
-  const args = ['--dns-result-order=ipv4first', 'scripts/deploy.mjs', '--network', 'testnet', '--parent', values.parent,
-    '--key-file', `target/testnet/${values.parent}/parent-key.json`, '--troll-near', values['troll-near'], '--epoch-ms', values['epoch-ms'], '--params', values.params,
-    ...(values['window-ms'] ? ['--window-ms', values['window-ms']] : [])];
+  const args = ['--dns-result-order=ipv4first', 'scripts/deploy.mjs', '--network', values.network, '--parent', values.parent,
+    '--key-file', `${NET.dir}/${values.parent}/parent-key.json`, '--troll-near', values['troll-near'], '--epoch-ms', values['epoch-ms'], '--params', values.params,
+    ...(values['window-ms'] ? ['--window-ms', values['window-ms']] : []),
+    ...(values['feed-target'] ? ['--feed-target', values['feed-target']] : []), ...(values.label ? ['--label', values.label] : []),
+    ...(values['global-hash'] ? ['--global-hash', values['global-hash']] : []), ...(values.symbol ? ['--symbol', values.symbol] : []),
+    ...(values.name ? ['--name', values.name] : []), '--rpc', RPC];
   log(`node ${args.join(' ')}`);
   if (!SEND) process.exit(0);
   execFileSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' });
-  save('deploy.json', JSON.parse(readFileSync(resolve(ROOT, 'target/deploy-testnet.json'))));
+  save('deploy.json', JSON.parse(readFileSync(resolve(ROOT, `target/deploy-${values.network}.json`))));
   console.log('deployed; record K7 with: testnet-k.mjs k7');
 } else if (step === 'k7') {
   // Read-only. The parent was created with --parent-near and pays only for the deploy before setup.
@@ -319,9 +341,9 @@ if (step === 'plan') {
     if (!r) continue;
     await sleep(5000);
     const ev = events(r);
-    // A same-troll transfer logs ft_transfer; a cross-troll one logs ft_burn at the source and
-    // ft_mint at the destination, plus a toll event.
-    const transfers = ev.filter((e) => e.standard === 'nep141' && (e.event === 'ft_transfer' || e.event === 'ft_mint')).length;
+    // A same-troll transfer logs ft_transfer; a cross-troll one logs one ft_burn at the source (plus
+    // ft_mint at the destination, and with troll food a second ft_mint of the toll), and a toll event.
+    const transfers = ev.filter((e) => e.standard === 'nep141' && (e.event === 'ft_transfer' || (e.event === 'ft_burn' && e.executor === trollA))).length;
     const toll = ev.filter((e) => e.standard === 'shardedtrolls' && e.event === 'toll').length;
     const fires = { label, n, hash: r.hash, url: EXPLORER + r.hash, ft_transfer_events: transfers, tolls: toll,
       failed_receipts: failures(r).length, shards: [...new Set(r.receipts_outcome.map((o) => o.outcome.executor_id))],
@@ -413,6 +435,212 @@ if (step === 'plan') {
     if (a.outcome === 'STUCK (settling locked)' || settled) break; // nothing more to try for this epoch
   }
   if (SEND) save('settle.json', out);
+} else if (['feeders', 'feed', 'settle-at', 'claim-rewards', 'feeding-report'].includes(step)) {
+  const D = dep();
+  const root = D.root;
+  const n = D.trolls.length;
+  const homeSync = (id) => Number(BigInt('0x' + createHash('sha256').update(id).digest('hex').slice(0, 32)) % BigInt(n));
+  const retry = async (f) => { for (let i = 0; ; i++) { try { return await f(); } catch (e) { if (i >= 5) throw e; await sleep(15_000 * (i + 1)); } } };
+  const view = (c, m, a) => retry(() => near.view(c, m, a));
+  // Root, trolls, feeders and settler as they are now.
+  const snapshot = async (F) => {
+    const trolls = [];
+    for (const t of D.trolls) {
+      const i = await view(t.account, 'info');
+      trolls.push({ account: t.account, senders_this_epoch: i.senders_this_epoch, epoch: i.epoch, supply: i.supply, food: i.food ?? null,
+        hoard: i.hoard, launch_pool: i.launch_pool, minted: i.minted, burned: i.burned, in_flight: i.in_flight });
+    }
+    const feeders = F ? await Promise.all(F.feeders.map(async (f) => ({ account: f.account, troll: f.troll, balance: await view(D.trolls[f.troll].account, 'ft_balance_of', { account_id: f.account }) }))) : [];
+    const settler = F ? (await retry(() => balance(F.settler.account))).amount : null;
+    return { at: new Date().toISOString(), root: await view(root, 'info'), trolls, feeders, settler_near_yocto: settler, conservation: await retry(() => conservation(D)) };
+  };
+  const signerOf = (a) => new Account(near, a.account, KeyPair.fromString(a.secret));
+  // Per-step assertions: books conserved, nothing in flight, each troll's supply change equals the
+  // ft_mint minus ft_burn it logged in this step's receipts, and (after a settlement) the root's view
+  // of every troll equals the troll.
+  const verify = (before, after, rootCheck) => {
+    const logged = Object.fromEntries(D.trolls.map((t) => [t.account, 0n]));
+    for (const r of SENT) for (const e of events(r)) {
+      if (e.standard !== 'nep141' || !(e.executor in logged)) continue;
+      const amt = (e.data ?? []).reduce((a, d) => a + BigInt(d.amount ?? 0), 0n);
+      if (e.event === 'ft_mint') logged[e.executor] += amt;
+      if (e.event === 'ft_burn') logged[e.executor] -= amt;
+    }
+    const replay = after.trolls.map((t, i) => {
+      const delta = BigInt(t.supply) - BigInt(before.trolls[i].supply);
+      return { troll: t.account, supply_delta: String(delta), logged_mint_minus_burn: String(logged[t.account]), ok: delta === logged[t.account] };
+    });
+    const out = { conserved: after.conservation.conserved, in_flight_zero: after.conservation.in_flight === '0', replay_ok: replay.every((x) => x.ok), replay };
+    if (rootCheck) {
+      const sum = after.trolls.reduce((a, t) => a + BigInt(t.supply), 0n);
+      out.root_troll_supply_matches = after.root.troll_supply.every((v, i) => v === after.trolls[i].supply);
+      out.root_total_matches = BigInt(after.root.total_supply) === sum;
+    }
+    out.ok = out.conserved && out.in_flight_zero && out.replay_ok && (!rootCheck || (out.root_troll_supply_matches && out.root_total_matches));
+    console.log(`assertions: ${out.ok ? 'PASS' : 'FAIL'} ${JSON.stringify({ ...out, replay: undefined })}`);
+    return out;
+  };
+  const record = (name, v) => { if (SEND) save(`feeding-${name}.json`, v); };
+  const burntBySigner = (r) => [r.transaction_outcome, ...r.receipts_outcome].reduce((a, o) => a + BigInt(o.outcome.tokens_burnt), 0n);
+  if (step === 'feeders') {
+    const p = parentAccount();
+    const F = existsSync(file('feeders.json')) ? load('feeders.json') : { feeders: [], settler: null };
+    if (!F.feeders.length) {
+      const slots = Array(n).fill(null);
+      for (let k = 0; slots.includes(null); k++) { const id = `feeder${k}.${values.parent}`; const i = homeSync(id); if (!slots[i]) slots[i] = id; }
+      for (const [i, id] of slots.entries()) {
+        if ((await homeIndex(id, n)) !== i) throw new Error(`${id} not homed at ${i}`);
+        F.feeders.push({ account: id, troll: i, secret: KeyPair.random().secretKeyString });
+      }
+      F.settler = { account: `settler.${values.parent}`, secret: KeyPair.random().secretKeyString };
+    }
+    if (SEND) save('feeders.json', F);
+    const before = SEND ? await snapshot(null) : null;
+    const txs = [];
+    for (const a of [...F.feeders, F.settler]) {
+      const kp = KeyPair.fromString(a.secret);
+      const amt = a === F.settler ? 4n * 10n ** 23n : 10n ** 23n; // settler 0.4 (holds 250 Tgas up front), feeders 0.1
+      const r = mustSucceed(await submit(p, a.account, [action.createAccount(), action.transfer(amt), action.addFullAccessKey(kp.publicKey)], `create ${a.account} with ${fmt(amt)} NEAR`));
+      if (r) txs.push({ step: 'create', account: a.account, hash: r.hash });
+    }
+    for (const f of F.feeders) {
+      const t = D.trolls[f.troll].account;
+      const { min } = SEND ? await view(t, 'storage_balance_bounds') : { min: '0' };
+      const r = mustSucceed(await submit(p, t, [action.functionCall('storage_deposit', { account_id: f.account, registration_only: true }, 10n * TGAS, BigInt(min))], `register ${f.account} at ${t}`));
+      if (r) txs.push({ step: 'register', account: f.account, hash: r.hash });
+    }
+    for (const f of F.feeders) {
+      const fee = BigInt(D.params.claim_fee ?? 0);
+      const r = mustSucceed(await submit(SEND ? signerOf(f) : { accountId: f.account }, D.trolls[f.troll].account, [action.functionCall('claim_launch', {}, 30n * TGAS, fee)], `claim_launch (fee ${fmt(fee)} NEAR)`));
+      if (r) txs.push({ step: 'claim_launch', account: f.account, hash: r.hash });
+    }
+    if (SEND) { const after = await snapshot(F); record('setup', { before: { ...before, feeders: [] }, after, txs, assertions: verify({ ...before }, after, false) }); }
+  } else if (step === 'feed') {
+    const F = load('feeders.json');
+    const skip = values.skip !== undefined ? Number(values.skip) : null;
+    const before = SEND ? await snapshot(F) : null;
+    const txs = [];
+    for (const f of F.feeders) {
+      if (f.troll === skip) { log(`${f.account} (troll ${f.troll}) skipped: this troll goes hungry`); continue; }
+      const to = F.feeders[(f.troll + 1) % n];
+      const r = await submit(SEND ? signerOf(f) : { accountId: f.account }, D.trolls[f.troll].account,
+        [action.functionCall('ft_transfer', { receiver_id: to.account, amount: String(100n * NEAR) }, 50n * TGAS, 1n)], `ft_transfer 100 to ${to.account} (troll ${f.troll} → ${to.troll})`);
+      if (!r) continue;
+      mustSucceed(r);
+      txs.push({ from: f.account, to: to.account, troll_from: f.troll, troll_to: to.troll, hash: r.hash, events: events(r).map((e) => `${e.executor}:${e.event}`) });
+    }
+    if (SEND) { await sleep(6000); const after = await snapshot(F); record(values.tag ?? 'feed', { tag: values.tag, skip, before, after, txs, assertions: verify(before, after, false) }); }
+  } else if (step === 'settle-at') {
+    const F = load('feeders.json');
+    const epoch = Number(values.epoch);
+    let i0 = await view(root, 'info');
+    if (i0.next_epoch !== epoch) throw new Error(`root's next epoch is ${i0.next_epoch}, not ${epoch}`);
+    while (i0.current_epoch <= epoch) {
+      const endsAt = new Date(D.start_ms + (epoch + 1) * D.params.epoch_ms).toISOString();
+      if (!values.wait) { console.log(`epoch ${epoch} ends at ${endsAt}; run again then, or pass --wait`); process.exit(0); }
+      console.log(`waiting for epoch ${epoch} to end at ${endsAt}`);
+      await sleep(30_000);
+      i0 = await view(root, 'info');
+    }
+    const before = SEND ? await snapshot(F) : null;
+    const r = await submit(SEND ? signerOf(F.settler) : { accountId: F.settler.account }, root, [action.functionCall('settle', { epoch }, 250n * TGAS)], `settle(${epoch}) with 250 Tgas by ${F.settler.account}`);
+    if (r) {
+      await sleep(12_000); // applies and gas refunds land
+      const after = await snapshot(F);
+      const ev = events(r);
+      const bounty = ev.find((e) => e.event === 'settle_bounty_paid')?.data?.[0]?.amount ?? null;
+      const burnt = burntBySigner(r);
+      record(`S${epoch}`, { epoch, hash: r.hash, url: EXPLORER + r.hash, failed_receipts: failures(r).length,
+        events: ev.map((e) => ({ executor: e.executor, event: e.event, data: e.data })),
+        settler_near_before: before.settler_near_yocto, settler_near_after: after.settler_near_yocto,
+        settler_delta_yocto: String(BigInt(after.settler_near_yocto) - BigInt(before.settler_near_yocto)),
+        bounty_yocto: bounty, gas_burnt_yocto: String(burnt), before, after, assertions: verify(before, after, true) });
+      console.log(`settle(${epoch}): ${failures(r).length} failed receipts; events ${[...new Set(ev.map((e) => e.event))].join(', ')}; root streak ${after.root.streak}, next_epoch ${after.root.next_epoch}`);
+      console.log(`settler NEAR change ${fmt(BigInt(after.settler_near_yocto) - BigInt(before.settler_near_yocto))} (bounty ${bounty ? fmt(BigInt(bounty)) : 'none'}, gas burnt ${fmt(burnt)}); conserved ${after.conservation.conserved}`);
+    }
+  } else if (step === 'claim-rewards') {
+    const F = load('feeders.json');
+    const epoch = Number(values.epoch);
+    const before = SEND ? await snapshot(F) : null;
+    const txs = [];
+    for (const f of F.feeders) {
+      const r = await submit(SEND ? signerOf(f) : { accountId: f.account }, D.trolls[f.troll].account, [action.functionCall('claim', { epoch }, 30n * TGAS)], `claim(${epoch})`);
+      if (!r) continue;
+      mustSucceed(r);
+      const share = r.status?.SuccessValue ? JSON.parse(Buffer.from(r.status.SuccessValue, 'base64').toString()) : null;
+      txs.push({ account: f.account, troll: f.troll, hash: r.hash, share });
+    }
+    if (SEND) { const after = await snapshot(F); record(`C${epoch}`, { epoch, before, after, txs, assertions: verify(before, after, false) }); }
+  } else {
+    const dir = resolve(ROOT, values['report-dir'] ?? `measurements/testnet-${new Date().toISOString().slice(0, 10)}-feeding`);
+    mkdirSync(dir, { recursive: true });
+    const pick = (n2) => (existsSync(file(n2)) ? load(n2) : null);
+    const F = pick('feeders.json');
+    const report = { network: 'testnet', label: D.label ?? null, demo_params_note: 'Demo parameters: feed_target 1, 10-minute epochs, launch window of one epoch. Launch values differ (feed_target 10, 24 h epochs).',
+      root: D.root, trolls: D.trolls, params: D.params, start_ms: D.start_ms, metadata: await view(D.trolls[0].account, 'ft_metadata'),
+      troll_code_hash: D.troll_code_hash, root_code_hash: D.root_code_hash, global_hash_reused: D.global_hash_reused ?? null,
+      feeders: F ? F.feeders.map((f) => ({ account: f.account, troll: f.troll })) : [], settler: F?.settler.account ?? null,
+      deploy_resumed: pick('resume.json'),
+      k7: pick('k7.json'), setup: pick('feeding-setup.json'), E0: pick('feeding-E0.json'), S0: pick('feeding-S0.json'),
+      C0: pick('feeding-C0.json'), E1: pick('feeding-E1.json'), S1: pick('feeding-S1.json') };
+    writeFileSync(resolve(dir, 'feeding.json'), JSON.stringify(report, null, 2) + '\n');
+    console.log(`wrote ${dir}/feeding.json`);
+  }
+} else if (step === 'drill-settle-timeout') {
+  // Localnet only. A settlement can't get stuck honestly (≥ 250 Tgas, and a failed report unlocks it),
+  // so the drill writes a stuck `settling` into the root's state with sandbox_patch_state, checks that
+  // settle is refused, moves the chain 601 blocks ahead with sandbox_fast_forward, and settles again:
+  // it must expire the stuck attempt and settle. Signs with the parent's key (any account may settle).
+  if (values.network !== 'localnet') throw new Error('localnet only');
+  const D = dep();
+  const root = D.root;
+  const info = () => near.view(root, 'info');
+  const i0 = await info();
+  const epoch = i0.next_epoch;
+  if (i0.settling !== null || i0.current_epoch <= epoch) throw new Error(`need a finished, unsettled epoch and no settlement running (next ${epoch}, current ${i0.current_epoch}, settling ${i0.settling})`);
+  const KEY = Buffer.from('STATE').toString('base64');
+  const st = await near.rpc('query', { request_type: 'view_state', finality: 'final', account_id: root, prefix_base64: KEY });
+  const buf = Buffer.from(st.values.find((v) => v.key === KEY).value, 'base64');
+  // Tail of the root's borsh state: settling Option<u64>, settling_since u64, attempt u64, settler AccountId,
+  // then (builds with a bounty budget) bounty_budget u128. Try both layouts.
+  let L = null, T = 0;
+  for (const trail of [0, 16]) {
+    for (let l = 2; l <= 64 && l + 4 + trail <= buf.length; l++) {
+      const end = buf.length - trail;
+      if (buf.readUInt32LE(end - 4 - l) === l && /^[a-z0-9._-]+$/.test(buf.subarray(end - l, end).toString())) { L = l; T = trail; break; }
+    }
+    if (L !== null) break;
+  }
+  if (L === null) throw new Error('could not find the settler field near the end of the root state');
+  const settlerAt = buf.length - T - 4 - L, attemptAt = settlerAt - 8, sinceAt = attemptAt - 8, optAt = sinceAt - 1;
+  if (buf[optAt] !== 0) throw new Error('expected settling = None in the state');
+  const height = (await near.rpc('block', { finality: 'final' })).header.height;
+  const patched = Buffer.concat([buf.subarray(0, optAt), Buffer.from([1]), u64le(epoch), u64le(height), buf.subarray(attemptAt)]);
+  const out = { epoch, at: new Date().toISOString(), settler_field: buf.subarray(settlerAt + 4, settlerAt + 4 + L).toString(), trailing_bytes: T, patched_at_height: height, steps: [] };
+  log(`patch ${root} STATE: settling = Some(${epoch}), settling_since = ${height} (attempt unchanged)`);
+  if (!SEND) process.exit(0);
+  await near.rpc('sandbox_patch_state', { records: [{ Data: { account_id: root, data_key: KEY, value: patched.toString("base64") } }] });
+  const i1 = await info();
+  out.steps.push({ step: 'patched', settling: i1.settling });
+  if (i1.settling !== epoch) throw new Error(`patch did not take: settling ${i1.settling}`);
+  const p = parentAccount();
+  const r1 = await submit(p, root, [action.functionCall('settle', { epoch }, 250n * TGAS)], `settle(${epoch}) while stuck: must be refused`);
+  const e1 = failures(r1).map((f) => JSON.stringify(f));
+  out.steps.push({ step: 'settle while stuck', hash: r1.hash, refused: e1.some((e) => e.includes('settlement in progress')), errors: e1.map((e) => e.slice(0, 200)), settling_after: (await info()).settling });
+  await near.rpc('sandbox_fast_forward', { delta_height: 601 });
+  let h2 = height;
+  for (let i = 0; i < 60 && h2 < height + 600; i++) { await sleep(1000); h2 = (await near.rpc('block', { finality: 'final' })).header.height; }
+  out.steps.push({ step: 'fast_forward 601', height_after: h2 });
+  const r2 = await submit(p, root, [action.functionCall('settle', { epoch }, 250n * TGAS)], `settle(${epoch}) after the timeout: must expire the stuck attempt and settle`);
+  await sleep(4000);
+  const i3 = await info();
+  const ev = events(r2).map((e) => e.event);
+  out.steps.push({ step: 'settle after timeout', hash: r2.hash, failed_receipts: failures(r2).length, events: [...new Set(ev)], settling_after: i3.settling, next_epoch_after: i3.next_epoch });
+  out.conservation_after = await conservation(D);
+  out.pass = out.steps[1].refused && out.steps[1].settling_after === epoch && ev.includes('settle_expired') && ev.includes('feeding_settled')
+    && i3.settling === null && i3.next_epoch === epoch + 1 && out.conservation_after.conserved;
+  save('drill-settle-timeout.json', out);
+  console.log(JSON.stringify(out, null, 1));
 } else if (step === 'report') {
   const day = new Date().toISOString().slice(0, 10);
   const dir = resolve(ROOT, values['report-dir'] ?? `measurements/testnet-${day}`);
