@@ -94,7 +94,7 @@ const SLIDES: Slide[] = [
     kicker: "Try it",
     title: "Feed a troll today.",
     body: "Open the app, connect a NEAR testnet wallet, claim your starter bag and cross a stream.",
-    art: { src: "/art/trolls/troll-8.webp", alt: "The mushroom-crowned troll, hands clasped, delighted.", w: 720, h: 720 },
+    art: { src: "/art/trolls-v2/troll-8.webp", alt: "The mushroom-crowned troll, hands clasped, delighted.", w: 720, h: 720 },
   },
 ];
 

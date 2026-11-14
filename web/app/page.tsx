@@ -140,7 +140,7 @@ export default function Home() {
           <ul className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {TROLLS.map((t, i) => (
               <li key={t.name} className="rounded-[var(--radius-card)] border-2 border-ink-line/70 bg-surface-1 p-3 text-center shadow-[3px_3px_0_0_var(--ink-line)]">
-                <Image src={`/art/trolls/troll-${i + 1}.webp`} alt={`${t.name}, the shard ${t.shard} troll`} width={720} height={720} className="w-full mix-blend-multiply" />
+                <Image src={`/art/trolls-v2/troll-${i + 1}.webp`} alt={`${t.name}, the shard ${t.shard} troll`} width={720} height={720} className="w-full mix-blend-multiply" />
                 <span className="block font-display text-xl text-ink-0">{t.name}</span>
                 <span className="text-sm text-ink-1">shard {t.shard}</span>
               </li>
