@@ -41,7 +41,7 @@ function Hero() {
   return (
     <section className="relative isolate overflow-hidden">
       <Image
-        src="/art/hero-streams.webp"
+        src="/art/hero-v5.webp"
         alt="Eight parallel streams, each carrying little coin boats at the same time, each kept by its own moss troll on the bank. One bridge leaps across several streams, and the troll at its far end takes a single coin."
         width={1536}
         height={1024}
@@ -108,7 +108,7 @@ export default function Home() {
             </Card>
           </div>
           <figure className="mt-10">
-            <Image src="/art/why-eight.webp" alt="Left: one river jammed bank to bank with coin boats and a troll clutching his head. Right: the same boats flowing down eight parallel streams, each with a happy troll." width={1536} height={768} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
+            <Image src="/art/why-eight-v5.webp" alt="Left: one river jammed bank to bank with coin boats and a troll clutching his head. Right: the same boats flowing down eight parallel streams, each with a happy troll." width={1536} height={768} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
             <figcaption className="mt-3 text-sm text-ink-1">One contract is one river: a claim rush jams it. Eight trolls are eight streams flowing at once.</figcaption>
           </figure>
         </Section>
@@ -120,7 +120,7 @@ export default function Home() {
               <li><span className="font-display text-2xl text-ink-0">Another stream:</span> one bridge, straight there. It skips every stream in between.</li>
               <li><span className="font-display text-2xl text-ink-0">The toll:</span> the troll at the far end keeps 0.25% as food. If your friend isn&apos;t registered there, every coin comes back.</li>
             </ol>
-            <Image src="/art/toll.webp" alt="A traveller crosses one long bridge from the second stream straight to the sixth, over the streams between, and tosses a single coin to the sixth stream's troll. In front, a boat stays in its own stream and its troll just waves." width={1536} height={1024} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
+            <Image src="/art/toll-v5.webp" alt="A traveller crosses one long bridge from the second stream straight to the sixth, over the streams between, and tosses a single coin to the sixth stream's troll. In front, a boat stays in its own stream and its troll just waves." width={1536} height={1024} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
           </div>
         </Section>
 
@@ -154,7 +154,7 @@ export default function Home() {
               On testnet all eight trolls run one global contract by hash, each on its own shard.
             </Card>
             <Card title="Hardened">
-              Four audit passes, long random property runs, and a scripted rehearsal of every deployment with injected
+              Five audit passes, long random property runs, and a scripted rehearsal of every deployment with injected
               faults.
             </Card>
             <Card title="Honest limits">
