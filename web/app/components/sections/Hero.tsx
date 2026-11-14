@@ -22,7 +22,7 @@ export default function Hero() {
       const intro = gsap
         .timeline({ paused: true })
         .from(split.chars, { yPercent: 120, rotate: () => gsap.utils.random(-14, 14), duration: 1, stagger: 0.03 }, 0)
-        .from(q("[data-frame]"), { x: 80, rotate: 6, opacity: 0, duration: 1.2 }, 0.2)
+        .from(q("[data-frame]"), { x: 80, rotate: 6, opacity: 0, duration: 1 }, 0)
         .from(q("[data-claim], [data-cta]"), { y: 30, opacity: 0, duration: 0.9, stagger: 0.1 }, 0.5)
         .from(q("[data-sticker]"), { scale: 0, rotate: -40, duration: 0.9, ease: "back.out(1.8)" }, 0.7);
       if (isReady()) intro.progress(1);

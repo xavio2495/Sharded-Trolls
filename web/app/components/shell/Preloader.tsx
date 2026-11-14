@@ -76,8 +76,10 @@ export default function Preloader() {
       const bar = q("[role=progressbar]")[0] as HTMLElement;
       const fills = root.current!.querySelectorAll<SVGPathElement>("[data-fill]");
       const lit = { v: 0 };
+      // the count shows max(real, floor): the floor eases toward 85% from the first frame, so it never sits at 00
+      const floor = { v: 0 };
       const render = () => {
-        const pct = Math.round(lit.v * 100);
+        const pct = Math.round(Math.max(lit.v, floor.v) * 100);
         count.textContent = String(pct).padStart(2, "0");
         bar.setAttribute("aria-valuenow", String(pct));
         // each stream fills in turn as progress rises
@@ -90,11 +92,10 @@ export default function Preloader() {
 
       let filling = false;
       let progress = 0;
-      const floor = { v: 0 };
       const fill = () => filling && gsap.to(lit, { v: Math.max(progress, floor.v), duration: 0.5, ease: "power2.out", overwrite: true, onUpdate: render });
       // the real progress moves in a few big steps (fonts, the hero image); a floor easing toward 85% keeps the
       // count moving steadily, and real progress takes over whenever it is ahead
-      gsap.to(floor, { v: 0.85, duration: 1.6, ease: "power1.out", onUpdate: () => fill() });
+      gsap.to(floor, { v: 0.85, duration: 1.8, ease: "power1.out", onUpdate: () => (render(), fill()) });
       const stopProgress = onProgress((p) => {
         progress = p;
         fill();
@@ -131,7 +132,7 @@ export default function Preloader() {
           root.current,
           { clipPath: "circle(150% at 50% 50%)" },
           { clipPath: "circle(0% at 50% 50%)", duration: 0.85, ease: "trollInOut" },
-          "<0.25",
+          "<0.05",
         );
 
       const safety = window.setTimeout(() => tl.progress(1), tl.duration() * 1000 + MAX_WAIT + 2500);
