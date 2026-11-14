@@ -1,0 +1,366 @@
+{
+  "network": "testnet",
+  "root": "v2.strl.testnet",
+  "trolls": [
+    {
+      "prefix": "0",
+      "account": "0.v2.strl.testnet",
+      "shard": 10
+    },
+    {
+      "prefix": "7",
+      "account": "7.v2.strl.testnet",
+      "shard": 11
+    },
+    {
+      "prefix": "ax",
+      "account": "ax.v2.strl.testnet",
+      "shard": 12
+    },
+    {
+      "prefix": "e",
+      "account": "e.v2.strl.testnet",
+      "shard": 13
+    },
+    {
+      "prefix": "f",
+      "account": "f.v2.strl.testnet",
+      "shard": 9
+    },
+    {
+      "prefix": "h",
+      "account": "h.v2.strl.testnet",
+      "shard": 7
+    },
+    {
+      "prefix": "kz",
+      "account": "kz.v2.strl.testnet",
+      "shard": 4
+    },
+    {
+      "prefix": "u",
+      "account": "u.v2.strl.testnet",
+      "shard": 5
+    }
+  ],
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 1,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 600000,
+    "launch_window_ms": 600000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000",
+    "claim_epochs": 30
+  },
+  "metadata": {
+    "spec": "ft-1.0.0",
+    "name": "Sharded Trolls",
+    "symbol": "STRL",
+    "icon": null,
+    "reference": null,
+    "reference_hash": null,
+    "decimals": 24
+  },
+  "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+  "root_code_hash": "ec05d61f1945f83cb1fb86549dbd021933123fc6ab44687ce663814819aa8bda",
+  "reused_accounts_from": null,
+  "deploy_resumed": null,
+  "k7": {
+    "parent_funded_near": "32",
+    "parent_left_near": "7.7858",
+    "parent_storage_bytes": 189237,
+    "parent_spent_near": "24.2142",
+    "troll_near_each": "0.2",
+    "troll_code_bytes": 224512,
+    "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+    "trolls": [
+      {
+        "account": "0.v2.strl.testnet",
+        "shard": 10,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "7.v2.strl.testnet",
+        "shard": 11,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "ax.v2.strl.testnet",
+        "shard": 12,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "e.v2.strl.testnet",
+        "shard": 13,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "f.v2.strl.testnet",
+        "shard": 9,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "h.v2.strl.testnet",
+        "shard": 7,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "kz.v2.strl.testnet",
+        "shard": 4,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "u.v2.strl.testnet",
+        "shard": 5,
+        "storage_usage": 709,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      }
+    ],
+    "conservation_at_start": {
+      "supply": "1000000000000000000000000000000000",
+      "in_flight": "0",
+      "burned": "0",
+      "minted": "0",
+      "total_supply": "1000000000000000000000000000000000",
+      "conserved": true
+    },
+    "at": "2026-11-14T17:19:19.205Z"
+  },
+  "k2": {
+    "at": "2026-11-14T17:23:00.929Z",
+    "fires": [
+      {
+        "label": "same-troll",
+        "n": 50,
+        "hash": "7vfVPpibkMEiaAuiH1QrmMPi9JrFLFso4BUqvcQDdVwG",
+        "url": "https://testnet.nearblocks.io/txns/7vfVPpibkMEiaAuiH1QrmMPi9JrFLFso4BUqvcQDdVwG",
+        "ft_transfer_events": 50,
+        "tolls": 0,
+        "failed_receipts": 0,
+        "shards": [
+          "0y.v2.strl.testnet",
+          "0.v2.strl.testnet"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      },
+      {
+        "label": "mixed",
+        "n": 25,
+        "hash": "FmxC1w4oJ5sWK16YPRyL9DgABVVoUN87uxku9cfP3kTc",
+        "url": "https://testnet.nearblocks.io/txns/FmxC1w4oJ5sWK16YPRyL9DgABVVoUN87uxku9cfP3kTc",
+        "ft_transfer_events": 25,
+        "tolls": 8,
+        "failed_receipts": 0,
+        "shards": [
+          "0y.v2.strl.testnet",
+          "0.v2.strl.testnet",
+          "7.v2.strl.testnet"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      }
+    ]
+  },
+  "k3": {
+    "at": "2026-11-14T17:23:23.337Z",
+    "cases": [
+      {
+        "label": "cross-troll transfer, receiver registered",
+        "expect": "credited, toll paid",
+        "hash": "2qDR6KTGaWBjAxLvtXY8tk1ypuZBRFtSMGRXNx4jqY19",
+        "url": "https://testnet.nearblocks.io/txns/2qDR6KTGaWBjAxLvtXY8tk1ypuZBRFtSMGRXNx4jqY19",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "-100000000000000000000000000",
+        "events": [
+          "0.v2.strl.testnet:ft_burn",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:toll_eaten",
+          "0.v2.strl.testnet:toll"
+        ],
+        "errors": [],
+        "failed_receipts": 0,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll transfer, receiver not registered",
+        "expect": "credit fails, full refund",
+        "hash": "7VRt7xduJCaHzmPHBBpXBznbAsf9MKoCLGp6q8hJJ9vY",
+        "url": "https://testnet.nearblocks.io/txns/7VRt7xduJCaHzmPHBBpXBznbAsf9MKoCLGp6q8hJJ9vY",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "0",
+        "events": [
+          "0.v2.strl.testnet:ft_burn",
+          "0.v2.strl.testnet:ft_mint",
+          "0.v2.strl.testnet:credit_refunded"
+        ],
+        "errors": [
+          "Smart contract panicked: 7t.v2.strl.testnet is not registered"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "2Ki5wrssdZVPu21fXa86TkgiSTzzP6gWHZqsdZMDhg4s",
+        "url": "https://testnet.nearblocks.io/txns/2Ki5wrssdZVPu21fXa86TkgiSTzzP6gWHZqsdZMDhg4s",
+        "gas_attached_tgas": 150,
+        "msg_bytes": 0,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.v2.strl.testnet:ft_burn",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:toll_eaten",
+          "7.v2.strl.testnet:ft_burn",
+          "0.v2.strl.testnet:ft_mint",
+          "0.v2.strl.testnet:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6c.v2.strl.testnet\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,096 B",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "8TX1vb82fL6tB3g9xJGepQiiTj4jfVgo4tHHzPDBpL63",
+        "url": "https://testnet.nearblocks.io/txns/8TX1vb82fL6tB3g9xJGepQiiTj4jfVgo4tHHzPDBpL63",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4096,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.v2.strl.testnet:ft_burn",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:ft_mint",
+          "7.v2.strl.testnet:toll_eaten",
+          "7.v2.strl.testnet:ft_burn",
+          "0.v2.strl.testnet:ft_mint",
+          "0.v2.strl.testnet:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6c.v2.strl.testnet\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,097 B",
+        "expect": "rejected at the source (msg longer than 4096 bytes); nothing debited",
+        "hash": "52XF6YZbj1NzdruczhHEFBXrketsywoHD233DWjR6GGB",
+        "url": "https://testnet.nearblocks.io/txns/52XF6YZbj1NzdruczhHEFBXrketsywoHD233DWjR6GGB",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4097,
+        "sender_delta": "0",
+        "events": [],
+        "errors": [
+          "Smart contract panicked: msg longer than 4096 bytes",
+          "Smart contract panicked: msg longer than 4096 bytes"
+        ],
+        "failed_receipts": 2,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      }
+    ]
+  },
+  "settle": {
+    "at": "2026-11-14T17:29:17.161Z",
+    "epoch": 0,
+    "settle_min_tgas": 250,
+    "attempts": [
+      {
+        "label": "1 Tgas below the minimum",
+        "gas_tgas": 249,
+        "hash": "3MoXPip6HarBiVkPboPAj821ZPEWN8Y1yitt6t8PZVvQ",
+        "url": "https://testnet.nearblocks.io/txns/3MoXPip6HarBiVkPboPAj821ZPEWN8Y1yitt6t8PZVvQ",
+        "failed_receipts": 2,
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}",
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}"
+        ],
+        "settle_receipt_failed": true,
+        "settling_after": null,
+        "next_epoch_before": 0,
+        "next_epoch_after": 0,
+        "receipts": 2,
+        "executors": 1,
+        "events": [],
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "refusal_message_ok": true,
+        "outcome": "refused up front, unlocked",
+        "pass": true
+      }
+    ]
+  }
+}

@@ -60,7 +60,7 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   reuse: { type: 'string' }, 'report-dir': { type: 'string' }, 'spare-near': { type: 'string' },
   'topup-near': { type: 'string' }, 'feed-target': { type: 'string' }, label: { type: 'string' }, 'global-hash': { type: 'string' },
   symbol: { type: 'string' }, name: { type: 'string' }, epoch: { type: 'string' }, skip: { type: 'string' }, tag: { type: 'string' },
-  'claim-epochs': { type: 'string' }, 'all-from': { type: 'string' }, except: { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
+  'claim-epochs': { type: 'string' }, 'all-from': { type: 'string' }, except: { type: 'string' }, 'below-only': { type: 'boolean', default: false }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
   'settle-min-tgas': { type: 'string', default: '250' }, wait: { type: 'boolean', default: false },
 } });
 const step = positionals[0] ?? 'plan';
@@ -406,7 +406,9 @@ if (step === 'plan') {
   }
   const min = BigInt(values['settle-min-tgas']);
   const out = { at: new Date().toISOString(), epoch, settle_min_tgas: Number(min), attempts: [] };
-  for (const [label, tgas, mustSucceed] of [['1 Tgas below the minimum', min - 1n, false], ['at the minimum', min, true]]) {
+  // --below-only: just the refused attempt (the epoch is then settled by another step, e.g. settle-at).
+  const attempts = [['1 Tgas below the minimum', min - 1n, false], ['at the minimum', min, true]].slice(0, values['below-only'] ? 1 : 2);
+  for (const [label, tgas, mustSucceed] of attempts) {
     const before = SEND ? await info() : null;
     const r = await submit(parentAccount(), root, [action.functionCall('settle', { epoch }, tgas * TGAS)], `settle(${epoch}) with ${tgas} Tgas (${label})`);
     if (!r) continue;

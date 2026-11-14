@@ -1,0 +1,71 @@
+{
+  "wrapper": null,
+  "network": "testnet",
+  "rpc": "https://test.rpc.fastnear.com",
+  "root": "kit.strl.testnet",
+  "trolls": [
+    {
+      "prefix": "0",
+      "account": "0.kit.strl.testnet",
+      "shard": 10
+    },
+    {
+      "prefix": "7",
+      "account": "7.kit.strl.testnet",
+      "shard": 11
+    },
+    {
+      "prefix": "ax",
+      "account": "ax.kit.strl.testnet",
+      "shard": 12
+    },
+    {
+      "prefix": "e",
+      "account": "e.kit.strl.testnet",
+      "shard": 13
+    },
+    {
+      "prefix": "f",
+      "account": "f.kit.strl.testnet",
+      "shard": 9
+    },
+    {
+      "prefix": "h",
+      "account": "h.kit.strl.testnet",
+      "shard": 7
+    },
+    {
+      "prefix": "kz",
+      "account": "kz.kit.strl.testnet",
+      "shard": 4
+    },
+    {
+      "prefix": "u",
+      "account": "u.kit.strl.testnet",
+      "shard": 5
+    }
+  ],
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 10,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 3600000,
+    "launch_window_ms": 3600000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000",
+    "claim_epochs": 30
+  },
+  "start_ms": 1794677968549,
+  "total_supply": "1000000000000000000000000000000000",
+  "launch_supply": "500000000000000000000000000000000",
+  "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+  "root_code_hash": "ec05d61f1945f83cb1fb86549dbd021933123fc6ab44687ce663814819aa8bda",
+  "protocol": 88,
+  "deployed_at": "2026-11-14T17:40:11.656Z",
+  "global_hash_reused": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk",
+  "label": "kit"
+}
