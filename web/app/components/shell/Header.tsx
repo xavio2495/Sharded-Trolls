@@ -4,6 +4,7 @@ import Link from "next/link";
 // Sections are reached by scrolling; the header only points to the other places: the app, the pitch, the evidence.
 const LINKS = [
   { href: "/pitch", label: "Pitch" },
+  { href: "/paper", label: "Paper" },
   { href: "/evidence", label: "Evidence" },
 ];
 

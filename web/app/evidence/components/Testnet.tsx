@@ -64,9 +64,9 @@ export function Testnet() {
   return (
     <div className="space-y-8">
       <Note>
-        Real NEAR testnet, 2026-11-14, on the final contract build. A few dozen transactions, not a load test: throughput numbers on this page come from the localnet. This deployment uses{" "}
-        <strong className="text-ink-0">demo parameters</strong> so the Feeding plays out in minutes: {p.feed_target} feeder per troll, {p.epoch_ms / 60000}-minute epochs (launch values: 10
-        feeders, 1-day epochs).
+        Real NEAR testnet, 2026-11-14, on the final contract build. A few dozen transactions, not a load test: throughput numbers on this page come from the localnet. To let the
+        Feeding play out in minutes, this deployment runs on <strong className="text-ink-0">short testnet parameters</strong>: {p.epoch_ms / 60000}-minute days and {p.feed_target} feeder per
+        troll. At launch a day is 24 hours and each troll needs 10 feeders.
       </Note>
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
