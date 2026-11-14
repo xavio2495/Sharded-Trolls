@@ -18,7 +18,7 @@
 
 <br>
 
-**[Track](#track-near-hackathon-2026--memecoins)** · **[Background](#the-background)** · **[What it does](#what-it-does)** · **[Use it](#use-it)** · **[How it works](#how-it-works)** · **[Transfer flow](#cross-troll-transfer-flow)** · **[Results](#results)** · **[What is checked](#what-is-checked)** · **[Limits](#limits-and-known-issues)** · **[Where it lives](#where-it-lives)** · **[Develop](#development)** · **[License](#license)**
+**[Reviewers](#for-reviewers-verify-in-ten-minutes)** · **[Track](#track-near-hackathon-2026--memecoins)** · **[Background](#the-background)** · **[What it does](#what-it-does)** · **[Use it](#use-it)** · **[Tour](#tour)** · **[How it works](#how-it-works)** · **[Transfer flow](#cross-troll-transfer-flow)** · **[Results](#results)** · **[What is checked](#what-is-checked)** · **[Interface](#contract-interface)** · **[Invariants](#invariants)** · **[Deployments](#deployments)** · **[Limits](#limits-and-known-issues)** · **[Where it lives](#where-it-lives)** · **[Develop](#development)** · **[License](#license)**
 
 <br><br><br>
 </div>
@@ -27,8 +27,34 @@
 
 Try it at **[strl.xavio.dev](https://strl.xavio.dev)**: the story, the [app](https://strl.xavio.dev/app), the [pitch deck](https://strl.xavio.dev/pitch), the [litepaper](https://strl.xavio.dev/paper) and the [evidence](https://strl.xavio.dev/evidence). Agents can read all of it at [`/llms.txt`](https://strl.xavio.dev/llms.txt).
 
+<p align="center"><img src="./docs/screenshots/home-hero.jpg" alt="The home page: Pay the troll. Eight streams flow out of one lake, each kept by a troll." width="100%" /></p>
+
 > ### ⚠️ NEAR testnet · no mainnet deployment yet
 > STRL runs on **NEAR testnet only**; testnet tokens have no value. The contracts went through five internal audit passes but have **not been independently audited**. Load numbers come from a **synthetic single-node local network** with mainnet's shard layout, not from mainnet. Transfers are **not faster** per transfer; the gain is throughput and no congestion rejections.
+
+---
+
+## For reviewers: verify in ten minutes
+
+Every claim in this README maps to a file in [`measurements/`](./measurements), a testnet transaction, or a command you can run. Nothing below needs keys.
+
+| Claim | Evidence | Check it yourself |
+|---|---|---|
+| 8 trolls on 8 distinct shards, one code | `k7` in [`k-tests.json`](./measurements/testnet-2026-11-14-final/k-tests.json): every troll's `global_contract_hash` is `8XXviK8P…FAEk` | `npm run check` (live layouts) · [0.v2.strl.testnet](https://testnet.nearblocks.io/address/0.v2.strl.testnet) … [u.v2.strl.testnet](https://testnet.nearblocks.io/address/u.v2.strl.testnet) |
+| One transaction fans out to 50 transfers, 0 failed | `k2.fires` | [7vfVPpib…](https://testnet.nearblocks.io/txns/7vfVPpibkMEiaAuiH1QrmMPi9JrFLFso4BUqvcQDdVwG) (50 same-troll) · [FmxC1w4o…](https://testnet.nearblocks.io/txns/FmxC1w4oJ5sWK16YPRyL9DgABVVoUN87uxku9cfP3kTc) (25 mixed) |
+| A failed credit refunds in full | `k3.cases[1]` | [7VRt7xdu…](https://testnet.nearblocks.io/txns/7VRt7xduJCaHzmPHBBpXBznbAsf9MKoCLGp6q8hJJ9vY) (receiver not registered, sender change 0) |
+| A landed credit pays the toll as food | `k3.cases[0]` | [2qDR6KTG…](https://testnet.nearblocks.io/txns/2qDR6KTGaWBjAxLvtXY8tk1ypuZBRFtSMGRXNx4jqY19) |
+| 4 KB message bound at 100 Tgas | `k3.cases[3–4]` | [8TX1vb82…](https://testnet.nearblocks.io/txns/8TX1vb82fL6tB3g9xJGepQiiTj4jfVgo4tHHzPDBpL63) (4,096 B works) · [52XF6YZb…](https://testnet.nearblocks.io/txns/52XF6YZbj1NzdruczhHEFBXrketsywoHD233DWjR6GGB) (4,097 B refused, nothing debited) |
+| Settlement needs 250 Tgas and never locks | `settle.attempts` | [3MoXPip6…](https://testnet.nearblocks.io/txns/3MoXPip6HarBiVkPboPAj821ZPEWN8Y1yitt6t8PZVvQ) (249 Tgas refused) · [7Emqj2qN…](https://testnet.nearblocks.io/txns/7Emqj2qNSkobSGgQauF5TEXz8cWBTZPYGbUdHW9vn3y7) (250 Tgas settled, bounty paid) |
+| A starving troll burns 1% of its hoard | `S1` in [`feeding.json`](./measurements/testnet-2026-11-14-final/feeding.json) | [AdY2c4Yu…](https://testnet.nearblocks.io/txns/AdY2c4Yusb1yK1UqADtgEZrK6GXysviBcgBWYNh5ws2K) (625,000 STRL burned) |
+| A second token costs ~3.65 NEAR on the same code | [`kit-deploy.json`](./measurements/testnet-2026-11-14-final/kit-deploy.json), [`kit-k7.json`](./measurements/testnet-2026-11-14-final/kit-k7.json) | [kit.strl.testnet](https://testnet.nearblocks.io/address/kit.strl.testnet) |
+| Same-troll ≈ 6× and mixed ≈ 1.9–2.4× one token's capacity, 0 congestion rejections (synthetic) | [`localnet-2026-11-14/summary.json`](./measurements/localnet-2026-11-14) and 9 per-block runs | `npm run localnet`, `npm run deploy:local`, `npm run load` (needs near-sandbox) |
+| Supply is conserved after every step | 125 contract unit and property tests; `conservation` in every testnet record | `cargo test -p troll -p root` |
+| Every deployment path survives injected faults | [`rehearsal-final-summary.json`](./measurements/localnet-2026-11-14): 30/30 twice | `scripts/rehearse-localnet.sh` |
+
+**Fastest path:** `cargo test -p troll -p root -p troll-types -p wrapper` (no network), `npm run test:js && npm run check` (one RPC read), then open any transaction above. The [Evidence](https://strl.xavio.dev/evidence) page shows the same records rendered, and [`/evidence.md`](https://strl.xavio.dev/evidence.md) lists every JSON file.
+
+**What we do not claim:** faster transfers, mainnet numbers, an independent audit, or Sybil resistance. See [Limits](#limits-and-known-issues).
 
 ---
 
@@ -125,7 +151,23 @@ node --dns-result-order=ipv4first scripts/deploy.mjs --network testnet --parent 
   --key-file <parent-key.json> --global-hash <troll code hash> --symbol <SYM> --name "<Name>" --troll-near 0.2
 ```
 
-It publishes no code: a root plus eight troll accounts, placed on eight distinct shards. Measured on testnet: about 3.65 NEAR per token (8 × 0.2 NEAR for the trolls plus gas, and 1.89 NEAR locked for the root's storage). The script checks the balance first and stops before sending anything if it is short.
+```mermaid
+flowchart LR
+    A["Parent account<br/>+ key file"] --> B{"Balance covers<br/>the whole deploy?"}
+    B -- no --> X["Stop before<br/>sending anything"]
+    B -- yes --> C["Read the live<br/>shard layout"]
+    C --> D["Pick 8 troll prefixes<br/>on 8 distinct shards"]
+    D --> E{"--global-hash given?"}
+    E -- "no (first token)" --> F["Publish troll.wasm<br/>as a global contract"]
+    E -- "yes (kit)" --> G{"Local wasm sha256<br/>matches the hash?"}
+    G -- no --> X2["Stop: hash mismatch"]
+    G -- yes --> H
+    F --> H["Per troll, one tx:<br/>create account →<br/>use global code → init"]
+    H --> I["Deploy + init the root<br/>on the parent"]
+    I --> J["Write target/deploy-NETWORK.json"]
+```
+
+It publishes no code: a root plus eight troll accounts, placed on eight distinct shards. Between transactions it waits for earlier gas refunds to land, and a partial deploy can resume. Measured on testnet: about 3.65 NEAR per token (8 × 0.2 NEAR for the trolls plus gas, and 1.89 NEAR locked for the root's storage). The script checks the balance first and stops before sending anything if it is short.
 
 ### For agents
 
@@ -134,6 +176,23 @@ It publishes no code: a root plus eight troll accounts, placed on eight distinct
 | [`/llms.txt`](https://strl.xavio.dev/llms.txt) | Index of every page, with the facts to keep straight |
 | [`/llms-full.txt`](https://strl.xavio.dev/llms-full.txt) | Every page in one file |
 | `/index.md` · `/pitch.md` · `/paper.md` · `/evidence.md` · `/app.md` | Each page as markdown; the deck's figures are described in words |
+
+---
+
+## Tour
+
+| | |
+|---|---|
+| <img src="./docs/screenshots/home-problem.jpg" alt="NEAR never splits a contract: 42.5% and 66%" /> | <img src="./docs/screenshots/home-eight-streams.jpg" alt="So we split the token: eight streams" /> |
+| **The problem.** Claim rushes filled NEAR's shards before (HOT 42.5%, KaiChing 66%). | **The fix.** One river becomes eight streams as you scroll: eight ledgers, one per shard. |
+| <img src="./docs/screenshots/home-crossing.jpg" alt="Debit, credit, confirm" /> | <img src="./docs/screenshots/app.jpg" alt="The app: feed a troll, earn STRL" /> |
+| **Crossing a shard.** Debit, credit, confirm; a failure refunds, a landed credit never does. | **The app.** One screen: claim, feed, collect, close the round. Live testnet state. |
+| <img src="./docs/screenshots/deck-architecture.jpg" alt="Deck: eight ledgers on eight shards" /> | <img src="./docs/screenshots/deck-transfer.jpg" alt="Deck: the cross-shard transfer sequence" /> |
+| **Deck: architecture.** The root settles; transfers never touch it. | **Deck: the transfer.** Three receipts, with the refund and never-mint rules. |
+| <img src="./docs/screenshots/deck-homes.jpg" alt="Deck: homes by hash" /> | <img src="./docs/screenshots/deck-settle.jpg" alt="Deck: settling the day" /> |
+| **Deck: homes by hash.** Name ranges piled onto half the trolls; the hash spreads 12.5% each. | **Deck: settling.** Anyone settles; fed trolls pay, a starving troll burns. |
+| <img src="./docs/screenshots/evidence-compare.jpg" alt="Evidence: one shard against eight" /> | <img src="./docs/screenshots/evidence-testnet.jpg" alt="Evidence: checked on NEAR testnet" /> |
+| **Evidence: compare.** Same offered load, one token vs eight trolls (synthetic localnet). | **Evidence: testnet.** Each check with its transaction. |
 
 ---
 
@@ -189,6 +248,79 @@ flowchart TB
 - **No admin:** parameters are fixed at init and no method changes them. At the mainnet launch every full-access key on the root, trolls and wrapper is to be deleted (not done yet: there is no mainnet deployment, and the testnet root keeps its key).
 - **Consistency:** a balance lives at exactly one troll and is always exact. The root's `ft_total_supply` is as of the last daily settlement; each troll's `ft_total_supply` is live for that troll.
 
+### Finding your troll
+
+```mermaid
+flowchart LR
+    A["account_id<br/>alice.testnet"] --> B["sha256"]
+    B --> C["first 16 bytes,<br/>big-endian u128"]
+    C --> D["mod 8"]
+    D --> E["index i"]
+    E --> F["root.trolls()[i]<br/>your home troll"]
+    F --> G{"receiver's index<br/>= yours?"}
+    G -- yes --> H["same-troll transfer<br/>1 receipt, no toll"]
+    G -- "no (≈ 7 in 8)" --> I["cross-troll transfer<br/>3 receipts, 0.25% toll"]
+```
+
+The contract checks it too: `claim_launch` refuses an account that is not at its home troll, and a credit to an account not registered at its home troll fails and refunds.
+
+### Where tokens live and move
+
+```mermaid
+flowchart TB
+    TS["Total supply<br/>1,000,000,000 STRL"] --> LP["Launch pools<br/>500M · 62.5M per troll"]
+    TS --> HO["Hoards<br/>500M · 62.5M per troll"]
+    LP -->|"claim_launch: 1,000 per account<br/>(fee 0.01 NEAR → bounty budget)"| BAL["Holder balances<br/>at their home troll"]
+    BAL -->|"cross-troll transfer:<br/>0.25% toll"| FOOD["Food<br/>at the destination troll"]
+    BAL -->|"same-troll or net amount"| BAL
+    FOOD -->|"fed day: rewards, 1st"| REW["Feeder rewards<br/>claim within 30 days"]
+    LP -->|"fed day: rewards, 2nd"| REW
+    MINT(["mint, only if food and pool are empty"]) -.->|"3rd"| REW
+    REW -->|"claim / paid on next send"| BAL
+    REW -->|"unclaimed after deadline: sweep"| FOOD
+    HO -->|"starving day: burn 1%"| BURN(["burned"])
+```
+
+### A round, from open to swept
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: round starts (epoch_ms)
+    Open --> Finished: round time ends
+    note right of Open
+        sends of ≥ 1 STRL count
+        distinct senders per troll
+    end note
+    Finished --> Settling: anyone calls settle(epoch) with ≥ 250 Tgas
+    Settling --> Settling: no answer after 600 blocks → settle again
+    Settling --> Fed: every troll reached feed_target
+    Settling --> Starved: some troll missed it
+    Fed --> Claimable: streak + 1, each troll funds its feeders' pool
+    Starved --> [*]: streak → 0, no rewards, each troll below target burns 1% of its hoard
+    Claimable --> Swept: claim window (30 rounds) passes, then sweep or auto-sweep
+    Swept --> [*]: unclaimed shares → food, per-round records deleted
+```
+
+### Settling a round
+
+```mermaid
+sequenceDiagram
+    actor K as Anyone (the settler)
+    participant R as Root
+    participant T as 8 trolls
+    K->>R: settle(epoch) · ≥ 250 Tgas
+    R-->>R: next unsettled, finished, not already settling
+    par one report per troll, joined
+        R->>T: report(epoch)
+        T-->>R: distinct senders, supply, in flight, hoard, food
+    end
+    R-->>R: on_reports: all eight fed → reward every troll · else burn 1% at each troll below target
+    R->>T: apply(epoch, outcome) · only the root, once per epoch, in order
+    T-->>T: refuse anything above the fixed params · reward from food → pool → mint, or burn
+    R->>K: 0.005 NEAR bounty, if the bounty budget holds it
+    Note over R: on_reports never panics, so a bad report can't lock settlement
+```
+
 ### Parameters
 
 | Parameter | Value |
@@ -226,10 +358,10 @@ sequenceDiagram
         B-->>B: Keep the toll as food (log ft_mint)
         B-->>Rc: Balance += amount − toll (log ft_mint)
         B-->>A: Credit succeeded → on_credit
-        A-->>A: Close the transfer; resolves true
+        A-->>A: Close the transfer, resolves true
     else credit fails (e.g. receiver not registered)
         B-->>A: Credit failed → on_credit
-        A-->>S: Full refund, toll included; resolves false
+        A-->>S: Full refund, toll included, resolves false
     end
     Note over A,B: Once a credit lands nothing is refunded, so a failure can never mint.<br/>Σ(supply + in flight + burned − minted) = total supply after every step.
 ```
@@ -277,6 +409,16 @@ A single-node localnet (near-sandbox 2.14.1, protocol 88) running mainnet's 10-s
 
 ## What is checked
 
+```mermaid
+flowchart LR
+    U["Unit + property tests<br/>troll 101 · root 24<br/>wrapper 8 · types 9"] --> S["Sandbox integration<br/>9 tests incl. a 10-shard<br/>local network"]
+    S --> L["Localnet rehearsal<br/>every deploy path +<br/>injected faults · 30/30 ×2"]
+    L --> TN["NEAR testnet<br/>K7 · K2 · K3 · settle floor<br/>two Feeding rounds · KIT"]
+    TN --> P["Play deployment<br/>play.strl.testnet<br/>the public app"]
+    A["5 audit passes"] -.-> U
+    A -.-> L
+```
+
 | Layer | How |
 |---|---|
 | **Audits** | Five passes on 2026-11-14: a manual review, then the `near-contract-audit` checklist on the base contracts, on the toll-as-food and bounty changes, and on each hardening fix and its amendment. Every Critical and High finding fixed; every Medium fixed except one inherent to async transfers and disclosed below |
@@ -285,6 +427,57 @@ A single-node localnet (near-sandbox 2.14.1, protocol 88) running mainnet's 10-s
 | **Deployment rehearsals** | Every deployment path scripted on that local network with fault injection: rate limits mid-deploy and resume, underfunded deploys, code-hash mismatch, settlement timeout, reward expiry and sweep. Two final passes on the hardened build: 30 of 30 checks each ([`rehearsal-final-summary.json`](./measurements/localnet-2026-11-14)) |
 | **Testnet** | The eleven checks above, transaction by transaction |
 | **Layout** | `npm run check`: the 8 trolls sit on 8 distinct shards under today's live mainnet and testnet layouts |
+
+---
+
+## Contract interface
+
+### Troll (`<prefix>.<parent>`, one global code)
+
+| Method | Kind | Who may call | Notes |
+|---|---|---|---|
+| `ft_transfer(receiver_id, amount, memo?)` | change, 1 yocto | holder, at their home troll | routes to the receiver's home troll; cross-troll resolves `true`/`false` |
+| `ft_transfer_call(receiver_id, amount, memo?, msg)` | change, 1 yocto | holder | ≥ 100 Tgas, `msg` ≤ 4,096 bytes |
+| `claim_launch()` | change, payable | any account, once, at its home troll, inside the launch window | fee + storage deposit if unregistered |
+| `claim(epoch)` | change | a feeder of that round | within the claim window |
+| `sweep(epoch)` | change | anyone, after the deadline | unclaimed shares → food |
+| `credit` · `credit_call` | change | **only sibling trolls** | the cross-troll leg |
+| `on_credit` · `on_credit_call` · `resolve_credit_call` · `ft_resolve_transfer` | callback | the troll itself | confirm, refund, or return unused |
+| `report(epoch)` · `apply(epoch, …)` | change | **only the root** | apply at most once per round, in order, bounded by params |
+| `storage_deposit` · `storage_withdraw` · `storage_unregister` · `storage_balance_of` · `storage_balance_bounds` | NEP-145 | anyone / holder | register at the **home** troll |
+| `ft_balance_of` · `ft_total_supply` · `ft_metadata` | view | anyone | `ft_total_supply` is live for this troll |
+| `info` · `params` · `trolls` · `home_troll` · `is_feeder` · `has_claimed_launch` · `senders_in` · `pool` · `current_epoch` | view | anyone | `info`: senders, supply, in flight, hoard, pool, food, minted, burned |
+
+### Root (the parent account)
+
+| Method | Kind | Who may call | Notes |
+|---|---|---|---|
+| `settle(epoch)` | change | anyone | ≥ 250 Tgas; the next unsettled finished round; restarts after 600 blocks |
+| `fund_bounty()` | change, payable | anyone (trolls forward claim fees) | the only NEAR the root ever pays out |
+| `on_reports(epoch, attempt)` | callback | the root itself | never panics; ignores a stale attempt |
+| `info` · `params` · `trolls` · `home_troll` · `streak` · `current_epoch` · `ft_metadata` · `ft_total_supply` | view | anyone | `ft_total_supply` as of the last settlement |
+
+### Wrapper (single shard, for DEXes; built, not deployed)
+
+| Method | Notes |
+|---|---|
+| `ft_on_transfer` | called by its home troll after a troll-token `ft_transfer_call`: mints 1:1 to the registered sender, or returns everything |
+| `unwrap(amount)` | burns wrapped tokens and pays troll tokens to the caller's home troll (a cross-troll payout pays the toll); re-mints if the payout fails |
+| standard NEP-141 / NEP-145 | `ft_transfer`, `ft_transfer_call`, `ft_balance_of`, `storage_*`, … |
+
+---
+
+## Invariants
+
+These hold after every step in the property tests and in every testnet record:
+
+1. **Conservation.** Σ over the trolls of (supply + in flight + burned − minted) = total supply.
+2. **Root agrees.** After each settlement the root's per-troll supply equals each troll's own.
+3. **No negative balance.** A debit needs the full balance; nothing goes below zero.
+4. **Never mint on failure.** A failed credit refunds the sender in full; a landed credit is never refunded.
+5. **Bounded settlement.** A troll applies each round at most once, in order, and never more reward or burn than the fixed parameters allow; it never pays more food than it holds.
+6. **One home.** A balance lives at exactly one troll, chosen by the hash; claims and registrations are checked against it.
+7. **No admin.** No method changes parameters after init; access is limited to root → troll (`report`, `apply`) and troll → sibling (`credit`).
 
 ---
 
@@ -310,6 +503,25 @@ A single-node localnet (near-sandbox 2.14.1, protocol 88) running mainnet's 10-s
 ### Next
 
 Optimistic credit (two receipts instead of three, researched, not built), a stake-weighted reward split, the wrapper on a DEX, and mainnet.
+
+---
+
+## Deployments
+
+All on NEAR **testnet**. There is no mainnet deployment.
+
+| Deployment | Root | Trolls | Purpose |
+|---|---|---|---|
+| **Play** (the public app) | [`play.strl.testnet`](https://testnet.nearblocks.io/address/play.strl.testnet) | 8 under `play.strl.testnet`; read the root's `trolls` view | the app at strl.xavio.dev; 10-minute rounds, 1 feeder per troll; tip jar `tips.play.strl.testnet`; claims open until 2026-11-28 |
+| **Final checks** | [`v2.strl.testnet`](https://testnet.nearblocks.io/address/v2.strl.testnet) | `0` · `7` · `ax` · `e` · `f` · `h` · `kz` · `u` `.v2.strl.testnet` on shards 10, 11, 12, 13, 9, 7, 4, 5 | every check in [Results](#results) |
+| **Kit** (second token) | [`kit.strl.testnet`](https://testnet.nearblocks.io/address/kit.strl.testnet) | 8, same global code | proves the kit: no code published, ~3.65 NEAR |
+| Earlier builds | `st.xavio.testnet` · `st2.xavio.testnet` · `feed.strl.testnet` | | kept in [`measurements/`](./measurements) |
+
+| Code | Hash |
+|---|---|
+| Troll (global contract, base58) | `8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk` |
+| Troll `troll.wasm` sha256 (hex) | `6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871` |
+| Root wasm sha256 (hex) | `ec05d61f1945f83cb1fb86549dbd021933123fc6ab44687ce663814819aa8bda` |
 
 ---
 
@@ -353,6 +565,7 @@ sim/           supply and Sybil simulations
 measurements/  every number in this README, as JSON: mainnet probes, localnet runs, testnet checks
 web/           the website, app, deck, litepaper and evidence (Next.js, deployed on Vercel)
 web-html/      the static evidence pages kept from the first site
+docs/          screenshots used in this README
 ```
 
 ---
