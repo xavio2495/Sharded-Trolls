@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/*
+  Sharded Trolls tokens. Storybook palette: inked linework, watercolour washes, misty teal valley,
+  moss, warm cream paper, terracotta roofs, gold only for coins and tolls.
+  Contrast, measured (WCAG, against --paper #f3ead6): ink-0 12.9, ink-1 7.4, ink-2 4.3 (large text and
+  UI only), accent-deep 5.5, teal-deep 6.1, terracotta-deep 5.8, terracotta 3.8, accent 2.7.
+  Dusk (against #1d2423): ink-0 13.0, ink-1 8.7, ink-2 5.0.
+  Rules: buttons with paper text use --terracotta-deep (5.8), never --terracotta (3.8). Never set text in
+  --accent, --gold or --terracotta; they are fills and illustration colours.
+*/
+:root {
+  --paper: #f3ead6;        /* warm cream paper */
+  --surface-1: #ebdfc4;
+  --surface-2: #dfd0ae;
+  --ink-0: #2e2219;        /* inked brown linework */
+  --ink-1: #5a4636;
+  --ink-2: #7d6a57;
+  --mist: #a9c4b8;         /* misty teal valley */
+  --teal: #5f938f;         /* river */
+  --teal-deep: #2f5e5d;
+  --accent: #7d9a3f;       /* moss */
+  --accent-tint: #dfe6c4;
+  --accent-deep: #4c6526;
+  --terracotta: #c0573a;   /* roofs, primary buttons */
+  --terracotta-deep: #93402a;
+  --gold: #e0ad38;         /* coins and tolls, one per screen */
+  --starve: #a8402c;
+  --plum: #4b4a6e;         /* deep shadow */
+  --hairline: rgba(46, 34, 25, 0.18);
+  --ink-line: #3b2a20;
+}
+
+[data-theme="dusk"] {
+  --paper: #1d2423;
+  --surface-1: #253030;
+  --surface-2: #2e3b3a;
+  --ink-0: #f1e8d4;
+  --ink-1: #cbbfa6;
+  --ink-2: #9a8f7a;
+  --hairline: rgba(241, 232, 212, 0.14);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-ink-0: var(--ink-0);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-mist: var(--mist);
+  --color-teal: var(--teal);
+  --color-teal-deep: var(--teal-deep);
+  --color-accent: var(--accent);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-deep: var(--accent-deep);
+  --color-terracotta: var(--terracotta);
+  --color-terracotta-deep: var(--terracotta-deep);
+  --color-gold: var(--gold);
+  --color-starve: var(--starve);
+  --color-plum: var(--plum);
+  --color-hairline: var(--hairline);
+  --color-ink-line: var(--ink-line);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-text);
+  --radius-ui: 6px;
+  --radius-card: 18px;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink-0);
+  font-family: var(--font-text), system-ui, sans-serif;
+}
+
+/* Paper grain: SVG noise, multiply on light, screen on dusk. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.27  0 0 0 0 0.18  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+[data-theme="dusk"] .grain::after { mix-blend-mode: screen; opacity: 0.12; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
