@@ -1,6 +1,7 @@
 // Sharded Trolls client: every holder lives on one "home troll"; balances, transfers and storage
 // registration go there. Works in Node and the browser (fetch only). Writes go through any signer
-// with call(contractId, method, args, { gas, deposit }), e.g. a wallet adapter.
+// with call(contractId, method, args, { gas, deposit }), e.g. a wallet adapter. A signer that also has
+// batch(contractId, [{ method, args, gas, deposit }]) lets two calls to one contract share a transaction.
 
 // Must match the contracts' home_index exactly: the first 16 bytes of sha256(account_id), read
 // as a big-endian integer, modulo the number of trolls. WebCrypto, so it works in Node and browsers.
@@ -60,9 +61,31 @@ export class TrollClient {
   }
 
   // Sender's home troll debits; the troll forwards to the receiver's home troll if it differs.
-  // The receiver must already be registered at its home troll.
-  async transfer(signer, senderId, receiverId, amount, memo) {
-    return signer.call(await this.homeTroll(senderId), 'ft_transfer', { receiver_id: receiverId, amount: String(amount), memo }, { gas: 50n * TGAS, deposit: 1n });
+  // A receiver that is not registered at its home troll is registered first (the signer pays the
+  // deposit), since an unregistered receiver's credit fails and is refunded. Pass
+  // { registerReceiver: false } to skip the check.
+  async transfer(signer, senderId, receiverId, amount, memo, { registerReceiver = true } = {}) {
+    const call = { method: 'ft_transfer', args: { receiver_id: receiverId, amount: String(amount), memo }, gas: 50n * TGAS, deposit: 1n };
+    return this.callWithReceiver(signer, await this.homeTroll(senderId), receiverId, call, registerReceiver);
+  }
+
+  // NEP-141 transfer-and-call; same receiver registration as transfer. msg is at most 4,096 bytes.
+  async transferCall(signer, senderId, receiverId, amount, msg = '', { registerReceiver = true, gas = 150n * TGAS } = {}) {
+    const call = { method: 'ft_transfer_call', args: { receiver_id: receiverId, amount: String(amount), msg }, gas, deposit: 1n };
+    return this.callWithReceiver(signer, await this.homeTroll(senderId), receiverId, call, registerReceiver);
+  }
+
+  // Registers the receiver at its home troll if needed, then makes `call` on the sender's troll.
+  // Same troll and a batching signer: both in one transaction (registration first).
+  async callWithReceiver(signer, from, receiverId, call, registerReceiver) {
+    if (registerReceiver && !(await this.isRegistered(receiverId))) {
+      const home = await this.homeTroll(receiverId);
+      const { min } = await this.view(home, 'storage_balance_bounds');
+      const reg = { method: 'storage_deposit', args: { account_id: receiverId, registration_only: true }, gas: 10n * TGAS, deposit: BigInt(min) };
+      if (home === from && typeof signer.batch === 'function') return signer.batch(from, [reg, call]);
+      await signer.call(home, reg.method, reg.args, { gas: reg.gas, deposit: reg.deposit });
+    }
+    return signer.call(from, call.method, call.args, { gas: call.gas, deposit: call.deposit });
   }
 
   // Attaches the claim fee plus the registration deposit; the troll refunds what was not due.

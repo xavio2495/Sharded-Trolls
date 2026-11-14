@@ -162,6 +162,11 @@ export class Account {
   call(contractId, method, args, { gas = 100n * 10n ** 12n, deposit = 0n } = {}) {
     return this.send(contractId, [action.functionCall(method, args, gas, deposit)]);
   }
+
+  // Several function calls to one contract in one transaction, in order; all or nothing.
+  batch(contractId, calls) {
+    return this.send(contractId, calls.map((c) => action.functionCall(c.method, c.args, c.gas ?? 30n * 10n ** 12n, c.deposit ?? 0n)));
+  }
 }
 
 export const TGAS = 10n ** 12n;

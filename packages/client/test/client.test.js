@@ -55,3 +55,78 @@ test('homeTroll matches the troll contract\'s home_troll view for 300 random ids
     }));
   }
 });
+
+// ---------- receiver registration (mocked RPC) ----------
+const TROLLS = Array.from({ length: 8 }, (_, i) => `t${i}.root.test`);
+async function idHomedAt(i, tag) {
+  for (let k = 0; ; k++) { const id = `${tag}${k}.test`; if ((await homeIndex(id, 8)) === i) return id; }
+}
+function mockRpc(registered) {
+  const seen = [];
+  globalThis.fetch = async (_url, { body }) => {
+    const { params } = JSON.parse(body);
+    const args = JSON.parse(atob(params.args_base64));
+    seen.push(params.method_name);
+    const result = params.method_name === 'trolls' ? TROLLS
+      : params.method_name === 'storage_balance_of' ? (registered.has(args.account_id) ? { total: '1', available: '0' } : null)
+      : params.method_name === 'storage_balance_bounds' ? { min: '1250000000000000000000', max: '1250000000000000000000' }
+      : null;
+    return { json: async () => ({ jsonrpc: '2.0', id: 1, result: { result: [...new TextEncoder().encode(JSON.stringify(result))] } }) };
+  };
+  return seen;
+}
+const recorder = (withBatch) => {
+  const log = [];
+  const s = { call: async (c, m, a, o) => { log.push(['call', c, m, a, o]); return 'ok'; } };
+  if (withBatch) s.batch = async (c, calls) => { log.push(['batch', c, calls.map((x) => x.method), calls]); return 'ok'; };
+  return { s, log };
+};
+
+test('transfer registers an unregistered receiver first: one batch when it shares the sender\'s troll', async () => {
+  const realFetch = globalThis.fetch;
+  try {
+    const sender = await idHomedAt(2, 's'), receiver = await idHomedAt(2, 'r');
+    mockRpc(new Set([sender]));
+    const { s, log } = recorder(true);
+    await new TrollClient('http://mock', 'root.test').transfer(s, sender, receiver, 5n);
+    assert.equal(log.length, 1);
+    assert.deepEqual(log[0].slice(0, 3), ['batch', TROLLS[2], ['storage_deposit', 'ft_transfer']]);
+    assert.equal(log[0][3][0].args.account_id, receiver);
+    assert.equal(log[0][3][0].deposit, 1250000000000000000000n);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('transfer to an unregistered receiver on another troll: deposit at its home, then transfer at the sender\'s', async () => {
+  const realFetch = globalThis.fetch;
+  try {
+    const sender = await idHomedAt(2, 's'), receiver = await idHomedAt(5, 'r');
+    mockRpc(new Set([sender]));
+    const { s, log } = recorder(true);
+    await new TrollClient('http://mock', 'root.test').transferCall(s, sender, receiver, 5n, 'hi');
+    assert.deepEqual(log.map((l) => [l[0], l[1], l[2]]), [['call', TROLLS[5], 'storage_deposit'], ['call', TROLLS[2], 'ft_transfer_call']]);
+    assert.equal(log[1][3].msg, 'hi');
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('registered receivers, opt-out and signers without batch()', async () => {
+  const realFetch = globalThis.fetch;
+  try {
+    const sender = await idHomedAt(1, 's'), receiver = await idHomedAt(1, 'r');
+    // already registered: transfer only
+    mockRpc(new Set([sender, receiver]));
+    let { s, log } = recorder(true);
+    await new TrollClient('http://mock', 'root.test').transfer(s, sender, receiver, 5n);
+    assert.deepEqual(log.map((l) => l[2]), ['ft_transfer']);
+    // opt-out: no registration lookup at all
+    const seen = mockRpc(new Set([sender]));
+    ({ s, log } = recorder(true));
+    await new TrollClient('http://mock', 'root.test').transfer(s, sender, receiver, 5n, undefined, { registerReceiver: false });
+    assert.deepEqual(log.map((l) => l[2]), ['ft_transfer']);
+    assert.ok(!seen.includes('storage_balance_of'));
+    // same troll but the signer can't batch: two separate calls, registration first
+    mockRpc(new Set([sender]));
+    ({ s, log } = recorder(false));
+    await new TrollClient('http://mock', 'root.test').transfer(s, sender, receiver, 5n);
+    assert.deepEqual(log.map((l) => l[2]), ['storage_deposit', 'ft_transfer']);
+  } finally { globalThis.fetch = realFetch; }
+});
