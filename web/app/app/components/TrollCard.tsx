@@ -71,7 +71,7 @@ export function TrollCard({
       )}
       <div className="flex items-center gap-3">
         <Image
-          src={`/art/trolls-v2/troll-${index + 1}.webp`}
+          src={`/art/trolls-v3/troll-${index + 1}.webp`}
           alt={`${TROLL_NAMES[index]}, troll ${index + 1}`}
           width={720}
           height={720}

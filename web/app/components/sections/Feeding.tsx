@@ -72,7 +72,7 @@ export default function Feeding() {
           {TROLLS.map((t, i) => (
             <figure key={t.name} className="w-[16rem] flex-none rounded-[var(--radius-card)] bg-surface-1 p-5 text-center md:w-[19rem]" data-magnetic>
               <div data-troll>
-                <Image src={`/art/trolls-v2/troll-${i + 1}.webp`} alt={`${t.name}, the troll of shard ${t.shard}`} width={720} height={720} sizes="20rem" className="w-full" />
+                <Image src={`/art/trolls-v3/troll-${i + 1}.webp`} alt={`${t.name}, the troll of shard ${t.shard}`} width={720} height={720} sizes="20rem" className="w-full" />
               </div>
               <figcaption className="mt-2">
                 <span className="block font-display text-2xl text-ink-0">{t.name}</span>

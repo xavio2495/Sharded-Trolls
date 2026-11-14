@@ -28,7 +28,7 @@ export default function Closing() {
             </a>
           </div>
         </div>
-        <Image src="/art/trolls-v2/troll-8.webp" alt="The mushroom-crowned troll, delighted" width={720} height={720} className="w-[22rem]" data-reveal data-parallax="0.15" />
+        <Image src="/art/trolls-v3/troll-8.webp" alt="The mushroom-crowned troll, delighted" width={720} height={720} className="w-[22rem]" data-reveal data-parallax="0.15" />
       </div>
       <footer className="mt-28 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-8">
         <span className="font-display text-xl">Sharded Trolls</span>
