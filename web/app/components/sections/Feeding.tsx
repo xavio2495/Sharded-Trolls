@@ -62,9 +62,9 @@ export default function Feeding() {
             ))}
           </div>
         </div>
-        <div data-track className="flex gap-6 overflow-x-auto px-[var(--gutter)] md:overflow-visible">
+        <div data-track className="flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] md:snap-none md:overflow-visible">
           {TROLLS.map((t, i) => (
-            <figure key={t.name} className={`slab w-[12rem] flex-none p-4 text-center md:w-[min(15rem,26svh)] ${i % 2 ? "rotate-2" : "-rotate-1"}`} data-magnetic>
+            <figure key={t.name} className={`slab w-[12rem] flex-none snap-start p-4 text-center md:w-[min(15rem,26svh)] ${i % 2 ? "rotate-2" : "-rotate-1"}`} data-magnetic>
               <div data-troll>
                 <Image src={`/art/trolls-v3/troll-${i + 1}.webp`} alt={`${t.name}, the troll of shard ${t.shard}`} width={720} height={720} sizes="20rem" className="w-full" />
               </div>
