@@ -84,6 +84,10 @@ Sharded fungible tokens on NEAR are not new. NEP-636 "Sharded Fungible Token" is
 
 As of 2026-11-14 18:20 UTC, a scan of all 1,674 projects in the NEAR HACKATHON 2026 field (posts, READMEs and linked sites) found no other fungible-token ledger split across shards or contracts. The nearest prior art there is the House of Stake "Sharded NFT Items" draft (one account per NFT).
 
+### Other project by the same author
+
+**Yuki**: a long-term investment thesis for NEAR backed by on-chain data (Investment Thesis track). Repository: [github.com/xavio2495/Yuki](https://github.com/xavio2495/Yuki) · Live site: [yuki.xavio.dev](https://yuki.xavio.dev/). The two projects are independent: they share no project code (only stock Next.js configuration and a font licence file).
+
 ---
 
 ## The Background
