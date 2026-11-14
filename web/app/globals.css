@@ -32,8 +32,8 @@
   --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
   --gutter: 4.5rem;
   --header: 5.5rem;
-  --radius-ui: 999px;
-  --radius-card: 1.25rem;
+  --radius-ui: 0px;
+  --radius-card: 0px;
   --sheet: max(28px, 2.6vw);
 
   /* 1rem = 16px up to 1440px wide, then the layout scales with the viewport (capped) */
@@ -67,7 +67,13 @@
   --font-sans: var(--font-text);
 }
 
-html { overflow-x: clip; scrollbar-gutter: stable; scrollbar-width: thin; }
+html { overflow-x: clip; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--accent-deep) var(--surface-1); }
+/* custom scrollbar: a moss bar on a stone track, square, with an ink edge */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--surface-1); border-left: 2px solid var(--ink-0); }
+::-webkit-scrollbar-thumb { background: var(--accent-deep); border: 2px solid var(--ink-0); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-0); }
+::selection { background: var(--accent); color: #fff; }
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
@@ -96,7 +102,7 @@ body {
 .lead { font-size: 1.25rem; line-height: 1.5; margin: 0; color: var(--ink-1); }
 .body { font-size: 1rem; line-height: 1.6; margin: 0; color: var(--ink-1); }
 .small { font-size: 0.8125rem; line-height: 1.5; margin: 0; color: var(--ink-2); }
-.eyebrow { font-size: 0.75rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-deep); font-weight: 600; }
+.tag { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .nav { font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; }
 @media (min-width: 768px) and (max-width: 1199px) {
   .display { font-size: 5.25rem; }
@@ -116,32 +122,28 @@ body {
 .tone-stone { background: var(--surface-1); color: var(--ink-0); }
 .tone-dark { background: var(--ink-0); color: #f3f6f1; }
 .tone-dark .lead, .tone-dark .body { color: #c9d3cb; }
-.tone-dark .eyebrow { color: #a9cf86; }
+.tone-dark .tag { color: #a9cf86; }
 
-/* sections stack like sheets: each one rises over the one before, with rounded top corners */
-.sheets > section { overflow-x: clip; }
-.sheets > section:not(:first-child) {
-  position: relative;
-  margin-top: calc(var(--sheet) * -1);
-  border-radius: var(--sheet) var(--sheet) 0 0;
-  box-shadow: 0 -1.25rem 2.5rem -1.75rem rgb(24 33 27 / 0.22);
-}
+/* sections butt against each other with a heavy ink rule: no rounding, no soft shadows */
+.sheets > section { overflow-x: clip; border-top: 3px solid var(--ink-0); }
+.sheets > section:first-child { border-top: 0; }
 
-/* pill buttons */
+/* raw, square buttons with a hard offset shadow that collapses on press */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; white-space: nowrap;
-  height: 3rem; padding: 0 1.6rem; border-radius: 999px;
+  height: 3rem; padding: 0 1.5rem; border-radius: 0; border: 2px solid var(--ink-0);
+  box-shadow: 4px 4px 0 0 var(--ink-0); transform: translate(0, 0);
   font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
-  transition: background 0.4s var(--ease-out), color 0.4s var(--ease-out), border-color 0.4s var(--ease-out);
+  transition: background 0.3s var(--ease-out), color 0.3s var(--ease-out), box-shadow 0.15s, translate 0.15s;
 }
+.btn:active { box-shadow: 0 0 0 0 var(--ink-0); translate: 4px 4px; }
 .btn-moss { background: var(--accent-deep); color: #fff; }
 .btn-ink { background: var(--ink-0); color: #fff; }
-.btn-line { border: 1px solid currentColor; }
+.btn-line { background: #fff; color: var(--ink-0); }
 @media (hover: hover) {
   .btn-moss:hover { background: var(--ink-0); }
   .btn-ink:hover { background: var(--accent-deep); }
-  .btn-line:hover { background: var(--ink-0); color: #fff; border-color: var(--ink-0); }
-  .tone-dark .btn-line:hover { background: #fff; color: var(--ink-0); border-color: #fff; }
+  .btn-line:hover { background: var(--accent-tint); }
 }
 
 /* a rolling label: <span class="roll" data-text="Menu"><span>Menu</span></span> */
@@ -161,6 +163,12 @@ html.js [data-reveal] { opacity: 0; }
   html.js [data-reveal] { opacity: 1; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* brutalist bits: a raw block with a heavy border and hard shadow, a slow marquee */
+.slab { border: 3px solid var(--ink-0); background: #fff; box-shadow: 8px 8px 0 0 var(--ink-0); }
+.slab-moss { border: 3px solid var(--ink-0); background: var(--accent-deep); color: #fff; box-shadow: 8px 8px 0 0 var(--ink-0); }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee > div { display: flex; width: max-content; animation: marquee 28s linear infinite; }
 
 /* legacy: the dashboard's paper grain is retired on white */
 .grain::after { content: none; }

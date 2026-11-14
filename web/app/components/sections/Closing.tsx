@@ -6,15 +6,11 @@ export default function Closing() {
     <section className="tone-light container py-32">
       <div className="grid items-center gap-12 md:grid-cols-[1fr_auto]">
         <div>
-          <p className="eyebrow" data-reveal>
-            A launch kit
-          </p>
-          <h2 className="h1 mt-4 max-w-4xl" data-reveal="lines">
+          <h2 className="display max-w-5xl" data-reveal="lines">
             Feed a troll today.
           </h2>
           <p className="lead mt-6 max-w-2xl" data-reveal>
-            The troll code is published once on chain, so the next token on the kit costs only its accounts. Open the
-            app, claim your starter bag, and cross a stream.
+            Claim a starter bag, cross a stream, and watch a troll eat your toll. Testnet, free.
           </p>
           <div className="mt-10 flex flex-wrap gap-3" data-reveal>
             <Link href="/app" className="btn btn-moss" data-magnetic>
@@ -28,11 +24,11 @@ export default function Closing() {
             </a>
           </div>
         </div>
-        <Image src="/art/trolls-v3/troll-8.webp" alt="The mushroom-crowned troll, delighted" width={720} height={720} className="w-[22rem]" data-reveal data-parallax="0.15" />
+        <Image src="/art/trolls-v3/troll-8.webp" alt="The mushroom-crowned troll, delighted" width={720} height={720} className="w-[22rem] -rotate-6" data-reveal data-parallax="0.15" />
       </div>
       <footer className="mt-28 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-8">
         <span className="font-display text-xl">Sharded Trolls</span>
-        <span className="small">Built during NEAR HACKATHON 2026 · MIT · testnet</span>
+        <span className="tag text-ink-1">Built during NEAR HACKATHON 2026 · MIT · testnet</span>
       </footer>
     </section>
   );

@@ -39,15 +39,12 @@ export default function Proof() {
 
   return (
     <section id="proof" ref={root} className="tone-dark container py-32">
-      <p className="eyebrow" data-reveal>
-        Proof
-      </p>
-      <h2 className="h2 mt-4 max-w-4xl" data-reveal="lines">
+      <h2 className="h1 max-w-5xl" data-reveal="lines">
         Run on real NEAR, audited, and rehearsed.
       </h2>
       <dl className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {FIGURES.map((f, i) => (
-          <div key={f.label} className="border-t border-white/15 pt-6" data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
+          <div key={f.label} className={`border-t-[3px] border-[#a9cf86] pt-6 ${i % 2 ? "lg:mt-16" : ""}`} data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
             <dt className="font-display text-7xl text-[#a9cf86]">
               <span data-count={f.value}>{f.value}</span>
               {f.suffix}

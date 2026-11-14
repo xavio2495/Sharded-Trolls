@@ -51,6 +51,13 @@ export default function Preloader() {
         setDone(true);
       };
 
+      // ?nointro skips the intro entirely (QA, screenshots, deep links)
+      if (new URLSearchParams(window.location.search).has("nointro")) {
+        gsap.set(root.current, { autoAlpha: 0 });
+        finish();
+        return;
+      }
+
       if (reduce) {
         loaded(MAX_WAIT_REDUCED).then(() => gsap.to(root.current, { autoAlpha: 0, duration: 0.4, onComplete: finish }));
         return;
