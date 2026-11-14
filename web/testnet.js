@@ -14,6 +14,8 @@ const ok = (b) => (b ? '<span class="pass">✓ pass</span>' : '<span class="fail
 export async function renderTestnet(root) {
   const runs = (await Promise.all(FILES.map((f) => fetch(f).then((x) => (x.ok ? x.json() : null)).catch(() => null)))).filter(Boolean);
   const r = runs[0], earlier = runs.slice(1);
+  // Symbol as deployed in each run: the report's metadata, else what the indexer saw.
+  const symbolOf = (x) => x.metadata?.symbol ?? x.indexer_check?.nearblocks_testnet_v1_inventory_07?.ft_meta?.symbol ?? '';
   if (!r) { root.querySelector('#tn-body').innerHTML = '<p class="muted">No testnet record found.</p>'; return; }
   const k7 = r.k7, hashes = new Set(k7.trolls.map((t) => t.global_contract_hash));
   const k7pass = hashes.size === 1 && k7.trolls.length === 8 && new Set(k7.trolls.map((t) => t.shard)).size === 8;
@@ -21,8 +23,8 @@ export async function renderTestnet(root) {
   const conservedAll = [...fires.flatMap((f) => [f.conservation_before.conserved, f.conservation_after.conserved]),
     ...cases.flatMap((c) => [c.conserved_before, c.conserved_after])].every(Boolean);
   root.querySelector('#tn-body').innerHTML = `
-    <p class="muted">Real NEAR testnet, ${esc(r.k3.at.slice(0, 10))}. Root ${acct(r.root)}, troll code <code>${esc(r.troll_code_hash.slice(0, 12))}…</code>. A handful of transactions, not a load test.
-      ${earlier.map((e) => `Earlier run on build <code>${esc(e.troll_code_hash.slice(0, 12))}…</code>: root ${acct(e.root)}, same checks passed.`).join(' ')}</p>
+    <p class="muted">Real NEAR testnet, ${esc(r.k3.at.slice(0, 10))}. Root ${acct(r.root)}${symbolOf(r) ? `, token ${esc(symbolOf(r))}` : ''}, troll code <code>${esc(r.troll_code_hash.slice(0, 12))}…</code>. A handful of transactions, not a load test.
+      ${earlier.map((e) => `Earlier run on build <code>${esc(e.troll_code_hash.slice(0, 12))}…</code>: root ${acct(e.root)}${symbolOf(e) ? ` (token ${esc(symbolOf(e))})` : ''}, same checks passed.`).join(' ')}</p>
     <div class="ccards">
       <div class="ccard"><h3>K7 · one code for eight trolls ${ok(k7pass)}</h3>
         <p class="muted">The troll code is deployed once as a global contract and used by all eight trolls, each on its own shard.</p>

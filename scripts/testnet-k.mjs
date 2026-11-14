@@ -312,7 +312,9 @@ if (step === 'plan') {
   mkdirSync(dir, { recursive: true });
   const dep = load('deploy.json');
   const pick = (n) => (existsSync(file(n)) ? load(n) : null);
-  const report = { network: 'testnet', root: dep.root, trolls: dep.trolls, params: dep.params, troll_code_hash: dep.troll_code_hash,
+  // Token metadata as deployed (symbol differs between runs), read from the first troll.
+  const metadata = await near.view(dep.trolls[0].account, 'ft_metadata');
+  const report = { network: 'testnet', root: dep.root, trolls: dep.trolls, params: dep.params, metadata, troll_code_hash: dep.troll_code_hash,
     root_code_hash: dep.root_code_hash, reused_accounts_from: pick('accounts.json')?.reused_from ?? null,
     k7: pick('k7.json'), k2: pick('k2.json'), k3: pick('k3.json') };
   writeFileSync(resolve(dir, 'k-tests.json'), JSON.stringify(report, null, 2) + '\n');
