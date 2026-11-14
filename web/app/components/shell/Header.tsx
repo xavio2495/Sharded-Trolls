@@ -6,6 +6,7 @@ const LINKS = [
   { href: "#toll", label: "The toll" },
   { href: "#feeding", label: "The Feeding" },
   { href: "#proof", label: "Proof" },
+  { href: "/evidence", label: "Evidence" },
 ];
 
 export default function Header() {

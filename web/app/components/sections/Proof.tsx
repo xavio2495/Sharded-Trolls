@@ -60,6 +60,9 @@ export default function Proof() {
         Honest limits: not faster per transfer, wallets list one entry per troll, the Feeding is a game and not
         Sybil-proof, and DEX trading goes through a single-shard wrapper.
       </p>
+      <a href="/evidence" className="btn btn-line mt-10 text-white" data-reveal data-magnetic>
+        See every measurement
+      </a>
     </section>
   );
 }
