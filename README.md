@@ -18,7 +18,7 @@
 
 <br>
 
-**[Reviewers](#for-reviewers-verify-in-ten-minutes)** · **[Track](#track-near-hackathon-2026--memecoins)** · **[Background](#the-background)** · **[What it does](#what-it-does)** · **[Use it](#use-it)** · **[Tour](#tour)** · **[How it works](#how-it-works)** · **[Transfer flow](#cross-troll-transfer-flow)** · **[Results](#results)** · **[What is checked](#what-is-checked)** · **[Interface](#contract-interface)** · **[Invariants](#invariants)** · **[Deployments](#deployments)** · **[Limits](#limits-and-known-issues)** · **[Where it lives](#where-it-lives)** · **[Develop](#development)** · **[License](#license)**
+**[Reviewers](#for-reviewers-verify-in-ten-minutes)** · **[Track](#track-near-hackathon-2026--memecoins)** · **[Background](#the-background)** · **[What it does](#what-it-does)** · **[Try it](#try-it-do-x--see-y)** · **[Use it](#use-it)** · **[Tour](#tour)** · **[How it works](#how-it-works)** · **[Transfer flow](#cross-troll-transfer-flow)** · **[Results](#results)** · **[What is checked](#what-is-checked)** · **[Interface](#contract-interface)** · **[Invariants](#invariants)** · **[Deployments](#deployments)** · **[Limits](#limits-and-known-issues)** · **[Where it lives](#where-it-lives)** · **[Develop](#development)** · **[License](#license)**
 
 <br><br><br>
 </div>
@@ -125,6 +125,25 @@ It is not:
 ---
 
 ## Use it
+
+### Try it: do X → see Y
+
+No install needed. You need a NEAR **testnet** account in a browser wallet (Meteor, HOT or any other NEAR Connect wallet); testnet NEAR is free from the [faucet](https://docs.near.org/getting-started/faucet).
+
+| # | Do | See |
+|---|---|---|
+| 1 | Open [strl.xavio.dev](https://strl.xavio.dev) and scroll | The problem (42.5% / 66%), one river wiping into eight streams, debit → credit → confirm, the proof numbers |
+| 2 | Open [strl.xavio.dev/app](https://strl.xavio.dev/app) | One screen: the round timer (10-minute rounds), the eight trolls with their feeders (`0/1`), *Close the round*, *Live activity* |
+| 3 | Tap **Connect wallet** and pick a testnet wallet | The big button becomes **Get 1,000 STRL**; your home troll is named |
+| 4 | Tap **Get 1,000 STRL** and approve (0.01 NEAR fee + storage) | Your balance shows 1,000 STRL; *Live activity* shows the claim |
+| 5 | Tap **Feed 1 STRL** and approve | 1 STRL goes to the tip jar `tips.play.strl.testnet`; your home troll's tile lights up and its count reads `1/1` |
+| 6 | Tap **Details** in the trolls strip | Per troll: shard, feeders, food, hoard, launch pool, supply |
+| 7 | Type an account in **Send to a friend**, any amount, tap **Send** | The note says whether it stays on your troll (free) or crosses to another (0.25% toll, eaten by that troll as food) |
+| 8 | After the round ends, tap **Close the round** (anyone can) | The round settles: all trolls fed → the streak grows; any troll starved → it burns 1% of its hoard. A bounty is paid if the budget holds one |
+| 9 | Then tap **Collect** | Your share of the round's reward is added to your balance |
+| 10 | Open any transaction from *Live activity* or the [reviewer table](#for-reviewers-verify-in-ten-minutes) | The receipts on [testnet.nearblocks.io](https://testnet.nearblocks.io): debit on one shard, credit on another |
+
+Without a wallet: steps 1, 2 and 6 work as they are, the [deck](https://strl.xavio.dev/pitch) and [evidence](https://strl.xavio.dev/evidence) need nothing, and [`/app.md`](https://strl.xavio.dev/app.md) lists every call for scripts or agents.
 
 ### In the browser
 
