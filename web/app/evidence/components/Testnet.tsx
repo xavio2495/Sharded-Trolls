@@ -157,8 +157,8 @@ export function Testnet() {
                     {c.expect}
                     {c.msg_bytes > 4096 && c.errors?.[0] && <span className="block text-xs text-ink-2">{c.errors[0]}</span>}
                   </td>
-                  <td className="py-2 text-right tabular-nums text-ink-0">{fmtTokens(c.sender_delta)} STRL</td>
-                  <td className="py-2 text-right"><Tx hash={c.hash} /></td>
+                  <td className="whitespace-nowrap py-2 pl-3 text-right tabular-nums text-ink-0">{fmtTokens(c.sender_delta)} STRL</td>
+                  <td className="py-2 pl-4 text-right"><Tx hash={c.hash} /></td>
                 </tr>
               ))}
             </tbody>

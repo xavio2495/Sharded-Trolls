@@ -45,7 +45,7 @@ function Card({ col, r, control }: { col: (typeof COLS)[number]; r: RunSummary |
       <p className="mt-1 text-sm text-ink-2">{col.sub}</p>
       <p className="mt-5 font-display text-5xl leading-none text-ink-0 tabular-nums">
         {r.executed_per_s.toLocaleString("en-US")}
-        <span className="ml-2 font-sans text-sm text-ink-1">transfers/s executed</span>
+        <span className="mt-1 block font-sans text-sm text-ink-1">transfers/s executed</span>
       </p>
       <p className="mt-2 min-h-10 text-sm text-ink-1">
         {mult && <strong className="font-semibold text-ink-0">{mult} · </strong>}
@@ -148,7 +148,7 @@ export function Compare() {
             key={r}
             onClick={() => setRate(r)}
             aria-pressed={rate === r}
-            className={`rounded-[var(--radius-ui)] border-2 px-4 py-1.5 text-sm font-semibold transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-[var(--radius-ui)] border-2 px-4 text-sm font-semibold ${
               rate === r ? "border-ink-line bg-ink-0 text-paper" : "border-ink-line bg-paper text-ink-0 hover:bg-surface-2"
             }`}
           >
@@ -156,7 +156,7 @@ export function Compare() {
           </button>
         ))}
       </div>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-3">
         {COLS.map((col) => (
           <Card key={col.key} col={col} r={set[col.key as Key] && summary ? (summary[set[col.key as Key]!] ?? null) : null} control={control} />
         ))}

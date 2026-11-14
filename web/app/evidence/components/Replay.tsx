@@ -147,7 +147,7 @@ export function Replay() {
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2 text-ink-1">
           Run
-          <select value={id} onChange={(e) => setId(e.target.value)} className="rounded-lg border-2 border-ink-line bg-paper px-2 py-1.5 text-ink-0">
+          <select value={id} onChange={(e) => setId(e.target.value)} className="min-h-11 rounded-lg border-2 border-ink-line bg-paper px-2 text-ink-0">
             {RUNS.map((r) => (
               <option key={r.id} value={r.id}>{r.label}</option>
             ))}
@@ -167,7 +167,7 @@ export function Replay() {
         </button>
         <label className="flex items-center gap-2 text-ink-1">
           Speed
-          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="rounded-lg border-2 border-ink-line bg-paper px-2 py-1.5 text-ink-0">
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="min-h-11 rounded-lg border-2 border-ink-line bg-paper px-2 text-ink-0">
             {[1, 4, 10].map((s) => (
               <option key={s} value={s}>{s}×</option>
             ))}
@@ -185,7 +185,7 @@ export function Replay() {
             setI(k);
             if (run) sim.current.t = run.blocks[k][0];
           }}
-          className="min-w-40 flex-1 accent-[var(--accent-deep)]"
+          className="min-h-11 min-w-40 flex-1 accent-[var(--accent-deep)]"
         />
       </div>
       {!run ? (

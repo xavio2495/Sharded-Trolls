@@ -46,7 +46,7 @@ export function EvidenceTabs() {
             aria-selected={tab === t.id}
             aria-controls="evidence-panel"
             onClick={() => pick(t.id)}
-            className={`rounded-[var(--radius-ui)] border-2 px-5 py-2 text-sm font-semibold tracking-wide ${
+            className={`inline-flex min-h-11 items-center rounded-[var(--radius-ui)] border-2 px-5 text-sm font-semibold tracking-wide ${
               tab === t.id ? "border-accent-deep bg-accent-deep text-paper" : "border-ink-line bg-paper text-ink-0 hover:bg-surface-2"
             }`}
           >
