@@ -129,6 +129,27 @@
   "landed_matches_included": true,
   "troll_wasm_sha256": "826b2de0a76176820cbc1e28a7ed6d5040e03510897a4ed8285a575bd47e8164"
  },
+ "trolls-mixed-run3": {
+  "method": "inclusion-logged",
+  "started_at": "2026-11-14T02:44:55.828Z",
+  "target": "trolls",
+  "mix": "uniform",
+  "offered_per_s": 2000,
+  "seconds": 90,
+  "fires_accepted": 7208,
+  "fires_included": 6135,
+  "inclusion": 0.851,
+  "transfers_executed": 154128,
+  "executed_per_s": 1579,
+  "drain_seconds": 97.6,
+  "peak_congestion": 0.07,
+  "probes": 728,
+  "probes_rejected": 0,
+  "rejection_kinds": [],
+  "block_time_s": 0.622,
+  "landed_matches_included": true,
+  "troll_wasm_sha256": "d47cb110d149d2a9abaa5bec266f398c3cec72a2076d647f8c740c63526ea025"
+ },
  "trolls-run2": {
   "method": "pre-inclusion-logging",
   "started_at": "2026-11-14T01:43:25.261Z",
