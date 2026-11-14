@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { isValidElement, useCallback, useEffect, useState } from "react";
 
 // The judges' deck: how it is built and what is proven. The landing page is the experience; this is the engineering.
 
@@ -188,7 +188,7 @@ function LoadBars() {
             <text x="20" y={110 + i * 90} fontSize="13">{r.rej}</text>
           </g>
         ))}
-        <text x="20" y="322" fontSize="13">offered 2,000 transfers/s for 90 s, single-node local network with mainnet&apos;s layout</text>
+        <text x="20" y="322" fontSize="13">offered 2,000/s for 90 s · local network, mainnet&apos;s layout</text>
       </g>
     </svg>
   );
@@ -338,10 +338,16 @@ export default function Deck() {
         </div>
         {s.visual && (
           <div className="slab p-5">
-            <div className="overflow-x-auto">
-              <div className="min-w-[560px]">{s.visual}</div>
-            </div>
-            <p className="tag mt-3 text-ink-1 sm:hidden">scroll →</p>
+            {isValidElement(s.visual) && (s.visual.type === Stats || s.visual.type === Image) ? (
+              s.visual
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[560px]">{s.visual}</div>
+                </div>
+                <p className="tag mt-3 text-ink-1 sm:hidden">scroll →</p>
+              </>
+            )}
           </div>
         )}
       </div>
