@@ -35,6 +35,14 @@ export default function Preloader() {
 
   useGSAP(
     () => {
+      // Coming back to the page (Next keeps the route alive and re-runs effects): the intro has already
+      // played and nothing is mounted, so just make sure the page is unlocked.
+      if (!root.current) {
+        document.documentElement.classList.remove("is-loading");
+        lenis.current?.start();
+        signalReady();
+        return;
+      }
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       document.documentElement.classList.add("is-loading");
       window.scrollTo(0, 0);
