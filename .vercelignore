@@ -1,7 +1,0 @@
-# Only the static page and what it imports are deployed.
-/*
-!/web
-!/packages
-!/measurements
-!/vercel.json
-packages/*/test
