@@ -18,6 +18,9 @@
 //   k3        100 tokens per case: cross-troll transfer (toll burned), transfer to an unregistered receiver (credit fails,
 //             full refund), cross-troll ft_transfer_call to an account without ft_on_transfer (refund);
 //             conservation checked over all eight trolls before and after
+//   settle    after epoch 0 ends (--wait polls read-only until it has): settle(0) once at 1 Tgas below
+//             --settle-min-tgas, which must fail up front with `settling` unlocked, then at exactly the minimum,
+//             which must settle (8 applies, books conserved). At most two transactions, no retries.
 //   k7        read-only: records K7 (parent spend, each troll's global code hash and storage)
 //   report    writes measurements/testnet-<date>/k-tests.json from target/testnet/*.json
 // Env: SECRET_PHRASE (funder seed phrase) from .env; never printed.
@@ -40,6 +43,7 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   'troll-near': { type: 'string', default: '1' }, 'epoch-ms': { type: 'string', default: '3600000' },
   'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' },
   reuse: { type: 'string' }, 'report-dir': { type: 'string' }, 'spare-near': { type: 'string' },
+  'settle-min-tgas': { type: 'string', default: '250' }, wait: { type: 'boolean', default: false },
 } });
 const step = positionals[0] ?? 'plan';
 const SEND = values.send;
@@ -308,6 +312,52 @@ if (step === 'plan') {
     console.log(JSON.stringify(c, null, 1));
   }
   if (SEND) save('k3.json', out);
+} else if (step === 'settle') {
+  const D = dep();
+  const root = D.root;
+  const info = () => near.view(root, 'info');
+  let i0 = await info();
+  if (i0.settling !== null) throw new Error(`settling is already locked at epoch ${i0.settling}: stuck before this step`);
+  const epoch = i0.next_epoch;
+  while (i0.current_epoch <= epoch) {
+    const endsAt = new Date(D.start_ms + (epoch + 1) * D.params.epoch_ms).toISOString();
+    if (!values.wait) { console.log(`epoch ${epoch} ends at ${endsAt}; run again then, or pass --wait`); process.exit(0); }
+    console.log(`waiting for epoch ${epoch} to end at ${endsAt} (now epoch ${i0.current_epoch})`);
+    await sleep(60_000);
+    i0 = await info();
+  }
+  const min = BigInt(values['settle-min-tgas']);
+  const out = { at: new Date().toISOString(), epoch, settle_min_tgas: Number(min), attempts: [] };
+  for (const [label, tgas, mustSucceed] of [['1 Tgas below the minimum', min - 1n, false], ['at the minimum', min, true]]) {
+    const before = SEND ? await info() : null;
+    const r = await submit(parentAccount(), root, [action.functionCall('settle', { epoch }, tgas * TGAS)], `settle(${epoch}) with ${tgas} Tgas (${label})`);
+    if (!r) continue;
+    await sleep(8000); // let the detached applies land
+    const after = await info();
+    const fails = failures(r);
+    const settleFailed = Boolean(r.status?.Failure) || Boolean(r.receipts_outcome[0]?.outcome.status.Failure);
+    const methods = r.receipts_outcome.map((o) => o.outcome.executor_id);
+    const ev = events(r).map((e) => `${e.executor}:${e.event}`);
+    const settled = after.next_epoch === epoch + 1;
+    const a = { label, gas_tgas: Number(tgas), hash: r.hash, url: EXPLORER + r.hash, failed_receipts: fails.length,
+      errors: fails.map((f) => JSON.stringify(f).slice(0, 200)), settle_receipt_failed: settleFailed,
+      settling_after: after.settling, next_epoch_before: before.next_epoch, next_epoch_after: after.next_epoch,
+      receipts: r.receipts_outcome.length, executors: [...new Set(methods)].length, events: ev,
+      conservation_after: await conservation(D) };
+    // Pass: settled cleanly, or refused up front with nothing locked. Stuck (settling still set) is the bug.
+    // Below the floor the root must refuse with its own message, not run out of gas later.
+    a.refusal_message_ok = settleFailed && a.errors.some((e) => e.includes(`attach at least ${min} Tgas`));
+    a.outcome = after.settling !== null ? 'STUCK (settling locked)'
+      : settled && fails.length === 0 ? 'settled'
+      : settleFailed && after.next_epoch === before.next_epoch ? 'refused up front, unlocked'
+      : 'other';
+    a.pass = after.settling === null && a.conservation_after.conserved
+      && (mustSucceed ? a.outcome === 'settled' : a.outcome === 'refused up front, unlocked' && a.refusal_message_ok);
+    out.attempts.push(a);
+    console.log(JSON.stringify(a, null, 1));
+    if (a.outcome === 'STUCK (settling locked)' || settled) break; // nothing more to try for this epoch
+  }
+  if (SEND) save('settle.json', out);
 } else if (step === 'report') {
   const day = new Date().toISOString().slice(0, 10);
   const dir = resolve(ROOT, values['report-dir'] ?? `measurements/testnet-${day}`);
@@ -318,7 +368,7 @@ if (step === 'plan') {
   const metadata = await near.view(dep.trolls[0].account, 'ft_metadata');
   const report = { network: 'testnet', root: dep.root, trolls: dep.trolls, params: dep.params, metadata, troll_code_hash: dep.troll_code_hash,
     root_code_hash: dep.root_code_hash, reused_accounts_from: pick('accounts.json')?.reused_from ?? null,
-    k7: pick('k7.json'), k2: pick('k2.json'), k3: pick('k3.json') };
+    k7: pick('k7.json'), k2: pick('k2.json'), k3: pick('k3.json'), settle: pick('settle.json') };
   writeFileSync(resolve(dir, 'k-tests.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(`wrote ${dir}/k-tests.json`);
 } else {
