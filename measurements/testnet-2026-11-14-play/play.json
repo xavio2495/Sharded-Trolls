@@ -1,0 +1,106 @@
+{
+  "network": "testnet",
+  "label": "play",
+  "purpose": "Public demo token for /app: 14-day launch window so visitors can claim STRL; demo Feeding parameters.",
+  "root": "play.strl.testnet",
+  "metadata": {
+    "spec": "ft-1.0.0",
+    "name": "Sharded Trolls",
+    "symbol": "STRL",
+    "icon": null,
+    "reference": null,
+    "reference_hash": null,
+    "decimals": 24
+  },
+  "trolls": [
+    {
+      "account": "0.play.strl.testnet",
+      "shard": 10
+    },
+    {
+      "account": "7.play.strl.testnet",
+      "shard": 11
+    },
+    {
+      "account": "ax.play.strl.testnet",
+      "shard": 12
+    },
+    {
+      "account": "e.play.strl.testnet",
+      "shard": 13
+    },
+    {
+      "account": "f.play.strl.testnet",
+      "shard": 9
+    },
+    {
+      "account": "h.play.strl.testnet",
+      "shard": 7
+    },
+    {
+      "account": "kz.play.strl.testnet",
+      "shard": 4
+    },
+    {
+      "account": "u.play.strl.testnet",
+      "shard": 5
+    }
+  ],
+  "global_contract_hash": [
+    "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+  ],
+  "troll_code_sha256": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+  "one_code_on_8_shards": true,
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 1,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 600000,
+    "launch_window_ms": 1209600000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000",
+    "claim_epochs": 30
+  },
+  "start": "2026-11-14T17:58:06.784Z",
+  "launch_window_end": "2026-11-28T17:58:06.784Z",
+  "tip_account": {
+    "account": "tips.play.strl.testnet",
+    "home_index": 4,
+    "home_troll": "f.play.strl.testnet",
+    "create_tx": "9qGBGD7ZJbezFauVgn1ciAQK4QeVR3FEbRGr9uhyRSam",
+    "register_tx": "4gusNZ4d1Apzt5LPq7GcZx1K7tMnM4w9fD15iV7vSu24",
+    "storage_balance": {
+      "total": "1580000000000000000000",
+      "available": "0"
+    }
+  },
+  "root_info": {
+    "next_epoch": 0,
+    "current_epoch": 0,
+    "settling": null,
+    "streak": 0,
+    "total_supply": "1000000000000000000000000000000000",
+    "bounty_budget": "0"
+  },
+  "cost": {
+    "parent_funded_near": 4.5,
+    "parent_spent_near": 1.719,
+    "parent_left_near": 2.781047,
+    "root_storage_locked_near": 1.8925500000000002,
+    "tip_account_near": 0.05,
+    "note": "spent = 8 troll accounts x 0.2 + tip account 0.05 + registration + gas; no code published (global hash reused)"
+  },
+  "conservation_at_start": {
+    "supply": "1000000000000000000000000000000000",
+    "in_flight": "0",
+    "burned": "0",
+    "minted": "0",
+    "total_supply": "1000000000000000000000000000000000",
+    "conserved": true
+  },
+  "at": "2026-11-14T17:59:30.108Z"
+}
