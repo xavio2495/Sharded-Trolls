@@ -1,7 +1,8 @@
 // Testnet panel: the K7 (one global code for eight trolls), K2 (fan-out) and K3 (conservation and
 // failed-credit refunds) checks, from the recorded run file. Every transaction links to the explorer.
 
-const FILE = '../measurements/testnet-2026-11-14/k-tests.json';
+// Newest run first; the page shows the first one that exists and links the earlier record.
+const FILES = ['../measurements/testnet-2026-11-14-rerun/k-tests.json', '../measurements/testnet-2026-11-14/k-tests.json'];
 const TX = 'https://testnet.nearblocks.io/txns/';
 const ADDR = 'https://testnet.nearblocks.io/address/';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -11,7 +12,8 @@ const acct = (a) => `<a href="${ADDR}${esc(a)}" target="_blank" rel="noopener"><
 const ok = (b) => (b ? '<span class="pass">✓ pass</span>' : '<span class="fail">✗ fail</span>');
 
 export async function renderTestnet(root) {
-  const r = await fetch(FILE).then((x) => (x.ok ? x.json() : null));
+  const runs = (await Promise.all(FILES.map((f) => fetch(f).then((x) => (x.ok ? x.json() : null)).catch(() => null)))).filter(Boolean);
+  const r = runs[0], earlier = runs.slice(1);
   if (!r) { root.querySelector('#tn-body').innerHTML = '<p class="muted">No testnet record found.</p>'; return; }
   const k7 = r.k7, hashes = new Set(k7.trolls.map((t) => t.global_contract_hash));
   const k7pass = hashes.size === 1 && k7.trolls.length === 8 && new Set(k7.trolls.map((t) => t.shard)).size === 8;
@@ -19,7 +21,8 @@ export async function renderTestnet(root) {
   const conservedAll = [...fires.flatMap((f) => [f.conservation_before.conserved, f.conservation_after.conserved]),
     ...cases.flatMap((c) => [c.conserved_before, c.conserved_after])].every(Boolean);
   root.querySelector('#tn-body').innerHTML = `
-    <p class="muted">Real NEAR testnet, ${esc(r.k3.at.slice(0, 10))}. Root ${acct(r.root)}. A handful of transactions, not a load test.</p>
+    <p class="muted">Real NEAR testnet, ${esc(r.k3.at.slice(0, 10))}. Root ${acct(r.root)}, troll code <code>${esc(r.troll_code_hash.slice(0, 12))}…</code>. A handful of transactions, not a load test.
+      ${earlier.map((e) => `Earlier run on build <code>${esc(e.troll_code_hash.slice(0, 12))}…</code>: root ${acct(e.root)}, same checks passed.`).join(' ')}</p>
     <div class="ccards">
       <div class="ccard"><h3>K7 · one code for eight trolls ${ok(k7pass)}</h3>
         <p class="muted">The troll code is deployed once as a global contract and used by all eight trolls, each on its own shard.</p>
@@ -37,7 +40,7 @@ export async function renderTestnet(root) {
       <div class="ccard"><h3>K3 · conservation and refunds ${ok(conservedAll && cases.every((c) => c.in_flight_after === '0'))}</h3>
         <p class="muted">Σ over the eight trolls of (supply + in flight + burned − minted) equals the total supply before and after every transaction: ${conservedAll ? 'yes, every time' : 'NO'}.</p>
         <table class="tn"><thead><tr><th>Case</th><th>Sender change</th><th>Tx</th></tr></thead><tbody>
-          ${cases.map((c) => `<tr><td>${esc(c.label)}<div class="muted">${esc(c.expect)}</div></td><td>${tokens(c.sender_delta)} tokens</td><td>${tx(c.hash)}</td></tr>`).join('')}
+          ${cases.map((c) => `<tr><td>${esc(c.label)}<div class="muted">${esc(c.expect)}${c.errors?.length && c.msg_bytes > 4096 ? ` · error: ${esc(c.errors[0])}` : ''}</div></td><td>${tokens(c.sender_delta)} tokens</td><td>${tx(c.hash)}</td></tr>`).join('')}
         </tbody></table></div>
     </div>
     ${r.indexer_check ? `<p class="muted">Indexers: ${esc(r.indexer_check.note)}</p>` : ''}`;

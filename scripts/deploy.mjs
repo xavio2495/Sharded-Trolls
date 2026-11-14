@@ -79,7 +79,7 @@ await signer.send(parent, rootActions);
 await new Promise((r) => setTimeout(r, 2000));
 for (const t of trolls) {
   await signer.send(t.account, [
-    action.createAccount(), action.transfer(BigInt(values['troll-near']) * NEAR), action.useGlobalContractByHash(codeHash),
+    action.createAccount(), action.transfer(BigInt(Math.round(Number(values['troll-near']) * 1e6)) * 10n ** 18n), action.useGlobalContractByHash(codeHash),
     action.functionCall('new', { root: parent, trolls: trollIds, params, metadata, start_ms: startMs, total_supply: totalSupply, launch_supply: launchSupply }, 100n * TGAS),
   ]);
   console.log(`  ${t.account.padEnd(28)} shard ${t.shard}`);
