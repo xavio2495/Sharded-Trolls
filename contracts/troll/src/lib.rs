@@ -56,6 +56,20 @@ pub struct Pool {
     pub remaining: U128,
 }
 
+/// NEP-148 token metadata, same JSON shape as the standard's. `reference_hash` stays the
+/// base64 string it arrives as.
+#[near(serializers = [json, borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct FungibleTokenMetadata {
+    pub spec: String,
+    pub name: String,
+    pub symbol: String,
+    pub icon: Option<String>,
+    pub reference: Option<String>,
+    pub reference_hash: Option<String>,
+    pub decimals: u8,
+}
+
 /// NEP-145 storage balance (same JSON shape as the standard's).
 #[near(serializers = [json])]
 #[derive(Debug, PartialEq)]
@@ -100,13 +114,14 @@ pub struct TrollInfo {
     pub last_applied: Option<u64>,
 }
 
-#[near(contract_state, contract_metadata(standard(standard = "nep145", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
+#[near(contract_state, contract_metadata(standard(standard = "nep141", version = "1.0.0"), standard(standard = "nep145", version = "1.0.0"), standard(standard = "nep148", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
 #[derive(PanicOnDefault)]
 pub struct Troll {
     root: AccountId,
     index: u8,
     trolls: Vec<AccountId>,
     params: Params,
+    metadata: FungibleTokenMetadata,
     start_ms: u64,
     accounts: Map<AccountId, Account>,
     /// Balances + hoard + launch pool + unclaimed reward pools. Excludes `in_flight`.
@@ -145,11 +160,16 @@ impl Troll {
         root: AccountId,
         trolls: Vec<AccountId>,
         params: Params,
+        metadata: FungibleTokenMetadata,
         start_ms: u64,
         total_supply: U128,
         launch_supply: U128,
     ) -> Self {
         validate_setup(&params, &trolls);
+        require!(metadata.spec == "ft-1.0.0", "metadata spec must be ft-1.0.0");
+        require!(metadata.reference.is_some() == metadata.reference_hash.is_some(), "reference and reference_hash go together");
+        // 32 bytes in padded base64
+        require!(metadata.reference_hash.as_ref().is_none_or(|h| h.len() == 44 && h.ends_with('=')), "reference_hash must be 32 bytes");
         require!(launch_supply.0 <= total_supply.0, "launch_supply > total_supply");
         let me = env::current_account_id();
         let index = trolls.iter().position(|t| *t == me).expect("this account is not in trolls") as u8;
@@ -161,6 +181,7 @@ impl Troll {
             index,
             trolls,
             params,
+            metadata,
             start_ms,
             accounts: Map::new(key(b'a', index)),
             supply: launch_pool + hoard,
@@ -177,6 +198,7 @@ impl Troll {
             account_storage_usage: 0,
         };
         this.measure_account_storage();
+        emit_ft_mint(&me, this.initial, "initial supply");
         this
     }
 
@@ -201,8 +223,7 @@ impl Troll {
             emit_ft_transfer(&sender_id, &receiver_id, amount, memo.as_deref());
             return PromiseOrValue::Value(true);
         }
-        self.supply -= amount;
-        self.in_flight += amount;
+        self.send_out(&sender_id, amount, dest);
         self.add_pending(&sender_id, amount);
         let toll = bps_of(amount, self.params.toll_bps);
         ext_sibling::ext(self.trolls[dest].clone())
@@ -253,8 +274,7 @@ impl Troll {
                 ))
                 .into();
         }
-        self.supply -= amount;
-        self.in_flight += amount;
+        self.send_out(&sender_id, amount, dest);
         let toll = bps_of(amount, self.params.toll_bps);
         ext_sibling::ext(self.trolls[dest].clone())
             .with_static_gas(GAS_FOR_CREDIT_CALL)
@@ -336,7 +356,7 @@ impl Troll {
         );
         self.add_balance(&receiver_id, amount.0);
         self.supply += amount.0;
-        emit_ft_transfer(&sender_id, &receiver_id, amount.0, None);
+        emit_ft_mint(&receiver_id, amount.0, &format!("cross-troll from {sender_id} via {caller}"));
     }
 
     /// Cross-troll leg of `ft_transfer_call`, at the receiver's home troll. Only sibling trolls.
@@ -369,7 +389,7 @@ impl Troll {
         let back = self.take_back(&receiver_id, amount.0);
         if back > 0 {
             self.supply -= back;
-            emit_ft_transfer(&receiver_id, &sender_id, back, Some("refund"));
+            emit_ft_burn(&receiver_id, back, &format!("cross-troll return to {sender_id}"));
         }
         U128(back)
     }
@@ -386,9 +406,7 @@ impl Troll {
         let net = amount.0 - toll.0;
         let unused = match promise_u128() {
             Some(NOT_CREDITED) => {
-                self.supply += amount.0;
-                self.resolve_pending(&sender_id, amount.0, amount.0);
-                emit_troll_event("credit_refunded", &format!(r#"{{"account_id":"{sender_id}","amount":"{}"}}"#, amount.0));
+                self.refund_failed_credit(&sender_id, amount.0);
                 return U128(0);
             }
             Some(unused) => unused.min(net),
@@ -399,10 +417,10 @@ impl Troll {
         };
         self.supply += unused;
         self.resolve_pending(&sender_id, amount.0, unused);
-        if toll.0 > 0 {
-            self.burned += toll.0;
-            emit_ft_burn(&sender_id, toll.0, "toll");
+        if unused > 0 {
+            emit_ft_mint(&sender_id, unused, "cross-troll return");
         }
+        self.book_toll(&sender_id, toll.0);
         U128(net - unused)
     }
 
@@ -415,20 +433,12 @@ impl Troll {
         #[callback_result] credited: Result<(), PromiseError>,
     ) -> bool {
         self.in_flight -= amount.0;
-        let refund = if credited.is_ok() { 0 } else { amount.0 };
-        self.resolve_pending(&sender_id, amount.0, refund);
         if credited.is_ok() {
-            if toll.0 > 0 {
-                self.burned += toll.0;
-                emit_ft_burn(&sender_id, toll.0, "toll");
-            }
+            self.resolve_pending(&sender_id, amount.0, 0);
+            self.book_toll(&sender_id, toll.0);
             true
         } else {
-            self.supply += amount.0;
-            emit_troll_event(
-                "credit_refunded",
-                &format!(r#"{{"account_id":"{sender_id}","amount":"{}"}}"#, amount.0),
-            );
+            self.refund_failed_credit(&sender_id, amount.0);
             false
         }
     }
@@ -519,6 +529,19 @@ impl Troll {
         self.trolls.clone()
     }
 
+    /// NEP-148 metadata; the same on the root and every troll.
+    pub fn ft_metadata(&self) -> FungibleTokenMetadata {
+        self.metadata.clone()
+    }
+
+    /// This troll's share of the supply: balances, hoard, launch pool and unclaimed reward
+    /// pools held here. Outgoing cross-troll amounts are logged as burned when they leave and
+    /// as minted when they arrive, so this matches the sum of this contract's own events.
+    /// The token-wide total is the sum over all trolls (plus anything in flight).
+    pub fn ft_total_supply(&self) -> U128 {
+        U128(self.supply)
+    }
+
     pub fn info(&self) -> TrollInfo {
         let epoch = self.current_epoch();
         TrollInfo {
@@ -554,6 +577,30 @@ impl Troll {
         let mut a = self.accounts.get(who).unwrap_or_else(|| env::panic_str(&format!("{who} is not registered")));
         a.balance += amount;
         self.accounts.insert(who, &a);
+    }
+
+    /// Moves a debited cross-troll amount out of this troll's supply into `in_flight`.
+    fn send_out(&mut self, who: &AccountId, amount: u128, dest: usize) {
+        self.supply -= amount;
+        self.in_flight += amount;
+        emit_ft_burn(who, amount, &format!("cross-troll to {}", self.trolls[dest]));
+    }
+
+    /// The destination did not credit: the sender gets the whole amount back here.
+    fn refund_failed_credit(&mut self, who: &AccountId, amount: u128) {
+        self.supply += amount;
+        self.resolve_pending(who, amount, amount);
+        emit_ft_mint(who, amount, "cross-troll refund");
+        emit_troll_event("credit_refunded", &format!(r#"{{"account_id":"{who}","amount":"{amount}"}}"#));
+    }
+
+    /// Books the toll of a confirmed cross-troll transfer. Its burn is already in the event log
+    /// (the source burned the full amount, the destination minted the amount minus the toll).
+    fn book_toll(&mut self, who: &AccountId, toll: u128) {
+        if toll > 0 {
+            self.burned += toll;
+            emit_troll_event("toll", &format!(r#"{{"account_id":"{who}","amount":"{toll}"}}"#));
+        }
     }
 
     fn add_pending(&mut self, who: &AccountId, amount: u128) {

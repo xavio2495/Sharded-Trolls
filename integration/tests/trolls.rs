@@ -38,6 +38,13 @@ fn params(feed_target: u32) -> Value {
     })
 }
 
+fn metadata() -> Value {
+    json!({
+        "spec": "ft-1.0.0", "name": "Sharded Trolls", "symbol": "TROLL",
+        "icon": null, "reference": null, "reference_hash": null, "decimals": 24
+    })
+}
+
 async fn block_ms(env: &Env) -> testresult::TestResult<u64> {
     let b = near_api::Chain::block().fetch_from(&env.network).await?;
     Ok((b.header.timestamp_nanosec.to_string().parse::<u128>()? / 1_000_000) as u64)
@@ -59,7 +66,7 @@ async fn deploy(env: &Env, feed_target: u32) -> testresult::TestResult<Token> {
             .with_init_call(
                 "new",
                 json!({
-                    "root": root, "trolls": trolls, "params": p,
+                    "root": root, "trolls": trolls, "params": p, "metadata": metadata(),
                     "start_ms": start_ms, "total_supply": TOTAL.to_string(),
                     "launch_supply": LAUNCH.to_string(),
                 }),
@@ -76,10 +83,7 @@ async fn deploy(env: &Env, feed_target: u32) -> testresult::TestResult<Token> {
             json!({
                 "params": p, "trolls": trolls, "start_ms": start_ms,
                 "total_supply": TOTAL.to_string(),
-                "metadata": {
-                    "spec": "ft-1.0.0", "name": "Sharded Trolls", "symbol": "TROLL",
-                    "icon": null, "reference": null, "reference_hash": null, "decimals": 24
-                },
+                "metadata": metadata(),
             }),
         )?
         .with_signer(env.signer.clone())
@@ -263,6 +267,16 @@ async fn transfers_tolls_refunds_and_access() -> testresult::TestResult<()> {
     let (held, burned) = totals(&env, &t).await?;
     assert_eq!(held + burned, TOTAL);
     assert_eq!(burned, toll);
+
+    // Each troll is a self-describing NEP-141: its own metadata, and its own share of the
+    // supply. Nothing is in flight now, so the shares add up to the token-wide total.
+    let mut sum = 0u128;
+    for troll in &t.trolls {
+        let m: Value = view(&env, troll, "ft_metadata", json!({})).await?;
+        assert_eq!((m["symbol"].as_str(), m["decimals"].as_u64()), (Some("TROLL"), Some(24)));
+        sum += view::<String>(&env, troll, "ft_total_supply", json!({})).await?.parse::<u128>()?;
+    }
+    assert_eq!(sum, TOTAL - toll);
 
     // Access control.
     let eve = common::create_account(&env, "eve.sandbox").await?.0;

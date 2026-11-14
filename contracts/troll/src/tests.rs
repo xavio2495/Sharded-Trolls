@@ -37,25 +37,76 @@ fn ctx(current: &AccountId, pred: &AccountId, ms: u64, yocto: u128) {
     testing_env!(b.build());
 }
 
+fn metadata() -> FungibleTokenMetadata {
+    FungibleTokenMetadata {
+        spec: "ft-1.0.0".into(),
+        name: "Sharded Trolls".into(),
+        symbol: "TROLL".into(),
+        icon: None,
+        reference: None,
+        reference_hash: None,
+        decimals: 24,
+    }
+}
+
+/// Balances an indexer would rebuild from one contract's NEP-141 events alone.
+type Ledger = HashMap<String, i128>;
+
+/// Applies this call's NEP-141 events to `ledger` and checks no owner goes negative.
+fn index_logs(ledger: &mut Ledger, contract: &AccountId) {
+    use near_sdk::serde_json::{self, Value};
+    for log in get_logs() {
+        let Some(json) = log.strip_prefix("EVENT_JSON:") else { continue };
+        let v: Value = serde_json::from_str(json).unwrap();
+        if v["standard"] != "nep141" {
+            continue;
+        }
+        for d in v["data"].as_array().unwrap() {
+            let amount: i128 = d["amount"].as_str().unwrap().parse().unwrap();
+            let mut add = |who: &Value, x: i128| {
+                let who = who.as_str().unwrap().to_string();
+                let b = ledger.entry(who.clone()).or_default();
+                *b += x;
+                assert!(*b >= 0, "{contract}: events drive {who} negative: {log}");
+            };
+            match v["event"].as_str().unwrap() {
+                "ft_mint" => add(&d["owner_id"], amount),
+                "ft_burn" => add(&d["owner_id"], -amount),
+                "ft_transfer" => {
+                    add(&d["old_owner_id"], -amount);
+                    add(&d["new_owner_id"], amount);
+                }
+                e => panic!("unexpected nep141 event {e}"),
+            }
+        }
+    }
+}
+
 /// Several trolls sharing one mocked storage; the test plays the runtime.
 struct Net {
     t: Vec<Troll>,
     ids: Vec<AccountId>,
     now: u64,
+    /// Per troll: balances rebuilt from that troll's own events.
+    events: Vec<Ledger>,
 }
 
 impl Net {
     /// `n` trolls with ranges split on single letters; troll `i` holds ids starting with `first_letter(i)`.
     fn new(n: u8, total: u128, launch: u128) -> Self {
         let ids: Vec<AccountId> = (0..n).map(|i| acc(&format!("troll{i}.t"))).collect();
+        let mut events = vec![Ledger::new(); n as usize];
         let t = ids
             .iter()
-            .map(|id| {
+            .zip(events.iter_mut())
+            .map(|(id, ledger)| {
                 ctx(id, &acc("deployer.t"), START, 0);
-                Troll::new(acc(ROOT), ids.clone(), params(n), START, U128(total), U128(launch))
+                let t = Troll::new(acc(ROOT), ids.clone(), params(n), metadata(), START, U128(total), U128(launch));
+                index_logs(ledger, id);
+                t
             })
             .collect();
-        Net { t, ids, now: START }
+        Net { t, ids, now: START, events }
     }
 
     /// The `k`-th account (in a fixed name sequence) whose home is troll `i`; independent of how
@@ -70,7 +121,26 @@ impl Net {
 
     fn as_<R>(&mut self, i: usize, pred: &AccountId, yocto: u128, f: impl FnOnce(&mut Troll) -> R) -> R {
         ctx(&self.ids[i], pred, self.now, yocto);
-        f(&mut self.t[i])
+        let r = f(&mut self.t[i]);
+        index_logs(&mut self.events[i], &self.ids[i]);
+        r
+    }
+
+    /// Each troll's events add up: per owner to `ft_balance_of` (the troll's own account holds
+    /// hoard, launch pool and reward pools), and in total to `ft_total_supply`.
+    fn check_events(&self) {
+        for (i, t) in self.t.iter().enumerate() {
+            let ev = &self.events[i];
+            assert_eq!(ev.values().sum::<i128>() as u128, t.ft_total_supply().0, "troll {i}: events sum to ft_total_supply");
+            for (who, b) in ev {
+                let want = if *who == self.ids[i].as_str() {
+                    t.hoard + t.launch_pool + pool_total(t)
+                } else {
+                    t.ft_balance_of(acc(who)).0
+                };
+                assert_eq!(*b as u128, want, "troll {i}: events for {who}");
+            }
+        }
     }
 
     fn min(&self) -> u128 {
@@ -126,6 +196,54 @@ fn toll(a: u128) -> u128 {
 // ---------- init ----------
 
 #[test]
+fn trolls_are_self_describing_nep141_contracts() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    assert_eq!(net.t[1].ft_metadata(), metadata());
+    assert_eq!(net.t.iter().map(|t| t.ft_total_supply().0).collect::<Vec<_>>(), vec![333_334, 333_333, 333_333]);
+    // a cross-troll transfer: burned at the source when it leaves, minted net at the destination
+    let (a, c) = (net.user(0, 1), net.user(2, 1));
+    net.launch(0, &a);
+    net.transfer(0, &a, &c, 40_000);
+    let log = get_logs().join("\n");
+    assert!(log.contains("\"ft_burn\"") && log.contains("\"amount\":\"40000\"") && log.contains("cross-troll to troll2.t"));
+    assert_eq!(net.t[0].ft_total_supply().0, 333_334 - 40_000);
+    net.credit(0, 2, &a, &c, 39_900);
+    let log = get_logs().join("\n");
+    assert!(log.contains("\"ft_mint\"") && log.contains("\"amount\":\"39900\"") && log.contains("via troll0.t"));
+    net.on_credit(0, &a, 40_000, 100, true);
+    assert_eq!(net.t.iter().map(|t| t.ft_total_supply().0).sum::<u128>(), 1_000_000 - 100);
+    net.check_events();
+}
+
+#[test]
+#[should_panic(expected = "metadata spec must be ft-1.0.0")]
+fn init_rejects_invalid_metadata() {
+    let ids = vec![acc("troll0.t"), acc("troll1.t")];
+    ctx(&ids[0], &acc("d.t"), START, 0);
+    Troll::new(acc(ROOT), ids, params(2), FungibleTokenMetadata { spec: "nope".into(), ..metadata() }, START, U128(10), U128(0));
+}
+
+#[test]
+#[should_panic(expected = "reference_hash must be 32 bytes")]
+fn init_rejects_short_reference_hash() {
+    let ids = vec![acc("troll0.t"), acc("troll1.t")];
+    ctx(&ids[0], &acc("d.t"), START, 0);
+    let m = FungibleTokenMetadata { reference: Some("https://x".into()), reference_hash: Some("AAAA".into()), ..metadata() };
+    Troll::new(acc(ROOT), ids, params(2), m, START, U128(10), U128(0));
+}
+
+#[test]
+fn metadata_json_matches_the_standard_shape() {
+    use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata as Std;
+    use near_sdk::serde_json::{from_str, to_string};
+    let json = r#"{"spec":"ft-1.0.0","name":"Sharded Trolls","symbol":"TROLL","icon":null,"reference":"https://x","reference_hash":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","decimals":24}"#;
+    let ours: FungibleTokenMetadata = from_str(json).unwrap();
+    let theirs: Std = from_str(json).unwrap();
+    assert_eq!(to_string(&ours).unwrap(), to_string(&theirs).unwrap());
+    assert_eq!(to_string(&ours).unwrap(), json);
+}
+
+#[test]
 fn init_splits_supply_and_launch_pool() {
     let net = Net::new(3, 1_000, 400);
     let pools: Vec<_> = net.t.iter().map(|t| (t.index, t.launch_pool, t.hoard, t.supply)).collect();
@@ -138,7 +256,7 @@ fn init_splits_supply_and_launch_pool() {
 fn init_rejects_foreign_account() {
     let ids = vec![acc("troll0.t"), acc("troll1.t")];
     ctx(&acc("other.t"), &acc("d.t"), START, 0);
-    Troll::new(acc(ROOT), ids, params(2), START, U128(10), U128(0));
+    Troll::new(acc(ROOT), ids, params(2), metadata(), START, U128(10), U128(0));
 }
 
 #[test]
@@ -146,7 +264,7 @@ fn init_rejects_foreign_account() {
 fn init_rejects_duplicate_trolls() {
     let ids = vec![acc("troll0.t"), acc("troll1.t"), acc("troll0.t")];
     ctx(&ids[0], &acc("d.t"), START, 0);
-    Troll::new(acc(ROOT), ids, params(3), START, U128(10), U128(0));
+    Troll::new(acc(ROOT), ids, params(3), metadata(), START, U128(10), U128(0));
 }
 
 // ---------- launch ----------
@@ -271,7 +389,8 @@ fn cross_troll_transfer_credits_then_burns_toll() {
 
     assert!(net.on_credit(0, &a, 40_000, toll(40_000), true));
     assert_eq!((net.t[0].in_flight, net.t[0].burned), (0, 100));
-    assert!(get_logs()[0].contains("\"ft_burn\""));
+    assert!(get_logs()[0].contains("\"event\":\"toll\"") && get_logs()[0].contains("\"amount\":\"100\""));
+    net.check_events();
     let total: u128 = net.t.iter().map(|t| t.supply).sum::<u128>() + net.t.iter().map(|t| t.burned).sum::<u128>();
     assert_eq!(total, 1_000_000);
 }
@@ -285,7 +404,8 @@ fn failed_credit_refunds_in_full() {
     assert!(!net.on_credit(0, &a, 40_000, 100, false));
     assert_eq!(net.bal(0, &a), 100_000);
     assert_eq!((net.t[0].supply, net.t[0].in_flight, net.t[0].burned), (333_334, 0, 0));
-    assert!(get_logs()[0].contains("credit_refunded"));
+    assert!(get_logs()[0].contains("\"ft_mint\"") && get_logs()[1].contains("credit_refunded"));
+    net.check_events();
 }
 
 #[test]
@@ -596,6 +716,7 @@ fn conservation_run(seed: u64, steps: usize) {
         }
         if step % 50 == 0 {
             check(&net, &callbacks, &model);
+            net.check_events();
         }
     }
 
@@ -612,6 +733,7 @@ fn conservation_run(seed: u64, steps: usize) {
         }
     }
     check(&net, &[], &model);
+    net.check_events();
     assert_eq!(net.t.iter().map(|t| t.in_flight).sum::<u128>(), 0);
     for ((i, u), v) in &model {
         assert_eq!(net.bal(*i, u), *v, "balance of {u} at troll {i}");
@@ -1019,10 +1141,14 @@ fn as_cb<R>(net: &mut Net, i: usize, result: Option<&[u8]>, f: impl FnOnce(&mut 
     let me = net.ids[i].clone();
     b.current_account_id(me.clone()).predecessor_account_id(me).block_timestamp(net.now * 1_000_000);
     testing_env!(b.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), vec![r]);
-    f(&mut net.t[i])
+    let out = f(&mut net.t[i]);
+    index_logs(&mut net.events[i], &net.ids[i]);
+    out
 }
 
+/// Token-wide books, after checking each troll's events add up on their own.
 fn total_books(net: &Net) -> u128 {
+    net.check_events();
     net.t.iter().map(|t| t.supply + t.in_flight + t.burned).sum::<u128>() - net.t.iter().map(|t| t.minted).sum::<u128>()
 }
 
@@ -1055,6 +1181,7 @@ fn same_troll_transfer_call_failed_or_garbage_refunds_all() {
     call(&mut net, 0, &a, &w, 1_000);
     assert_eq!(as_cb(&mut net, 0, Some(b"oops"), |t| t.ft_resolve_transfer(a.clone(), w.clone(), U128(1_000))).0, 0);
     assert_eq!((net.bal(0, &a), net.bal(0, &w)), (100_000, 0));
+    net.check_events();
 }
 
 #[test]
@@ -1067,6 +1194,7 @@ fn resolve_takes_back_at_most_what_the_receiver_still_holds() {
     let used = as_cb(&mut net, 0, Some(br#""1000""#), |t| t.ft_resolve_transfer(a.clone(), w.clone(), U128(1_000)));
     assert_eq!(used.0, 900);
     assert_eq!((net.bal(0, &a), net.bal(0, &w)), (99_100, 0));
+    net.check_events();
 }
 
 #[test]
@@ -1088,6 +1216,8 @@ fn cross_troll_transfer_call_returns_unused_to_the_source() {
     let used = as_cb(&mut net, 0, Some(br#""9900""#), |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
     assert_eq!(used.0, 30_000);
     assert_eq!((net.bal(0, &a), net.t[0].in_flight, net.t[0].burned), (69_900, 0, 100));
+    let logs = get_logs();
+    assert!(logs[0].contains("\"ft_mint\"") && logs[0].contains("\"amount\":\"9900\"") && logs[1].contains("\"toll\""));
     assert_eq!(total_books(&net), 1_000_000);
 }
 
@@ -1108,7 +1238,7 @@ fn cross_troll_transfer_call_to_unregistered_refunds_everything() {
     let used = as_cb(&mut net, 0, Some(refused.as_bytes()), |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
     assert_eq!(used.0, 0);
     assert_eq!((net.bal(0, &a), net.t[0].in_flight, net.t[0].burned), (100_000, 0, 0));
-    assert!(get_logs()[0].contains("credit_refunded"));
+    assert!(get_logs()[0].contains("\"ft_mint\"") && get_logs()[0].contains("\"amount\":\"40000\"") && get_logs()[1].contains("credit_refunded"));
     assert_eq!(total_books(&net), 1_000_000);
 }
 
