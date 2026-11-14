@@ -1,0 +1,8 @@
+{
+  "name": "@sharded-trolls/client",
+  "private": true,
+  "type": "module",
+  "description": "Route NEP-141 calls to a holder's home troll; read-only RPC helpers, signer-agnostic writes",
+  "exports": "./index.js",
+  "scripts": { "test": "node --test" }
+}
