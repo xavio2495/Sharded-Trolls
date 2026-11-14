@@ -108,7 +108,8 @@ async function setup() {
     await sandbox.send(control, funded.slice(i, i + 8).map((h) => action.functionCall('ft_transfer', { receiver_id: h.account, amount: each }, 10n * TGAS, 1n)));
   }
   for (const h of deployed ? funded : []) {
-    await new Account(near, h.account, KeyPair.fromString(h.secret)).call(h.troll, 'claim_launch', {}, { gas: 30n * TGAS });
+    // already registered above, so only the claim fee is due
+    await new Account(near, h.account, KeyPair.fromString(h.secret)).call(h.troll, 'claim_launch', {}, { gas: 30n * TGAS, deposit: BigInt(deploy.params.claim_fee ?? 0) });
   }
   writeFileSync(STATE, JSON.stringify({ control, stampedes, probes, receivers }, null, 2) + '\n');
   console.log(`setup done${deployed ? '' : ' (control only: no troll deployment)'}: ${stampedes.length} stampedes, ${probes.length} probes, ${receivers.length} receivers, control ${control}; state in ${STATE}`);

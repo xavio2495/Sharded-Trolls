@@ -65,8 +65,11 @@ export class TrollClient {
     return signer.call(await this.homeTroll(senderId), 'ft_transfer', { receiver_id: receiverId, amount: String(amount), memo }, { gas: 50n * TGAS, deposit: 1n });
   }
 
+  // Attaches the claim fee plus the registration deposit; the troll refunds what was not due.
   async claimLaunch(signer, accountId) {
-    return signer.call(await this.homeTroll(accountId), 'claim_launch', {}, { gas: 30n * TGAS });
+    const troll = await this.homeTroll(accountId);
+    const [{ claim_fee: fee = '0' }, { min }] = await Promise.all([this.view(troll, 'params'), this.view(troll, 'storage_balance_bounds')]);
+    return signer.call(troll, 'claim_launch', {}, { gas: 30n * TGAS, deposit: BigInt(fee) + BigInt(min) });
   }
 }
 

@@ -4,8 +4,11 @@
 // deployed on the parent account. Writes target/deploy-<network>.json for the other scripts.
 // Usage: node --dns-result-order=ipv4first scripts/deploy.mjs [--network localnet|testnet]
 //          [--parent sandbox] [--signer <parent>] [--key-file target/localnet/validator_key.json]
-//          [--epoch-ms 300000] [--symbol TROLL] [--troll-near 5] [--start-ms <unix ms, default now>]
+//          [--epoch-ms <localnet 300000, testnet 3600000>] [--window-ms <default: launch_window_epochs epochs>]
+//          [--params launch|sim] [--symbol TROLL] [--troll-near 5] [--start-ms <unix ms, default now>]
 //          [--wrapper <prefix>]
+// --params launch (default) uses LAUNCH_PARAMS (launch claim 1,000 tokens, claim fee 0.01 NEAR);
+// --params sim uses the simulation's DEFAULT_PARAMS (claim 100,000 tokens, no fee).
 // --start-ms sets epoch 0 and the launch window start (a chosen launch time; default: now).
 // --wrapper deploys the single-contract NEP-141 wrapper at <prefix>.<parent>, bound to its home
 // troll, and registers it there. Mainnet is refused here: humans approve every mainnet transaction.
@@ -14,14 +17,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fetchLayout, place } from '../packages/layout/index.js';
-import { DEFAULT_PARAMS } from '../sim/model.js';
+import { DEFAULT_PARAMS, LAUNCH_PARAMS } from '../sim/model.js';
 import { Near, Account, KeyPair, action, NEAR, TGAS } from './lib/near.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const RPC = { localnet: 'http://127.0.0.1:3040', testnet: 'https://rpc.testnet.fastnear.com' };
 const { values } = parseArgs({ options: {
   network: { type: 'string', default: 'localnet' }, parent: { type: 'string' }, signer: { type: 'string' },
-  'key-file': { type: 'string' }, 'epoch-ms': { type: 'string', default: '300000' }, symbol: { type: 'string', default: 'TROLL' },
+  'key-file': { type: 'string' }, 'epoch-ms': { type: 'string' }, 'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' }, symbol: { type: 'string', default: 'TROLL' },
   'troll-near': { type: 'string', default: '5' }, 'start-ms': { type: 'string' }, wrapper: { type: 'string' },
 } });
 const net = values.network;
@@ -36,12 +39,15 @@ const signer = new Account(near, signerId, KeyPair.fromString(JSON.parse(readFil
 
 const DECIMALS = 10n ** 24n;
 const tokens = (v) => (BigInt(Math.round(v)) * DECIMALS).toString();
-const P = DEFAULT_PARAMS;
-const epochMs = Number(values['epoch-ms']);
+if (!['launch', 'sim'].includes(values.params)) throw new Error('--params launch|sim');
+const P = values.params === 'sim' ? DEFAULT_PARAMS : LAUNCH_PARAMS;
+const epochMs = Number(values['epoch-ms'] ?? (net === 'testnet' ? 3_600_000 : 300_000));
+const windowMs = Number(values['window-ms'] ?? epochMs * P.launch_window_epochs);
+if (!(epochMs > 0) || !(windowMs > 0)) throw new Error('--epoch-ms and --window-ms must be positive');
 const params = {
   troll_count: P.troll_count, toll_bps: P.toll_bps, feed_target: P.feed_target,
   reward_per_epoch: tokens(P.reward_per_epoch), starve_burn_bps: P.starve_burn_bps,
-  epoch_ms: epochMs, launch_window_ms: epochMs * P.launch_window_epochs,
+  epoch_ms: epochMs, launch_window_ms: windowMs,
   launch_claim_amount: tokens(P.launch_claim_amount), min_counted_transfer: tokens(P.min_counted_transfer),
   // NEAR per launch claim, kept by the troll; micro-NEAR precision
   claim_fee: (BigInt(Math.round((P.claim_fee_near ?? 0) * 1e6)) * 10n ** 18n).toString(),

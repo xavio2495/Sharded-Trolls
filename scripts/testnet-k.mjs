@@ -5,7 +5,8 @@
 // Usage: node --dns-result-order=ipv4first scripts/testnet-k.mjs <step> [--send]
 //   plan      read-only: funder balance, placement under the parent, wasm sizes, storage price, budget
 //   parent    funder creates the parent account with a fresh full-access key (target/testnet/parent-key.json)
-//   deploy    runs deploy.mjs on testnet with the parent key, then records K7 (costs, code hashes)
+//   deploy    runs deploy.mjs on testnet with the parent key (LAUNCH_PARAMS; 1 h epochs, launch window
+//             one epoch unless --window-ms), then records K7 (costs, code hashes)
 //   setup     test accounts: one stampede and two holders homed on distinct trolls, receivers, registrations,
 //             launch claims (inside the launch window)
 //   k2        one fire of 50 same-troll transfers, one fire of 25 mixed transfers; counts executed transfers
@@ -31,6 +32,7 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   send: { type: 'boolean', default: false }, funder: { type: 'string', default: 'xavio.testnet' },
   parent: { type: 'string', default: 'st.xavio.testnet' }, 'parent-near': { type: 'string', default: '38' },
   'troll-near': { type: 'string', default: '1' }, 'epoch-ms': { type: 'string', default: '3600000' },
+  'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' },
 } });
 const step = positionals[0] ?? 'plan';
 const SEND = values.send;
@@ -119,7 +121,8 @@ if (step === 'plan') {
     `create account, ${values['parent-near']} NEAR, full-access key ${key.publicKeyString}`));
 } else if (step === 'deploy') {
   const args = ['--dns-result-order=ipv4first', 'scripts/deploy.mjs', '--network', 'testnet', '--parent', values.parent,
-    '--key-file', 'target/testnet/parent-key.json', '--troll-near', values['troll-near'], '--epoch-ms', values['epoch-ms']];
+    '--key-file', 'target/testnet/parent-key.json', '--troll-near', values['troll-near'], '--epoch-ms', values['epoch-ms'], '--params', values.params,
+    ...(values['window-ms'] ? ['--window-ms', values['window-ms']] : [])];
   log(`node ${args.join(' ')}`);
   if (!SEND) process.exit(0);
   const before = await balance(values.parent);

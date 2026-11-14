@@ -24,6 +24,10 @@ export const DEFAULT_PARAMS = {
   claim_fee_near: 0, // NEAR paid (not refunded) per launch claim
 };
 
+// Values for a real launch: the parameters above with the sized launch claim and its fee
+// (a small starter bag; bots claiming the pool pay only above a token price of ~1e-5 NEAR).
+export const LAUNCH_PARAMS = { ...DEFAULT_PARAMS, launch_claim_amount: 1000, claim_fee_near: 0.01 };
+
 // Cost assumptions for a bot farmer, in NEAR. Gas: ~2.5 Tgas per counted transfer at the 1e8
 // yocto/gas floor price. Setup: account creation plus storage for one balance entry.
 export const COSTS = { fee_per_transfer: 0.00025, setup_per_bot: 0.002 };
