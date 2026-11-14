@@ -54,6 +54,17 @@ step "Feeding: S1 (waits for epoch 1)"
 $K settle-at $P3 --epoch 1 --wait --send > "$LOGS/fd-S1.log" 2>&1 || fail "S1"
 $K feeding-report $P3 --report-dir "target/rehearsal/out" > "$LOGS/fd-report.log" 2>&1 || fail "feeding report"
 
+# ---------- 3b. Claim deadline drill: claim_epochs 2, unregister with an unclaimed reward, late claim, sweep ----------
+step "drill: claim deadline + sweep (claim_epochs 2)"
+P7="--parent sw.sandbox"
+$K parent $P7 --parent-near 8 --send > "$LOGS/sw-parent.log" 2>&1 || fail "sw parent"
+$K deploy $P7 --troll-near 0.2 --global-hash "$HASH" --epoch-ms 240000 --feed-target 1 --claim-epochs 2 --label drill --send > "$LOGS/sw-deploy.log" 2>&1 || fail "sw deploy"
+$K feeders $P7 --send > "$LOGS/sw-feeders.log" 2>&1 || fail "sw feeders"
+$K feed $P7 --tag E0 --all-from 0 --send > "$LOGS/sw-E0.log" 2>&1 || fail "sw E0"
+$K settle-at $P7 --epoch 0 --wait --send > "$LOGS/sw-S0.log" 2>&1 || fail "sw S0"
+$K claim-rewards $P7 --epoch 0 --except 0,1 --send > "$LOGS/sw-C0.log" 2>&1 || fail "sw C0"
+$K drill-sweep $P7 --epoch 0 --send > "$LOGS/sw-drill.log" 2>&1 || fail "sweep drill"
+
 # ---------- 4. Settle on the K deployment: 249 refused, 250 settles (epoch 0) ----------
 step "K settle 249/250"
 $K settle $P --wait --send > "$LOGS/k-settle.log" 2>&1 || fail "k settle"

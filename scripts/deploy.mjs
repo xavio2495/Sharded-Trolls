@@ -6,7 +6,7 @@
 //          [--parent sandbox] [--signer <parent>] [--key-file target/localnet/validator_key.json]
 //          [--epoch-ms <localnet 300000, testnet 3600000>] [--window-ms <default: launch_window_epochs epochs>]
 //          [--params launch|sim] [--symbol STRL] [--troll-near 5] [--start-ms <unix ms, default now>]
-//          [--wrapper <prefix>] [--global-hash <base58>] [--name "Sharded Trolls"] [--feed-target N] [--label demo]
+//          [--wrapper <prefix>] [--global-hash <base58>] [--name "Sharded Trolls"] [--feed-target N] [--claim-epochs N] [--label demo]
 // --params launch (default) uses LAUNCH_PARAMS (launch claim 1,000 tokens, claim fee 0.01 NEAR);
 // --params sim uses the simulation's DEFAULT_PARAMS (claim 100,000 tokens, no fee).
 // --start-ms sets epoch 0 and the launch window start (a chosen launch time; default: now).
@@ -33,7 +33,7 @@ const { values } = parseArgs({ options: {
   'key-file': { type: 'string' }, 'epoch-ms': { type: 'string' }, 'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' }, symbol: { type: 'string', default: 'STRL' },
   'troll-near': { type: 'string', default: '5' }, 'start-ms': { type: 'string' }, wrapper: { type: 'string' },
   'global-hash': { type: 'string' }, 'feed-target': { type: 'string' }, label: { type: 'string' },
-  name: { type: 'string', default: 'Sharded Trolls' }, rpc: { type: 'string' }, 'allow-hash-mismatch': { type: 'boolean', default: false },
+  name: { type: 'string', default: 'Sharded Trolls' }, rpc: { type: 'string' }, 'allow-hash-mismatch': { type: 'boolean', default: false }, 'claim-epochs': { type: 'string' },
 } });
 const net = values.network;
 if (!RPC[net]) throw new Error(`unsupported network ${net}`);
@@ -64,6 +64,8 @@ const params = {
   claim_fee: (BigInt(Math.round((P.claim_fee_near ?? 0) * 1e6)) * 10n ** 18n).toString(),
   // NEAR the root pays whoever settles an epoch, only out of its bounty budget (forwarded claim fees); micro-NEAR precision
   settle_bounty: (BigInt(Math.round((P.settle_bounty_near ?? 0) * 1e6)) * 10n ** 18n).toString(),
+  // Epochs a feeder has to claim a reward before anyone may sweep it into food.
+  claim_epochs: values['claim-epochs'] ? Number(values['claim-epochs']) : (P.claim_epochs ?? 30),
 };
 const totalSupply = tokens(P.total_supply), launchSupply = tokens(P.launch_supply);
 

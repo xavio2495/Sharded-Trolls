@@ -52,9 +52,12 @@ check('S0: all fed, streak 1', settled0?.fed === true && settled0.senders.every(
 check('S0: rewards draw on food first, then the launch pool', ev(S0, 'reward_from_food').length === 8 && ev(S0, 'reward_from_launch_pool').length === 8,
   { from_food: ev(S0, 'reward_from_food').map((e) => tok(e.data?.[0]?.amount ?? 0)), from_pool: ev(S0, 'reward_from_launch_pool').map((e) => tok(e.data?.[0]?.amount ?? 0)), food_after: S0.after.trolls.map((t) => tok(t.food)) });
 const bounty = BigInt(S0.bounty_yocto ?? 0), burnt = BigInt(S0.gas_burnt_yocto), delta = BigInt(S0.settler_delta_yocto);
+const skipped0 = ev(S0, 'settle_bounty_skipped')[0]?.data?.[0];
+if (skipped0) console.log(`note: S0 settle_bounty_skipped, reason ${skipped0.reason}`);
 check('S0: settle bounty paid to the settler', ev(S0, 'settle_bounty_paid').length === 1 && bounty === BigInt(kdep.params.settle_bounty ?? 0) && delta === bounty - burnt,
   { bounty_near: Number(bounty) / 1e24, gas_burnt_near: Number(burnt) / 1e24, settler_change_near: Number(delta) / 1e24 });
-check('C0: each feeder paid its share', C0.txs.length === 8 && C0.txs.every((t) => BigInt(t.share) > 0n), { shares: C0.txs.map((t) => tok(t.share)) });
+check('C0: each feeder paid its share', C0.txs.length === 8 && C0.txs.every((t) => BigInt(t.share) > 0n), { shares: C0.txs.map((t) => tok(t.share)),
+  leftover_to_food: (C0.events ?? []).filter((e) => e.event === 'reward_leftover_to_food').map((e) => tok(e.data?.[0]?.amount ?? 0)) });
 check('E1: 7 trolls fed, troll 7 hungry', E1.after.trolls.filter((t) => t.senders_this_epoch === 1).length === 7 && E1.after.trolls[7].senders_this_epoch === 0);
 const settled1 = ev(S1, 'feeding_settled')[0]?.data?.[0];
 const starved = ev(S1, 'troll_starved');
@@ -74,6 +77,10 @@ check('drill: injected 429 at send #7 stops the deploy; resume creates the rest;
 const unLog = readFileSync(resolve(logs, 'un-deploy.log'), 'utf8');
 check('drill: underfunded parent refused before sending anything', unLog.includes('nothing was sent') && !(await near.accountExists('0.un.sandbox')), { message: unLog.match(/needs [0-9.]+ more NEAR/)?.[0] });
 
+const sw = J('sw.sandbox/feeding-drill-sweep.json');
+check('drill: unregister with an unclaimed reward refused; late claim refused; sweep moves the remainder to food', sw?.pass,
+  sw && { claim_epochs: sw.claim_epochs, deadline_epoch: sw.deadline, unregister_after_events: sw.steps[4]?.events, unregister: sw.steps[0].errors?.[0]?.match(/Smart contract panicked: [^"\\]*/)?.[0], late_claim: sw.steps[1].errors?.[0]?.match(/Smart contract panicked: [^"\\]*/)?.[0],
+    swept: sw.steps.slice(2, 4).map((x) => tok(x.reward_expired?.[0]?.amount ?? 0)), food_change: sw.food_change.map(tok), unregister_after_sweep_failed_receipts: sw.steps[4]?.failed_receipts });
 const mmLog = readFileSync(resolve(logs, 'mismatch-deploy.log'), 'utf8');
 check('drill: --global-hash differing from the local troll.wasm is refused', mmLog.includes('differs from --global-hash') && mmLog.includes('nothing was sent'));
 

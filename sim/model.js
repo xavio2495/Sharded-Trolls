@@ -27,7 +27,8 @@ export const DEFAULT_PARAMS = {
 // Values for a real launch: the parameters above with the sized launch claim and its fee
 // (a small starter bag; bots claiming the pool pay only above a token price of ~1e-5 NEAR).
 // settle_bounty_near: NEAR the root pays whoever settles an epoch (read by builds that support it).
-export const LAUNCH_PARAMS = { ...DEFAULT_PARAMS, launch_claim_amount: 1000, claim_fee_near: 0.01, settle_bounty_near: 0.005 };
+// claim_epochs: epochs a feeder has to claim a reward before it is swept into food.
+export const LAUNCH_PARAMS = { ...DEFAULT_PARAMS, launch_claim_amount: 1000, claim_fee_near: 0.01, settle_bounty_near: 0.005, claim_epochs: 30 };
 
 // Cost assumptions for a bot farmer, in NEAR. Gas: ~2.5 Tgas per counted transfer at the 1e8
 // yocto/gas floor price. Setup: account creation plus storage for one balance entry.

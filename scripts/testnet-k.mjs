@@ -59,7 +59,8 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' },
   reuse: { type: 'string' }, 'report-dir': { type: 'string' }, 'spare-near': { type: 'string' },
   'topup-near': { type: 'string' }, 'feed-target': { type: 'string' }, label: { type: 'string' }, 'global-hash': { type: 'string' },
-  symbol: { type: 'string' }, name: { type: 'string' }, epoch: { type: 'string' }, skip: { type: 'string' }, tag: { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
+  symbol: { type: 'string' }, name: { type: 'string' }, epoch: { type: 'string' }, skip: { type: 'string' }, tag: { type: 'string' },
+  'claim-epochs': { type: 'string' }, 'all-from': { type: 'string' }, except: { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
   'settle-min-tgas': { type: 'string', default: '250' }, wait: { type: 'boolean', default: false },
 } });
 const step = positionals[0] ?? 'plan';
@@ -244,7 +245,7 @@ if (step === 'plan') {
     ...(values['window-ms'] ? ['--window-ms', values['window-ms']] : []),
     ...(values['feed-target'] ? ['--feed-target', values['feed-target']] : []), ...(values.label ? ['--label', values.label] : []),
     ...(values['global-hash'] ? ['--global-hash', values['global-hash']] : []), ...(values.symbol ? ['--symbol', values.symbol] : []),
-    ...(values.name ? ['--name', values.name] : []), '--rpc', RPC];
+    ...(values.name ? ['--name', values.name] : []), ...(values['claim-epochs'] ? ['--claim-epochs', values['claim-epochs']] : []), '--rpc', RPC];
   log(`node ${args.join(' ')}`);
   if (!SEND) process.exit(0);
   execFileSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' });
@@ -435,7 +436,7 @@ if (step === 'plan') {
     if (a.outcome === 'STUCK (settling locked)' || settled) break; // nothing more to try for this epoch
   }
   if (SEND) save('settle.json', out);
-} else if (['feeders', 'feed', 'settle-at', 'claim-rewards', 'feeding-report'].includes(step)) {
+} else if (['feeders', 'feed', 'settle-at', 'claim-rewards', 'drill-sweep', 'feeding-report'].includes(step)) {
   const D = dep();
   const root = D.root;
   const n = D.trolls.length;
@@ -522,9 +523,14 @@ if (step === 'plan') {
     const txs = [];
     for (const f of F.feeders) {
       if (f.troll === skip) { log(`${f.account} (troll ${f.troll}) skipped: this troll goes hungry`); continue; }
-      const to = F.feeders[(f.troll + 1) % n];
+      // With --all-from i, nobody pays feeder i, so its balance ends at zero.
+      const skipTo = values['all-from'] !== undefined ? Number(values['all-from']) : null;
+      const to = F.feeders[(f.troll + 1) % n].troll === skipTo ? F.feeders[(f.troll + 2) % n] : F.feeders[(f.troll + 1) % n];
+      // --all-from i: feeder i sends its whole balance (to leave it with only an unclaimed reward later).
+      const all = values['all-from'] !== undefined && Number(values['all-from']) === f.troll;
+      const amount = all && SEND ? BigInt(await view(D.trolls[f.troll].account, 'ft_balance_of', { account_id: f.account })) : 100n * NEAR;
       const r = await submit(SEND ? signerOf(f) : { accountId: f.account }, D.trolls[f.troll].account,
-        [action.functionCall('ft_transfer', { receiver_id: to.account, amount: String(100n * NEAR) }, 50n * TGAS, 1n)], `ft_transfer 100 to ${to.account} (troll ${f.troll} → ${to.troll})`);
+        [action.functionCall('ft_transfer', { receiver_id: to.account, amount: String(amount) }, 50n * TGAS, 1n)], `ft_transfer ${all ? 'whole balance' : '100'} to ${to.account} (troll ${f.troll} → ${to.troll})`);
       if (!r) continue;
       mustSucceed(r);
       txs.push({ from: f.account, to: to.account, troll_from: f.troll, troll_to: to.troll, hash: r.hash, events: events(r).map((e) => `${e.executor}:${e.event}`) });
@@ -563,14 +569,67 @@ if (step === 'plan') {
     const epoch = Number(values.epoch);
     const before = SEND ? await snapshot(F) : null;
     const txs = [];
+    const except = new Set((values.except ?? '').split(',').filter(Boolean).map(Number));
     for (const f of F.feeders) {
+      if (except.has(f.troll)) { log(`${f.account} (troll ${f.troll}) does not claim`); continue; }
       const r = await submit(SEND ? signerOf(f) : { accountId: f.account }, D.trolls[f.troll].account, [action.functionCall('claim', { epoch }, 30n * TGAS)], `claim(${epoch})`);
       if (!r) continue;
       mustSucceed(r);
       const share = r.status?.SuccessValue ? JSON.parse(Buffer.from(r.status.SuccessValue, 'base64').toString()) : null;
       txs.push({ account: f.account, troll: f.troll, hash: r.hash, share });
     }
-    if (SEND) { const after = await snapshot(F); record(`C${epoch}`, { epoch, before, after, txs, assertions: verify(before, after, false) }); }
+    if (SEND) {
+      const after = await snapshot(F);
+      const evs = SENT.flatMap((r) => events(r)).filter((e) => e.standard === 'shardedtrolls').map((e) => ({ executor: e.executor, event: e.event, data: e.data }));
+      record(`C${epoch}`, { epoch, except: [...except], before, after, txs, events: evs, assertions: verify(before, after, false) });
+    }
+  } else if (step === 'drill-sweep') {
+    // Claim deadline drill (deploy with a small --claim-epochs). Feeder --all-from (0) emptied its balance in
+    // E0 and did not claim; feeder 1 did not claim either. Checks: unregister with an unclaimed reward is
+    // refused; after the deadline a late claim is refused and sweep(epoch) moves the pool's remainder to food.
+    const F = load('feeders.json');
+    const epoch = Number(values.epoch ?? 0);
+    const f0 = F.feeders[0], f1 = F.feeders[1];
+    const p = parentAccount();
+    const out = { epoch, claim_epochs: D.params.claim_epochs, steps: [] };
+    const fails = (r) => failures(r).map((x) => JSON.stringify(x));
+    const before = await snapshot(F);
+    const ru = await submit(signerOf(f0), D.trolls[0].account, [action.functionCall('storage_unregister', {}, 30n * TGAS, 1n)], 'storage_unregister with an unclaimed reward: must be refused');
+    out.steps.push({ step: 'unregister with unclaimed reward', hash: ru.hash, refused: fails(ru).some((e) => e.includes('unclaimed rewards')), errors: fails(ru).map((e) => e.slice(0, 220)),
+      balance: before.feeders[0].balance, still_registered: (await view(D.trolls[0].account, 'storage_balance_of', { account_id: f0.account })) !== null });
+    // The deadline is set when the reward is applied (the epoch at settlement + claim_epochs); the
+    // pool can be swept once the current epoch is past it.
+    const deadline = Math.max(...await Promise.all([0, 1].map(async (t) => (await view(D.trolls[t].account, 'pool', { epoch }))?.deadline ?? 0)));
+    out.deadline = deadline;
+    let i = await view(D.trolls[0].account, 'info');
+    while (i.epoch <= deadline) {
+      console.log(`waiting for the claim deadline: epoch ${i.epoch}, needs > ${deadline}`);
+      await sleep(20_000);
+      i = await view(D.trolls[0].account, 'info');
+    }
+    const rl = await submit(signerOf(f1), D.trolls[1].account, [action.functionCall('claim', { epoch }, 30n * TGAS)], `late claim(${epoch}): must be refused`);
+    out.steps.push({ step: 'claim after the deadline', hash: rl.hash, refused: fails(rl).some((e) => e.includes('claim deadline passed')), errors: fails(rl).map((e) => e.slice(0, 220)) });
+    const mid = await snapshot(F);
+    SENT.length = 0;
+    for (const t of [0, 1]) {
+      const pool = await view(D.trolls[t].account, 'pool', { epoch });
+      const rs = await submit(p, D.trolls[t].account, [action.functionCall('sweep', { epoch }, 30n * TGAS)], `sweep(${epoch}) on troll ${t}`);
+      const ev = events(rs).filter((e) => e.event === 'reward_expired');
+      out.steps.push({ step: `sweep on troll ${t}`, hash: rs.hash, failed_receipts: failures(rs).length, pool_before: pool,
+        reward_expired: ev.map((e) => e.data?.[0]), pool_after: await view(D.trolls[t].account, 'pool', { epoch }) });
+    }
+    const after = await snapshot(F);
+    out.food_change = after.trolls.slice(0, 2).map((t, k) => String(BigInt(t.food) - BigInt(mid.trolls[k].food)));
+    out.assertions = verify(mid, after, false);
+    const ru2 = await submit(signerOf(f0), D.trolls[0].account, [action.functionCall('storage_unregister', {}, 30n * TGAS, 1n)], 'storage_unregister after the sweep (reward forfeited, balance 0)');
+    out.steps.push({ step: 'unregister after the sweep (informational)', hash: ru2.hash, failed_receipts: failures(ru2).length, errors: fails(ru2).map((e) => e.slice(0, 220)),
+      events: events(ru2).filter((e) => e.standard === 'shardedtrolls').map((e) => ({ event: e.event, data: e.data?.[0] })) });
+    const s = out.steps;
+    out.pass = s[0].refused && s[0].balance === '0' && s[0].still_registered && s[1].refused
+      && s.slice(2, 4).every((x) => x.failed_receipts === 0 && x.reward_expired.length === 1 && x.pool_after === null)
+      && out.food_change.every((d, k) => BigInt(d) === BigInt(s[2 + k].reward_expired[0]?.amount ?? -1)) && out.assertions.ok;
+    record('drill-sweep', out);
+    console.log(`drill-sweep: ${out.pass ? 'PASS' : 'FAIL'}`);
   } else {
     const dir = resolve(ROOT, values['report-dir'] ?? `measurements/testnet-${new Date().toISOString().slice(0, 10)}-feeding`);
     mkdirSync(dir, { recursive: true });
