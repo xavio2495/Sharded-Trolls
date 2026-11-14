@@ -116,7 +116,7 @@ export class Near {
 
   async view(contractId, method, args = {}) {
     const r = await this.rpc('query', {
-      request_type: 'call_function', finality: 'final', account_id: contractId, method_name: method,
+      request_type: 'call_function', finality: 'optimistic', account_id: contractId, method_name: method,
       args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
     });
     return JSON.parse(Buffer.from(r.result).toString());
