@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import Header from "@/app/components/shell/Header";
 
 export const metadata: Metadata = {
   title: "Litepaper · Sharded Trolls",
@@ -120,26 +120,7 @@ const TOC: [string, string][] = [
 export default function PaperPage() {
   return (
     <div className="min-h-full bg-paper">
-      <header className="sticky top-0 z-40 border-b-[3px] border-ink-0 bg-paper">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" aria-label="Sharded Trolls, home" className="flex min-w-0 shrink items-center gap-2 font-display text-lg tracking-wide text-ink-0 sm:gap-3 sm:text-2xl">
-            <Image src="/logo.svg" alt="" width={40} height={40} className="size-8 shrink-0 sm:size-10" />
-            <span className="hidden truncate sm:inline">Sharded Trolls</span>
-          </Link>
-          <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-ink-1 sm:gap-3">
-            <Link href="/evidence" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">Evidence</Link>
-            <Link href="/pitch" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">Pitch</Link>
-            <Link href="/app" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">
-              <span className="sm:hidden">Live</span>
-              <span className="hidden sm:inline">The Feeding, live</span>
-            </Link>
-            <Link href="/" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">
-              <span className="sm:hidden">Story</span>
-              <span className="hidden sm:inline">Back to the story</span>
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <Header current="/paper" sticky />
 
       <main className="mx-auto max-w-3xl px-5 pb-28 pt-12 sm:px-6">
         <h1 className="font-display text-5xl leading-[1.02] text-ink-0 md:text-6xl">Sharded Trolls: a token ledger across eight shards</h1>
