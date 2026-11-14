@@ -28,6 +28,7 @@ fn params() -> Params {
         launch_window_ms: 5 * EPOCH,
         launch_claim_amount: U128(100),
         min_counted_transfer: U128(10),
+        claim_fee: U128(0),
     }
 }
 
@@ -58,7 +59,7 @@ fn new_root() -> Root {
 }
 
 fn report(epoch: u64, senders: u32, supply: u128) -> EpochReport {
-    EpochReport { epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), minted: U128(0), burned: U128(0) }
+    EpochReport { epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), launch_pool: U128(0), minted: U128(0), burned: U128(0) }
 }
 
 fn ok(r: &EpochReport) -> PromiseResult {

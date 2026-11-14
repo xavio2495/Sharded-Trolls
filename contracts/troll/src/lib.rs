@@ -7,7 +7,7 @@ use near_sdk::{
     ext_contract, near, require,
 };
 use troll_types::{
-    EpochReport, Outcome, Params, bps_of, emit_ft_burn, reward_minted, starve_burned, emit_ft_mint, emit_ft_transfer, emit_troll_event, epoch_at,
+    EpochReport, Outcome, Params, bps_of, emit_ft_burn, launch_closed_by, reward_funding, starve_burned, emit_ft_mint, emit_ft_transfer, emit_troll_event, epoch_at,
     home_index, now_ms, validate_setup,
 };
 
@@ -315,7 +315,8 @@ impl Troll {
     }
 
     /// One launch claim per account, at its home troll, during the launch window.
-    /// Registers the caller if needed: attach at least `storage_balance_bounds().min`; any excess is refunded.
+    /// Registers the caller if needed. Attach the claim fee, plus `storage_balance_bounds().min` if not
+    /// registered yet; any excess is refunded. The fee stays on this contract.
     #[payable]
     pub fn claim_launch(&mut self) -> U128 {
         let who = env::predecessor_account_id();
@@ -329,14 +330,14 @@ impl Troll {
         self.launch_claimed.insert(&who, &());
         self.launch_pool -= amount;
         let deposit = env::attached_deposit();
-        let refund = if self.accounts.contains_key(&who) {
-            deposit
-        } else {
-            let min = self.storage_min();
-            require!(deposit >= min, format!("attach {} yoctoNEAR to register for storage", min.as_yoctonear()));
+        let fee = NearToken::from_yoctonear(self.params.claim_fee.0);
+        let registered = self.accounts.contains_key(&who);
+        let due = if registered { fee } else { fee.saturating_add(self.storage_min()) };
+        require!(deposit >= due, format!("attach {} yoctoNEAR (claim fee plus storage if not registered)", due.as_yoctonear()));
+        if !registered {
             self.accounts.insert(&who, &Account::default());
-            deposit.saturating_sub(min)
-        };
+        }
+        let refund = deposit.saturating_sub(due);
         if !refund.is_zero() {
             Promise::new(who.clone()).transfer(refund).detach();
         }
@@ -455,6 +456,7 @@ impl Troll {
             supply: U128(self.supply),
             in_flight: U128(self.in_flight),
             hoard: U128(self.hoard),
+            launch_pool: U128(self.reward_launch_pool(epoch)),
             minted: U128(self.minted),
             burned: U128(self.burned),
         }
@@ -470,15 +472,23 @@ impl Troll {
         match outcome {
             Outcome::Reward { amount } => {
                 let feeders = self.senders_in(epoch);
-                let total = reward_minted(amount.0, feeders);
+                let (from_pool, minted) = reward_funding(amount.0, feeders, self.reward_launch_pool(epoch));
+                let total = from_pool + minted;
                 if total == 0 {
                     return;
                 }
                 let share = total / feeders as u128;
                 self.pools.insert(&epoch, &Pool { share: U128(share), remaining: U128(total) });
-                self.supply += total;
-                self.minted += total;
-                emit_ft_mint(&me, total, &format!("feeding reward epoch {epoch}"));
+                // Unclaimed launch tokens are already supply held by this troll; they just move pools.
+                self.launch_pool -= from_pool;
+                self.supply += minted;
+                self.minted += minted;
+                if minted > 0 {
+                    emit_ft_mint(&me, minted, &format!("feeding reward epoch {epoch}"));
+                }
+                if from_pool > 0 {
+                    emit_troll_event("reward_from_launch_pool", &format!(r#"{{"epoch":{epoch},"amount":"{from_pool}"}}"#));
+                }
             }
             Outcome::Burn { bps } => {
                 let amount = starve_burned(self.hoard, bps);
@@ -643,6 +653,12 @@ impl Troll {
         self.pools.insert(&epoch, &pool);
         emit_ft_transfer(&env::current_account_id(), who, share, Some("feeding reward"));
         share
+    }
+
+    /// Unclaimed launch tokens available to fund `epoch`'s reward: all of them once the launch
+    /// window has closed by the end of that epoch, none before.
+    fn reward_launch_pool(&self, epoch: u64) -> u128 {
+        if launch_closed_by(epoch, &self.params) { self.launch_pool } else { 0 }
     }
 
     fn storage_min(&self) -> NearToken {

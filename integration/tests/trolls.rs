@@ -35,6 +35,7 @@ fn params(feed_target: u32) -> Value {
         "launch_window_ms": 86_400_000u64,
         "launch_claim_amount": CLAIM.to_string(),
         "min_counted_transfer": ONE.to_string(),
+        "claim_fee": "0",
     })
 }
 

@@ -26,6 +26,8 @@ pub struct Params {
     pub launch_claim_amount: U128,
     /// Transfers below this amount don't count the sender as a feeder.
     pub min_counted_transfer: U128,
+    /// NEAR (yocto) a launch claim must attach on top of any storage deposit. It stays on the troll.
+    pub claim_fee: U128,
 }
 
 /// What a troll tells the root about one finished epoch.
@@ -39,6 +41,9 @@ pub struct EpochReport {
     /// Debited for outgoing cross-troll transfers, not yet confirmed or refunded.
     pub in_flight: U128,
     pub hoard: U128,
+    /// Unclaimed launch tokens that fund this epoch's reward before anything is minted;
+    /// zero while the launch window is still open at the end of the epoch.
+    pub launch_pool: U128,
     /// Everything this troll has minted so far (cumulative).
     pub minted: U128,
     /// Everything this troll has burned so far (cumulative). It can exceed what the troll
@@ -98,11 +103,26 @@ pub fn starve_burned(hoard: u128, bps: u16) -> u128 {
     bps_of(hoard, bps)
 }
 
+/// True once the launch window has closed by the end of `epoch`, so the unclaimed launch
+/// pool can fund that epoch's reward. Depends only on the parameters.
+pub fn launch_closed_by(epoch: u64, params: &Params) -> bool {
+    (epoch as u128 + 1) * params.epoch_ms as u128 >= params.launch_window_ms as u128
+}
+
+/// How a troll funds `Reward { amount }` with `feeders` counted senders and `pool` unclaimed
+/// launch tokens available: `(from_pool, minted)`. The pool is already part of the supply, so
+/// only `minted` is new.
+pub fn reward_funding(amount: u128, feeders: u32, pool: u128) -> (u128, u128) {
+    let total = reward_minted(amount, feeders);
+    let from_pool = total.min(pool);
+    (from_pool, total - from_pool)
+}
+
 /// (minted, burned) when `outcome` is applied to the troll that produced `report`.
 /// The root uses this to book a settlement exactly as the troll will apply it.
 pub fn outcome_effect(report: &EpochReport, outcome: &Outcome) -> (u128, u128) {
     match outcome {
-        Outcome::Reward { amount } => (reward_minted(amount.0, report.senders), 0),
+        Outcome::Reward { amount } => (reward_funding(amount.0, report.senders, report.launch_pool.0).1, 0),
         Outcome::Burn { bps } => (0, starve_burned(report.hoard.0, *bps)),
         Outcome::NoOp => (0, 0),
     }
@@ -206,11 +226,28 @@ mod tests {
 
     #[test]
     fn outcome_effects() {
-        let r = EpochReport { epoch: 0, senders: 3, supply: U128(0), in_flight: U128(0), hoard: U128(1_999), minted: U128(0), burned: U128(0) };
+        let mut r = EpochReport { epoch: 0, senders: 3, supply: U128(0), in_flight: U128(0), hoard: U128(1_999), launch_pool: U128(0), minted: U128(0), burned: U128(0) };
         assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (999, 0));
+        // the unclaimed launch pool pays first; only the shortfall is new supply
+        r.launch_pool = U128(400);
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (599, 0));
+        r.launch_pool = U128(5_000);
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (0, 0));
+        assert_eq!(reward_funding(1_000, 3, 5_000), (999, 0));
+        assert_eq!(reward_funding(1_000, 0, 5_000), (0, 0));
         assert_eq!(outcome_effect(&r, &Outcome::Burn { bps: 100 }), (0, 19));
         assert_eq!(outcome_effect(&r, &Outcome::NoOp), (0, 0));
         assert_eq!(reward_minted(1_000, 0), 0);
+    }
+
+    #[test]
+    fn launch_window_closes_by_epoch_end() {
+        let p = Params {
+            troll_count: 1, toll_bps: 0, feed_target: 1, reward_per_epoch: U128(0), starve_burn_bps: 0,
+            epoch_ms: 100, launch_window_ms: 250, launch_claim_amount: U128(0), min_counted_transfer: U128(0), claim_fee: U128(0),
+        };
+        assert!(!launch_closed_by(0, &p) && !launch_closed_by(1, &p));
+        assert!(launch_closed_by(2, &p) && launch_closed_by(9, &p));
     }
 
     #[test]

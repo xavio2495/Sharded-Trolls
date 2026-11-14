@@ -23,6 +23,7 @@ fn params(n: u8) -> Params {
         launch_window_ms: 5 * EPOCH,
         launch_claim_amount: U128(100_000),
         min_counted_transfer: U128(10),
+        claim_fee: U128(0),
     }
 }
 
@@ -94,6 +95,11 @@ struct Net {
 impl Net {
     /// `n` trolls with ranges split on single letters; troll `i` holds ids starting with `first_letter(i)`.
     fn new(n: u8, total: u128, launch: u128) -> Self {
+        Self::with_params(params(n), total, launch)
+    }
+
+    fn with_params(p: Params, total: u128, launch: u128) -> Self {
+        let n = p.troll_count;
         let ids: Vec<AccountId> = (0..n).map(|i| acc(&format!("troll{i}.t"))).collect();
         let mut events = vec![Ledger::new(); n as usize];
         let t = ids
@@ -101,7 +107,7 @@ impl Net {
             .zip(events.iter_mut())
             .map(|(id, ledger)| {
                 ctx(id, &acc("deployer.t"), START, 0);
-                let t = Troll::new(acc(ROOT), ids.clone(), params(n), metadata(), START, U128(total), U128(launch));
+                let t = Troll::new(acc(ROOT), ids.clone(), p.clone(), metadata(), START, U128(total), U128(launch));
                 index_logs(ledger, id);
                 t
             })
@@ -508,6 +514,7 @@ fn report_reflects_counters() {
             supply: U128(333_334),
             in_flight: U128(0),
             hoard: U128(133_334),
+            launch_pool: U128(0),
             minted: U128(0),
             burned: U128(0)
         }
@@ -610,7 +617,8 @@ struct Credit {
 fn conservation_run(seed: u64, steps: usize) {
     const N: usize = 8;
     const USERS: usize = 6;
-    let (total, launch) = (1_000_000_000u128, 8 * USERS as u128 * 100_000);
+    // 50,000 launch tokens per troll stay unclaimed and fund rewards after the window
+    let (total, launch) = (1_000_000_000u128, 8 * USERS as u128 * 100_000 + 8 * 50_000);
     let mut net = Net::new(N as u8, total, launch);
     let mut rng = Rng(seed);
     let users: Vec<(usize, AccountId)> = (0..N).flat_map(|i| (0..USERS).map(move |k| (i, k))).map(|(i, k)| (i, net.user(i, k))).collect();
@@ -623,6 +631,7 @@ fn conservation_run(seed: u64, steps: usize) {
     let mut credits: Vec<Credit> = vec![];
     let mut callbacks: Vec<(Credit, bool)> = vec![];
     let (mut transfers, mut cross, mut failed, mut auto_paid, mut claimed) = (0, 0, 0, 0u128, 0u128);
+    let mut from_launch_pool = 0u128;
 
     let check = |net: &Net, callbacks: &[(Credit, bool)], model: &HashMap<(usize, AccountId), u128>| {
         let supply: u128 = net.t.iter().map(|t| t.supply).sum();
@@ -700,7 +709,12 @@ fn conservation_run(seed: u64, steps: usize) {
                     };
                     let r = net.as_(i, &root(), 0, |t| t.report(epoch));
                     assert_eq!((r.minted.0, r.burned.0), (net.t[i].minted, net.t[i].burned));
+                    let booked = troll_types::outcome_effect(&r, &outcome);
+                    let pool_before = net.t[i].launch_pool;
                     net.as_(i, &root(), 0, |t| t.apply(epoch, outcome));
+                    let t = &net.t[i];
+                    assert_eq!((t.minted - r.minted.0, t.burned - r.burned.0), booked, "root books what troll {i} applies");
+                    from_launch_pool += pool_before - t.launch_pool;
                     if net.t[i].pool(epoch).is_some() {
                         for (_, u) in users.iter().filter(|(ui, _)| *ui == i) {
                             if net.t[i].is_feeder(epoch, u.clone()) && rng.below(2) == 0 {
@@ -743,6 +757,7 @@ fn conservation_run(seed: u64, steps: usize) {
     assert_eq!(total + minted - burned, net.t.iter().map(|t| t.supply).sum::<u128>(), "books close at rest");
     assert!(transfers > 3_000 && cross > 1_000 && failed > 50, "coverage: {transfers} {cross} {failed}");
     assert!(auto_paid > 0 && claimed > 0, "rewards in play: auto {auto_paid}, claimed {claimed}");
+    assert!(from_launch_pool > 0 && net.t.iter().any(|t| t.minted > 0), "rewards from the pool and minted: {from_launch_pool}");
 }
 
 // One seed per test: each test thread gets its own fresh mocked storage.
@@ -1079,7 +1094,8 @@ fn troll_total(net: &Net) -> u128 {
 #[test]
 fn root_total_supply_matches_trolls_after_each_settlement() {
     use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
-    let (total, launch) = (1_000_000_000u128, 600_000);
+    // 200,500 launch tokens per troll: two claims leave 500 unclaimed on each
+    let (total, launch) = (1_000_000_000u128, 601_500);
     let mut net = Net::new(3, total, launch);
     ctx(&acc(ROOT), &acc("deployer.t"), START, 0);
     let meta = FungibleTokenMetadata {
@@ -1126,6 +1142,113 @@ fn root_total_supply_matches_trolls_after_each_settlement() {
     assert_eq!(root.ft_total_supply().0, troll_total(&net), "after a starved epoch");
     let net_issued: u128 = total + net.t.iter().map(|t| t.minted).sum::<u128>() - net.t.iter().map(|t| t.burned).sum::<u128>();
     assert_eq!(root.ft_total_supply().0, net_issued);
+
+    // epochs 2-3: nobody feeds. Epoch 4 ends as the launch window closes, so its reward is paid
+    // from the 500 unclaimed launch tokens first and only the rest is minted; epoch 5 is all minted.
+    for e in 2..4 {
+        net.now += EPOCH;
+        settle(&mut net, &mut root, e);
+    }
+    for (e, from_pool) in [(4u64, 500u128), (5, 0)] {
+        for i in 0..3 {
+            let (a, b) = (users[i][0].clone(), users[i][1].clone());
+            net.transfer(i, &a, &b, 10);
+            net.transfer(i, &b, &a, 10);
+        }
+        let minted_before: u128 = net.t.iter().map(|t| t.minted).sum();
+        net.now += EPOCH;
+        settle(&mut net, &mut root, e);
+        for t in &net.t {
+            assert_eq!(t.pool(e).unwrap().remaining.0, 1_000, "epoch {e}: full reward either way");
+            assert_eq!(t.launch_pool, 0);
+        }
+        let minted: u128 = net.t.iter().map(|t| t.minted).sum::<u128>() - minted_before;
+        assert_eq!(minted, 3 * (1_000 - from_pool), "epoch {e}: only the shortfall is minted");
+        assert_eq!(root.ft_total_supply().0, troll_total(&net), "epoch {e}: root books the same");
+        net.check_events();
+        assert_eq!(root.info().troll_supply, net.t.iter().map(|t| U128(t.supply)).collect::<Vec<_>>());
+    }
+}
+
+/// Two feeders on troll 0 in epoch `e`, then the root's report and `Reward { 1_000 }`. Checks the
+/// root's booking against what the troll did; returns (paid from launch pool, minted).
+fn feed_and_reward(net: &mut Net, e: u64) -> (u128, u128) {
+    let (a, b, c) = (net.user(0, 1), net.user(0, 2), net.user(0, 3));
+    net.now = START + e * EPOCH;
+    net.transfer(0, &a, &c, 10);
+    net.transfer(0, &b, &c, 10);
+    net.now = START + (e + 1) * EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(e));
+    let before = (net.t[0].supply, net.t[0].minted, net.t[0].launch_pool);
+    let outcome = Outcome::Reward { amount: U128(1_000) };
+    let (booked, _) = troll_types::outcome_effect(&r, &outcome);
+    net.as_(0, &root(), 0, |t| t.apply(e, outcome));
+    let t = &net.t[0];
+    let minted = t.minted - before.1;
+    assert_eq!(minted, booked, "root books exactly what the troll mints");
+    assert_eq!(t.supply - before.0, minted, "only minted tokens are new supply");
+    assert_eq!(t.pool(e).unwrap().remaining.0, 1_000, "feeders get the full reward either way");
+    let from_pool = before.2 - t.launch_pool;
+    assert_eq!(r.launch_pool.0, if e >= 4 { before.2 } else { 0 });
+    net.check_events();
+    (from_pool, minted)
+}
+
+#[test]
+fn reward_comes_from_the_launch_pool_after_the_window() {
+    // 201,500 launch tokens on troll 0; two claims leave 1,500
+    let mut net = Net::new(3, 1_000_000, 604_500);
+    let (a, b) = (net.user(0, 1), net.user(0, 2));
+    net.launch(0, &a);
+    net.launch(0, &b);
+    assert_eq!(feed_and_reward(&mut net, 0), (0, 1_000), "window still open: all minted");
+    assert_eq!(net.t[0].launch_pool, 1_500);
+    assert_eq!(feed_and_reward(&mut net, 4), (1_000, 0), "window closed: all from the pool");
+    assert!(get_logs().iter().any(|l| l.contains("reward_from_launch_pool")));
+    assert!(!get_logs().iter().any(|l| l.contains("ft_mint")));
+    assert_eq!(feed_and_reward(&mut net, 5), (500, 500), "pool runs out: the rest is minted");
+    assert_eq!(feed_and_reward(&mut net, 6), (0, 1_000), "pool empty: all minted");
+    // books: supply = initial + minted, and the holdings match
+    let t = &net.t[0];
+    assert_eq!((t.initial, t.minted), (333_334, 2_500));
+    assert_eq!(t.supply, t.initial + t.minted - t.burned);
+    assert_eq!(t.launch_pool, 0);
+}
+
+#[test]
+fn claim_fee_is_kept_and_excess_refunded() {
+    use near_sdk::test_utils::get_created_receipts;
+    let fee = 7_000u128;
+    let mut net = Net::with_params(Params { claim_fee: U128(fee), ..params(3) }, 1_000_000, 600_000);
+    let min = net.min();
+    // unregistered: storage minimum plus the fee; 5 yocto extra comes back
+    let a = net.user(0, 1);
+    assert_eq!(net.as_(0, &a, min + fee + 5, |t| t.claim_launch()).0, 100_000);
+    let r = get_created_receipts();
+    assert_eq!(r.len(), 1);
+    assert!(format!("{:?}", r[0].actions).contains("deposit: NearToken { inner: 5 }"), "{:?}", r[0].actions);
+    // registered: just the fee, nothing to refund
+    let b = net.user(0, 2);
+    net.reg(&b);
+    assert_eq!(net.as_(0, &b, fee, |t| t.claim_launch()).0, 100_000);
+    assert!(get_created_receipts().is_empty());
+}
+
+#[test]
+#[should_panic(expected = "claim fee plus storage")]
+fn claim_without_fee_rejected_when_registered() {
+    let mut net = Net::with_params(Params { claim_fee: U128(7_000), ..params(3) }, 1_000_000, 600_000);
+    let a = net.user(0, 1);
+    net.reg(&a);
+    net.as_(0, &a, 6_999, |t| t.claim_launch());
+}
+
+#[test]
+#[should_panic(expected = "claim fee plus storage")]
+fn claim_with_storage_but_no_fee_rejected_when_unregistered() {
+    let mut net = Net::with_params(Params { claim_fee: U128(7_000), ..params(3) }, 1_000_000, 600_000);
+    let (a, m) = (net.user(0, 1), net.min());
+    net.as_(0, &a, m + 6_999, |t| t.claim_launch());
 }
 
 // ---------- ft_transfer_call ----------

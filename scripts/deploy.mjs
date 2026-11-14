@@ -43,6 +43,8 @@ const params = {
   reward_per_epoch: tokens(P.reward_per_epoch), starve_burn_bps: P.starve_burn_bps,
   epoch_ms: epochMs, launch_window_ms: epochMs * P.launch_window_epochs,
   launch_claim_amount: tokens(P.launch_claim_amount), min_counted_transfer: tokens(P.min_counted_transfer),
+  // NEAR per launch claim, kept by the troll; micro-NEAR precision
+  claim_fee: (BigInt(Math.round((P.claim_fee_near ?? 0) * 1e6)) * 10n ** 18n).toString(),
 };
 const totalSupply = tokens(P.total_supply), launchSupply = tokens(P.launch_supply);
 
