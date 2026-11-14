@@ -151,7 +151,8 @@ async function run() {
   const count = (xs) => xs.reduce((m, x) => ((m[x.ok ? 'ok' : x.kind] = (m[x.ok ? 'ok' : x.kind] ?? 0) + 1), m), {});
   const summary = { target, seconds, fires_per_sec: firesPerSec, n, call_tgas: Number(callTgas), probe_per_sec: probePerSec, fires: count(log.fires), probes: count(log.probes) };
   const file = values.out ?? resolve(ROOT, `target/load-${target}-${new Date(t0).toISOString().replace(/[:.]/g, '-')}.json`);
-  writeFileSync(file, JSON.stringify({ ...summary, started_at: new Date(t0).toISOString(), ...log }));
+  const code = target === 'trolls' ? { troll_wasm_sha256: deploy.troll_code_hash, root_wasm_sha256: deploy.root_code_hash } : {};
+  writeFileSync(file, JSON.stringify({ ...summary, ...code, started_at: new Date(t0).toISOString(), ...log }));
   console.log(JSON.stringify(summary));
   console.log(`wrote ${file}`);
 }

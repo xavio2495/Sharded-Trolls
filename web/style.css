@@ -55,3 +55,4 @@ section { background: var(--surface); border: 1px solid var(--border); border-ra
 .ring .count { font-size: 15px; fill: var(--ink); font-weight: 600; }
 .log { font-size: 13px; color: var(--ink2); max-height: 200px; overflow: auto; padding-left: 20px; margin: 0; }
 .streak { margin-top: 8px; display: flex; align-items: baseline; gap: 8px; }
+.streak .value.empty { font-size: 14px; font-weight: 400; color: var(--muted); }

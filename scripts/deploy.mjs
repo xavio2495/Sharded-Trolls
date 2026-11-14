@@ -77,6 +77,7 @@ for (const t of trolls) {
 const out = {
   network: net, rpc: RPC[net], root: parent, trolls, bounds: rangeBounds, params, start_ms: startMs,
   total_supply: totalSupply, launch_supply: launchSupply, troll_code_hash: codeHash.toString('hex'),
+  root_code_hash: createHash('sha256').update(rootCode).digest('hex'),
   protocol: layout.protocol, deployed_at: new Date().toISOString(),
 };
 const file = resolve(ROOT, `target/deploy-${net}.json`);

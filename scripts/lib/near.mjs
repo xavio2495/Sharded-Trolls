@@ -123,7 +123,7 @@ export class Near {
   }
 
   async accessKeyNonce(accountId, publicKey) {
-    const r = await this.rpc('query', { request_type: 'view_access_key', finality: 'final', account_id: accountId, public_key: publicKey });
+    const r = await this.rpc('query', { request_type: 'view_access_key', finality: 'optimistic', account_id: accountId, public_key: publicKey });
     return BigInt(r.nonce);
   }
 

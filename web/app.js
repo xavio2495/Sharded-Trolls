@@ -4,7 +4,9 @@ import { TrollClient, shardSample } from '../packages/client/index.js';
 import { shardOf, place } from '../packages/layout/index.js';
 
 const RUNS = [
+  { id: 'trolls-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 2,000 transfers/s for 90 s' },
   { id: 'control-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s' },
+  { id: 'trolls-run2', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 1,000 transfers/s for 60 s' },
   { id: 'control-run2', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 1,000 transfers/s for 60 s' },
 ];
 const LIVE_WINDOW = 300; // blocks kept in live mode
@@ -116,7 +118,7 @@ async function loadRun(run) {
   const tokens = [...new Set(l.probes.map((p) => p.token))];
   const marks = l.target === 'control'
     ? { [shardOf(tokens[0], S.layout)]: 'control token' }
-    : Object.fromEntries(tokens.map((t) => [shardOf(t, S.layout), t.split('.')[0] + '. troll']));
+    : Object.fromEntries(tokens.map((t) => [shardOf(t, S.layout), t]));
   S.roles = rolesFor(S.layout, marks);
   S.index = 0; S.simT = S.blocks[0].timestamp_ms; S.playing = true;
   $('scrub').max = S.blocks.length - 1;
@@ -198,11 +200,11 @@ async function pollFeeding(live) {
   while (!live.stop) {
     try {
       const [info, trollInfo] = await Promise.all([client.view(client.root, 'info'), Promise.all(client.trolls.map((t) => client.view(t, 'info')))]);
-      $('streak').textContent = info.streak; $('best').textContent = info.best_streak; $('epoch').textContent = info.current_epoch;
+      $('streak').textContent = info.streak; $('streak').classList.remove('empty'); $('best').textContent = info.best_streak; $('epoch').textContent = info.current_epoch;
       $('rings').innerHTML = trollInfo.map((ti, i) => {
         const frac = Math.min(1, ti.senders_this_epoch / params.feed_target), fed = frac >= 1, c = 2 * Math.PI * 28;
         return `<div class="ring${fed ? ' fed' : ''}"><svg viewBox="0 0 72 72"><circle class="track" cx="36" cy="36" r="28" fill="none" stroke-width="7"/>`
-          + `<circle class="fill" cx="36" cy="36" r="28" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(frac * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 36 36)"/>`
+          + (frac > 0 ? `<circle class="fill" cx="36" cy="36" r="28" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(frac * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 36 36)"/>` : '')
           + `<text class="count" x="36" y="41" text-anchor="middle">${ti.senders_this_epoch}</text></svg>`
           + `<div>${esc(client.trolls[i].split('.')[0])}. · ${fed ? '✓ fed' : `${ti.senders_this_epoch}/${params.feed_target}`}</div></div>`;
       }).join('');
@@ -241,6 +243,14 @@ document.querySelectorAll('.modes button').forEach((b) => (b.onclick = () => {
 }));
 
 const params = new URLSearchParams(location.search);
-await loadRun(RUNS.find((r) => r.id === (params.get('run') ?? RUNS[0].id)));
-if (params.has('at')) { S.playing = false; S.index = Math.min(S.blocks.length - 1, Number(params.get('at'))); $('scrub').value = S.index; render(); }
+if (params.get('mode') === 'live') {
+  document.querySelector('.modes button[data-mode="live"]').click();
+  if (params.has('rpc')) $('rpc').value = params.get('rpc');
+  if (params.has('root')) $('root').value = params.get('root');
+  await connectLive($('rpc').value.trim(), $('root').value.trim());
+} else {
+  if (params.has('run')) $('run').value = params.get('run');
+  await loadRun(RUNS.find((r) => r.id === $('run').value));
+}
+if (S.mode === 'replay' && params.has('at')) { S.playing = false; S.index = Math.min(S.blocks.length - 1, Number(params.get('at'))); $('scrub').value = S.index; render(); }
 requestAnimationFrame(tick);
