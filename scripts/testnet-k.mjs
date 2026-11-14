@@ -85,8 +85,10 @@ async function submit(signer, receiver, actions, what) {
   log(`${signer.accountId} -> ${receiver}: ${what}`);
   if (!SEND) return null;
   const signed = await signer.sign(receiver, actions);
-  const r = await near.sendSigned(signed, 'FINAL');
+  // Printed before sending: if send_tx times out, the hash tells whether it landed (check it on
+  // the explorer or with EXPERIMENTAL_tx_status) before anything is resent.
   console.log(`  tx ${signed.hash}  ${EXPLORER}${signed.hash}`);
+  const r = await near.sendSigned(signed, 'FINAL');
   return { ...r, hash: signed.hash };
 }
 const failures = (r) => [r.status?.Failure, ...r.receipts_outcome.map((o) => o.outcome.status.Failure)].filter(Boolean);
