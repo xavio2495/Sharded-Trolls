@@ -28,7 +28,7 @@ export default function Closing() {
       </div>
       <footer className="mt-28 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-8">
         <span className="font-display text-xl">Sharded Trolls</span>
-        <span className="tag text-ink-1">Built during NEAR HACKATHON 2026 · MIT · testnet</span>
+        <span className="tag text-ink-1">MIT · live on NEAR testnet</span>
       </footer>
     </section>
   );

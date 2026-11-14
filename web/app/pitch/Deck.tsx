@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 // The judges' deck: how it is built and what is proven. The landing page is the experience; this is the engineering.
@@ -87,7 +88,7 @@ type Slide = { title: string; body?: string; points?: string[]; visual?: React.R
 const SLIDES: Slide[] = [
   {
     title: "Sharded Trolls",
-    body: "A token ledger split across eight NEAR shards, live on testnet, with a memecoin on top. Built for NEAR HACKATHON 2026.",
+    body: "A token ledger split across eight NEAR shards, live on testnet, with a memecoin on top.",
     visual: <Image src="/art/hero-v5.webp" alt="Eight streams flowing out of one lake, each kept by a troll." width={1536} height={1024} priority />,
   },
   {
@@ -211,7 +212,17 @@ export default function Deck() {
         )}
       </div>
       <div className="flex items-center justify-between gap-4 border-t-[3px] border-ink-0 px-6 py-4 md:px-10">
-        <span className="font-display text-lg whitespace-nowrap text-ink-0 sm:text-xl">Sharded Trolls</span>
+        <nav className="flex items-center gap-5" onClick={(e) => e.stopPropagation()}>
+          <Link href="/" className="nav inline-flex min-h-11 items-center text-ink-0">
+            ← Site
+          </Link>
+          <Link href="/app" className="nav hidden min-h-11 items-center text-ink-0 sm:inline-flex">
+            Open the app
+          </Link>
+          <Link href="/evidence" className="nav hidden min-h-11 items-center text-ink-0 md:inline-flex">
+            Evidence
+          </Link>
+        </nav>
         <span className="tag text-ink-1">
           {i + 1} / {SLIDES.length}
           <span className="hidden sm:inline"> · ← → or tap</span>
