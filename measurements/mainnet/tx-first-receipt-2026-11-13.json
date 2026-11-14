@@ -1,0 +1,80 @@
+{
+ "measuredAt": "2026-11-13T23:37:51.831Z",
+ "protocol": 88,
+ "txsSeen": 139,
+ "available": {
+  "self": 24,
+  "sameShardOther": 19,
+  "crossShard": 96
+ },
+ "self": {
+  "n": 7,
+  "hist": {
+   "0": 7
+  }
+ },
+ "sameShardOther": {
+  "n": 5,
+  "hist": {
+   "1": 5
+  }
+ },
+ "crossShard": {
+  "n": 16,
+  "hist": {
+   "1": 16
+  }
+ },
+ "sameShardOtherExamples": [
+  {
+   "hash": "5HrYJ89dTUbfGzMFNfPMQBFkdH2cadmWKQLSWqq5gMmz",
+   "signer": "sweat-relayer.near",
+   "receiver": "spin.sweat",
+   "height": 224432652,
+   "cls": "sameShardOther",
+   "sSigner": 4,
+   "sRecv": 4,
+   "d": 1
+  },
+  {
+   "hash": "8HzWTttE4BR5CGNvTmZcuYfdF2B19r6DE3pCu1ADYdHi",
+   "signer": "omni-relayer.bridge.near",
+   "receiver": "omni.bridge.near",
+   "height": 224432652,
+   "cls": "sameShardOther",
+   "sSigner": 4,
+   "sRecv": 4,
+   "d": 1
+  },
+  {
+   "hash": "GHv8majh9ioSKXGbgZN26NpiNBXPd4wkvMj9ERo8jcSK",
+   "signer": "omni-relayer.bridge.near",
+   "receiver": "omni.bridge.near",
+   "height": 224432634,
+   "cls": "sameShardOther",
+   "sSigner": 4,
+   "sRecv": 4,
+   "d": 1
+  },
+  {
+   "hash": "9JWkeF7vC4jff5D6q2SuspPH5DnJXZJsNsQJg2ZAMgSW",
+   "signer": "omni-relayer.bridge.near",
+   "receiver": "omni.bridge.near",
+   "height": 224432624,
+   "cls": "sameShardOther",
+   "sSigner": 4,
+   "sRecv": 4,
+   "d": 1
+  },
+  {
+   "hash": "5kt8mAZKF8DLKBkEqhiekRHaG3evXKuu5wPpgByqjNn1",
+   "signer": "bridge-mng.near",
+   "receiver": "be42537881895e4d86daac5ab12831f8c07da4977e604d191e73e0b29761ae72",
+   "height": 224432614,
+   "cls": "sameShardOther",
+   "sSigner": 8,
+   "sRecv": 8,
+   "d": 1
+  }
+ ]
+}

@@ -1,0 +1,198 @@
+{
+ "measuredAt": "2026-11-13T23:24:42.171Z",
+ "protocol": 88,
+ "txsSampled": 94,
+ "sameShard": {
+  "n": 14,
+  "hist": {
+   "1": 14
+  }
+ },
+ "crossShard": {
+  "n": 65,
+  "hist": {
+   "1": 64,
+   "2": 1
+  }
+ },
+ "sameShardExamples": [
+  {
+   "tx": "5XroCbTMd9JcKM7CBbntT518cYsN31CRdtqnUEUCfhAN",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "12f8ed10ab3f17cdb075e9fa9ef5414c018f7ec6658834ac88c619e22320b3d4",
+   "sFrom": 10,
+   "sTo": 10,
+   "dBlocks": 1
+  },
+  {
+   "tx": "5XroCbTMd9JcKM7CBbntT518cYsN31CRdtqnUEUCfhAN",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "12f8ed10ab3f17cdb075e9fa9ef5414c018f7ec6658834ac88c619e22320b3d4",
+   "sFrom": 10,
+   "sTo": 10,
+   "dBlocks": 1
+  },
+  {
+   "tx": "2Df7EusMuCvEuXyghtRMaBLSz2e5eoHBKrQacydE8cY3",
+   "from": "v2.ref-finance.near",
+   "to": "vx-zec.near",
+   "sFrom": 12,
+   "sTo": 12,
+   "dBlocks": 1
+  },
+  {
+   "tx": "EHqXoiCbR9UwTn9LwEUZYcKSEgp96pXACidbtrsvYunC",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "EHqXoiCbR9UwTn9LwEUZYcKSEgp96pXACidbtrsvYunC",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "EHqXoiCbR9UwTn9LwEUZYcKSEgp96pXACidbtrsvYunC",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "BejUQjGY4dtCEGdSNBF7CLyZuhcSdEyqs6uSWpP9aq4G",
+   "from": "omni.bridge.near",
+   "to": "nbtc.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "BejUQjGY4dtCEGdSNBF7CLyZuhcSdEyqs6uSWpP9aq4G",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "BejUQjGY4dtCEGdSNBF7CLyZuhcSdEyqs6uSWpP9aq4G",
+   "from": "nbtc.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "BejUQjGY4dtCEGdSNBF7CLyZuhcSdEyqs6uSWpP9aq4G",
+   "from": "nbtc.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "BejUQjGY4dtCEGdSNBF7CLyZuhcSdEyqs6uSWpP9aq4G",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "72hSb7g1j3GMp1NpmsmRxZoF7SRGcCS1HpksbRfCpcY",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "72hSb7g1j3GMp1NpmsmRxZoF7SRGcCS1HpksbRfCpcY",
+   "from": "omni.bridge.near",
+   "to": "omni-relayer.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "GBLUthvt2pdLeFzev6tR6C5aP9e82ujSF289YWfVrzQv",
+   "from": "nbtc.bridge.near",
+   "to": "omni.bridge.near",
+   "sFrom": 4,
+   "sTo": 4,
+   "dBlocks": 1
+  }
+ ],
+ "crossShardExamples": [
+  {
+   "tx": "5XroCbTMd9JcKM7CBbntT518cYsN31CRdtqnUEUCfhAN",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "dclv2.ref-labs.near",
+   "sFrom": 10,
+   "sTo": 8,
+   "dBlocks": 1
+  },
+  {
+   "tx": "C92ebuS6jeUKsUjeTqKM7hcWLEgcfaX9fGzuH488Qq3",
+   "from": "game.hot.tg",
+   "to": "7135639565.tg",
+   "sFrom": 6,
+   "sTo": 11,
+   "dBlocks": 1
+  },
+  {
+   "tx": "5XroCbTMd9JcKM7CBbntT518cYsN31CRdtqnUEUCfhAN",
+   "from": "dclv2.ref-labs.near",
+   "to": "12f8ed10ab3f17cdb075e9fa9ef5414c018f7ec6658834ac88c619e22320b3d4",
+   "sFrom": 8,
+   "sTo": 10,
+   "dBlocks": 1
+  },
+  {
+   "tx": "8J1tSqrLML2WSsriZG5A1u15fAUuGbRGKNcPETFskxcq",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "dclv2.ref-labs.near",
+   "sFrom": 10,
+   "sTo": 8,
+   "dBlocks": 1
+  },
+  {
+   "tx": "8J1tSqrLML2WSsriZG5A1u15fAUuGbRGKNcPETFskxcq",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "n-cexdex.near",
+   "sFrom": 10,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "8J1tSqrLML2WSsriZG5A1u15fAUuGbRGKNcPETFskxcq",
+   "from": "dclv2.ref-labs.near",
+   "to": "n-cexdex.near",
+   "sFrom": 8,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "8J1tSqrLML2WSsriZG5A1u15fAUuGbRGKNcPETFskxcq",
+   "from": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   "to": "n-cexdex.near",
+   "sFrom": 10,
+   "sTo": 4,
+   "dBlocks": 1
+  },
+  {
+   "tx": "6vZi8bxLc3mpSQzvDucs9Ef3UzNvifvqRSXFBh5bM4xD",
+   "from": "intents.near",
+   "to": "tron-d28a265909efecdcee7c5028585214ea0b96f015.omft.near",
+   "sFrom": 7,
+   "sTo": 12,
+   "dBlocks": 1
+  }
+ ]
+}

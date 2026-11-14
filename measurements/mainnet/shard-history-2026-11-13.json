@@ -1,0 +1,71 @@
+{
+ "measuredAt": "2026-11-13T22:31:04.685Z",
+ "rpc": "https://archival-rpc.mainnet.fastnear.com",
+ "startHeight": 60000000,
+ "startBoundaries": [
+  "aurora",
+  "aurora-0",
+  "kkuuue2akv_1630967379.near"
+ ],
+ "finalBoundaries": [
+  "650",
+  "aurora",
+  "aurora-0",
+  "earn.kaiching",
+  "game.hot.tg",
+  "game.hot.tg-0",
+  "kkuuue2akv_1630967379.near",
+  "tge-lockup.sweat",
+  "wallet.ka"
+ ],
+ "splits": [
+  {
+   "boundary": "tge-lockup.sweat",
+   "firstHeight": 114594684,
+   "date": "2024-03-13T00:00:31.328Z",
+   "protocol": 64,
+   "layoutVersion": "V1",
+   "shardsAfter": 5
+  },
+  {
+   "boundary": "game.hot.tg",
+   "firstHeight": 115185108,
+   "date": "2024-03-21T22:34:03.049Z",
+   "protocol": 65,
+   "layoutVersion": "V1",
+   "shardsAfter": 6
+  },
+  {
+   "boundary": "game.hot.tg-0",
+   "firstHeight": 142055511,
+   "date": "2025-03-17T12:05:16.041Z",
+   "protocol": 75,
+   "layoutVersion": "V2",
+   "shardsAfter": 7
+  },
+  {
+   "boundary": "earn.kaiching",
+   "firstHeight": 142228311,
+   "date": "2025-03-19T18:21:54.684Z",
+   "protocol": 76,
+   "layoutVersion": "V2",
+   "shardsAfter": 8
+  },
+  {
+   "boundary": "650",
+   "firstHeight": 160156315,
+   "date": "2025-08-18T11:30:42.377Z",
+   "protocol": 79,
+   "layoutVersion": "V2",
+   "shardsAfter": 9
+  },
+  {
+   "boundary": "wallet.ka",
+   "firstHeight": 207849311,
+   "date": "2026-07-21T01:17:21.790Z",
+   "protocol": 86,
+   "layoutVersion": "V3",
+   "shardsAfter": 10
+  }
+ ]
+}

@@ -1,0 +1,402 @@
+{
+ "measuredAt": "2026-11-12T16:58:57.460Z",
+ "protocol": 88,
+ "numShards": 10,
+ "bounds": [
+  "650",
+  "aurora",
+  "aurora-0",
+  "earn.kaiching",
+  "game.hot.tg",
+  "game.hot.tg-0",
+  "kkuuue2akv_1630967379.near",
+  "tge-lockup.sweat",
+  "wallet.ka"
+ ],
+ "gasPriceYocto": "100000000",
+ "minGasPrice": "1000000000",
+ "span": {
+  "fromHeight": 224234640,
+  "toHeight": 224240620,
+  "fromTime": "2026-11-12T16:00:05.796Z",
+  "toTime": "2026-11-12T16:56:43.063Z"
+ },
+ "shardLoad": {
+  "1": {
+   "avgTgas": 0.42,
+   "maxTgas": 24.3,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.042,
+   "samples": 272
+  },
+  "4": {
+   "avgTgas": 9.42,
+   "maxTgas": 125.1,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.942,
+   "samples": 272
+  },
+  "6": {
+   "avgTgas": 7.93,
+   "maxTgas": 39.7,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.793,
+   "samples": 272
+  },
+  "7": {
+   "avgTgas": 12.12,
+   "maxTgas": 107.3,
+   "limitTgas": 1000,
+   "avgUtilPct": 1.212,
+   "samples": 272
+  },
+  "8": {
+   "avgTgas": 24.79,
+   "maxTgas": 841.5,
+   "limitTgas": 1000,
+   "avgUtilPct": 2.479,
+   "samples": 272
+  },
+  "9": {
+   "avgTgas": 4.78,
+   "maxTgas": 41.8,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.478,
+   "samples": 272
+  },
+  "10": {
+   "avgTgas": 6.07,
+   "maxTgas": 44.6,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.607,
+   "samples": 272
+  },
+  "11": {
+   "avgTgas": 5.94,
+   "maxTgas": 42.2,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.594,
+   "samples": 272
+  },
+  "12": {
+   "avgTgas": 19.61,
+   "maxTgas": 125.6,
+   "limitTgas": 1000,
+   "avgUtilPct": 1.961,
+   "samples": 272
+  },
+  "13": {
+   "avgTgas": 4.38,
+   "maxTgas": 66.1,
+   "limitTgas": 1000,
+   "avgUtilPct": 0.438,
+   "samples": 272
+  }
+ },
+ "intentsShard": 7,
+ "intentsShardChunks": 118,
+ "intentsShardAvgTgas": 11.85,
+ "txN": 159,
+ "rcN": 601,
+ "topReceivers": [
+  [
+   "intents.near",
+   306
+  ],
+  [
+   "game.hot.tg",
+   83
+  ],
+  [
+   "sweat-relayer.near",
+   61
+  ],
+  [
+   "0here.tg",
+   59
+  ],
+  [
+   "v2.jars.sweat",
+   38
+  ],
+  [
+   "dsfsdewa.near",
+   31
+  ],
+  [
+   "wrap.near",
+   22
+  ],
+  [
+   "omni-relayer.bridge.near",
+   14
+  ],
+  [
+   "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+   13
+  ],
+  [
+   "bridge-mng.near",
+   11
+  ],
+  [
+   "escrow.ai.near",
+   10
+  ],
+  [
+   "jars.sweat",
+   10
+  ],
+  [
+   "sol.omft.near",
+   9
+  ],
+  [
+   "bnb-0x55d398326f99059ff775485246999027b3197955.omdep.near",
+   8
+  ],
+  [
+   "omni.bridge.near",
+   8
+  ]
+ ],
+ "topSigners": [
+  [
+   "intents.near",
+   113
+  ],
+  [
+   "hollowpine4417.near",
+   11
+  ],
+  [
+   "hashkeympc.near",
+   2
+  ],
+  [
+   "i6508581826.tg",
+   2
+  ],
+  [
+   "hossein_89_n_5.tg",
+   1
+  ],
+  [
+   "i7009989496.tg",
+   1
+  ],
+  [
+   "i6728859497.tg",
+   1
+  ],
+  [
+   "i6942060256.tg",
+   1
+  ],
+  [
+   "i6868133841.tg",
+   1
+  ],
+  [
+   "i6815696714.tg",
+   1
+  ],
+  [
+   "i7142737227.tg",
+   1
+  ],
+  [
+   "i6782615796.tg",
+   1
+  ],
+  [
+   "jhmithu99.tg",
+   1
+  ],
+  [
+   "i7056656319.tg",
+   1
+  ],
+  [
+   "grimm28.tg",
+   1
+  ]
+ ],
+ "intentsSamples": [
+  {
+   "gasTgas": 6.094151180205,
+   "intentsTgas": 5.784126294219,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.860026364829,
+   "intentsTgas": 5.550511271795,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 6.873318503606,
+   "intentsTgas": 6.563398706518,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 32.131634781174,
+   "intentsTgas": 18.254407623447,
+   "receipts": 20,
+   "shards": 4,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.823371258626,
+   "intentsTgas": 5.513853929658,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 7.828587480035,
+   "intentsTgas": 7.517207618045,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.644325571602,
+   "intentsTgas": 5.334709861538,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 8.173145834111,
+   "intentsTgas": 7.861716781573,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 6.113293210921,
+   "intentsTgas": 5.803239257793,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 11.052612899631,
+   "intentsTgas": 9.070425315148,
+   "receipts": 6,
+   "shards": 2,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 8.312918752752,
+   "intentsTgas": 8.002578600072,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 8.170164450003,
+   "intentsTgas": 7.858730925597,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 8.219152050501,
+   "intentsTgas": 7.907624616867,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 10.999963872312,
+   "intentsTgas": 9.054366200966,
+   "receipts": 6,
+   "shards": 2,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.970674882633,
+   "intentsTgas": 5.660746141809,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.730505985474,
+   "intentsTgas": 5.420863444202,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.900395011609,
+   "intentsTgas": 5.590468506719,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 5.953670585583,
+   "intentsTgas": 5.643621104323,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 7.998939029452,
+   "intentsTgas": 7.687471966036,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 10.917788439668,
+   "intentsTgas": 8.980261812668,
+   "receipts": 6,
+   "shards": 2,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 7.734976500329,
+   "intentsTgas": 7.424842053577,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 7.863046609002,
+   "intentsTgas": 7.55157060185,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 7.898419765681,
+   "intentsTgas": 7.588122095747,
+   "receipts": 2,
+   "shards": 1,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 10.922830094985,
+   "intentsTgas": 8.976458506076,
+   "receipts": 6,
+   "shards": 2,
+   "method": "execute_intents"
+  },
+  {
+   "gasTgas": 32.074170961248,
+   "intentsTgas": 18.248787400647,
+   "receipts": 20,
+   "shards": 4,
+   "method": "execute_intents"
+  }
+ ]
+}
