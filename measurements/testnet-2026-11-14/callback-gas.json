@@ -1,0 +1,321 @@
+{
+  "network": "testnet",
+  "measured_at": "2026-11-14T12:03:02.493Z",
+  "troll_code_hash": "24de5826837089bca92309a634f5e27704601e73a31e3fb73d07310586d519ca",
+  "source": "EXPERIMENTAL_tx_status (finality FINAL) on the K2 and K3 transactions; gas_burnt per receipt outcome; attached = FunctionCall.gas of the receipt",
+  "definitions": {
+    "ratio": "own budget / max gas_burnt seen",
+    "margin_pct": "(ratio - 1) x 100",
+    "own_budget": "the static gas constant; for credit_call 5 Tgas (its 50 Tgas includes 35 for ft_on_transfer and 10 for resolve_credit_call, which it forwards)"
+  },
+  "not_exercised": [
+    "ft_resolve_transfer (same-troll ft_transfer_call; none in these transactions)"
+  ],
+  "methods": [
+    {
+      "method": "credit",
+      "receipts": 10,
+      "failed": 1,
+      "reserved_tgas": 5,
+      "attached_tgas_min": 6.234,
+      "burnt_tgas_max": 1.705,
+      "burnt_tgas_min": 1.359,
+      "own_budget_tgas": 5,
+      "ratio": 2.93,
+      "margin_pct": 193,
+      "flag_under_2x": false
+    },
+    {
+      "method": "on_credit",
+      "receipts": 10,
+      "failed": 0,
+      "reserved_tgas": 5,
+      "attached_tgas_min": 6.234,
+      "burnt_tgas_max": 1.767,
+      "burnt_tgas_min": 1.63,
+      "own_budget_tgas": 5,
+      "ratio": 2.83,
+      "margin_pct": 183,
+      "flag_under_2x": false
+    },
+    {
+      "method": "credit_call",
+      "receipts": 1,
+      "failed": 0,
+      "reserved_tgas": 50,
+      "attached_tgas_min": 141.394,
+      "burnt_tgas_max": 2.533,
+      "burnt_tgas_min": 2.533,
+      "own_budget_tgas": 5,
+      "ratio": 1.97,
+      "margin_pct": 97,
+      "flag_under_2x": true
+    },
+    {
+      "method": "resolve_credit_call",
+      "receipts": 1,
+      "failed": 0,
+      "reserved_tgas": 10,
+      "attached_tgas_min": 10,
+      "burnt_tgas_max": 1.706,
+      "burnt_tgas_min": 1.706,
+      "own_budget_tgas": 10,
+      "ratio": 5.86,
+      "margin_pct": 486,
+      "flag_under_2x": false
+    },
+    {
+      "method": "on_credit_call",
+      "receipts": 1,
+      "failed": 0,
+      "reserved_tgas": 5,
+      "attached_tgas_min": 5,
+      "burnt_tgas_max": 1.778,
+      "burnt_tgas_min": 1.778,
+      "own_budget_tgas": 5,
+      "ratio": 2.81,
+      "margin_pct": 181,
+      "flag_under_2x": false
+    }
+  ],
+  "receipts": [
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.704
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.698
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.643
+    },
+    {
+      "tx": "K2 mixed",
+      "hash": "9dUFaSGKpTMtVkbfx49kr6wN1baL6MbzVCC4FtMrrysA",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 6.234,
+      "burnt_tgas": 1.63
+    },
+    {
+      "tx": "K3 cross-troll transfer, receiver registered",
+      "hash": "BJR2SxwNL8Dq9dYg86L9CGbo1UxbpHmJjc9MnNa7nAq",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 23.07,
+      "burnt_tgas": 1.705
+    },
+    {
+      "tx": "K3 cross-troll transfer, receiver registered",
+      "hash": "BJR2SxwNL8Dq9dYg86L9CGbo1UxbpHmJjc9MnNa7nAq",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 23.07,
+      "burnt_tgas": 1.699
+    },
+    {
+      "tx": "K3 cross-troll transfer, receiver not registered",
+      "hash": "FfRRykMri71V7XtTVBvyirB8uN128shRFrSUiavAcvZG",
+      "method": "credit",
+      "executor": "7.st.xavio.testnet",
+      "status": "Failure",
+      "reserved_tgas": 5,
+      "attached_tgas": 23.199,
+      "burnt_tgas": 1.359
+    },
+    {
+      "tx": "K3 cross-troll transfer, receiver not registered",
+      "hash": "FfRRykMri71V7XtTVBvyirB8uN128shRFrSUiavAcvZG",
+      "method": "on_credit",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 23.199,
+      "burnt_tgas": 1.767
+    },
+    {
+      "tx": "K3 cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+      "hash": "9P3majpByJamxewdNG3trTDEFhfSsw43NQ1WAsKX8Y2N",
+      "method": "credit_call",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 50,
+      "attached_tgas": 141.394,
+      "burnt_tgas": 2.533
+    },
+    {
+      "tx": "K3 cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+      "hash": "9P3majpByJamxewdNG3trTDEFhfSsw43NQ1WAsKX8Y2N",
+      "method": "resolve_credit_call",
+      "executor": "7.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 10,
+      "attached_tgas": 10,
+      "burnt_tgas": 1.706
+    },
+    {
+      "tx": "K3 cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+      "hash": "9P3majpByJamxewdNG3trTDEFhfSsw43NQ1WAsKX8Y2N",
+      "method": "on_credit_call",
+      "executor": "0.st.xavio.testnet",
+      "status": "Success",
+      "reserved_tgas": 5,
+      "attached_tgas": 5,
+      "burnt_tgas": 1.778
+    }
+  ],
+  "notes": [
+    "credit and on_credit are attached with default unused-gas weight, so they received more than their 5 Tgas constant (min 6.234 Tgas here); the ratio uses the constant, the worst case when a caller attaches the minimum.",
+    "on_credit_call, resolve_credit_call (and ft_resolve_transfer) use unused_gas_weight(0): they get exactly their constant (5 / 10 Tgas attached, confirmed).",
+    "credit_call: flagged at 1.97x of its own 5 Tgas budget (2.53 Tgas burnt, including the send fees of its two child receipts). Its 50 Tgas constant = 35 forwarded to ft_on_transfer + 10 for resolve_credit_call + 5 own. In this tx it received 141.4 Tgas (unused-gas weight from a 150 Tgas call); with an ft_transfer_call at the 100 Tgas minimum, the headroom is the 5 Tgas own budget plus its share of leftover gas.",
+    "The credit failure counted in credit.failed is K3 case b (unregistered receiver), the intended failure; its burnt gas (panic path) is included.",
+    "Small state: each troll holds a handful of accounts. Storage reads and writes on a large trie cost more, so the margins at launch scale will be somewhat lower than these.",
+    "ft_resolve_transfer was not exercised (no same-troll ft_transfer_call in these transactions)."
+  ]
+}
