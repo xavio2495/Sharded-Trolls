@@ -1,6 +1,5 @@
-// Launch claim sizing with a claim fee, when the unclaimed launch pool funds the Feeding reward once the
-// launch window has closed (pool first,
-// then mint). For each claim size and fee: the token price above which bots claiming the pool
+// Launch claim sizing with a claim fee, when the unclaimed launch pool funds the Feeding reward once
+// the launch window has closed (pool first, then mint). For each claim size and fee: the token price above which bots claiming the pool
 // pays, the cost of draining the whole pool, and (sim, 60 days) how long the pool keeps funding the
 // reward. Writes sim/out/d24.csv and sim/out/d24.json.
 // Run: node --max-old-space-size=2048 sim/d24.js
