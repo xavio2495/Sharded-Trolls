@@ -14,12 +14,13 @@ export default function EvidencePage() {
     <div className="min-h-full bg-paper">
       <header className="sticky top-0 z-40 border-b border-hairline bg-paper/90 backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex min-w-0 shrink items-center gap-2 font-display text-lg tracking-wide text-ink-0 sm:gap-3 sm:text-2xl">
+          <Link href="/" aria-label="Sharded Trolls, home" className="flex min-w-0 shrink items-center gap-2 font-display text-lg tracking-wide text-ink-0 sm:gap-3 sm:text-2xl">
             <Image src="/logo.svg" alt="" width={40} height={40} className="size-8 shrink-0 sm:size-10" />
-            <span className="truncate">Sharded Trolls</span>
+            <span className="hidden truncate sm:inline">Sharded Trolls</span>
           </Link>
           {/* Short labels on phones so the links never run into the wordmark. */}
           <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-ink-1 sm:gap-3">
+            <Link href="/paper" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">Paper</Link>
             <Link href="/app" className="inline-flex min-h-11 items-center whitespace-nowrap px-2 hover:text-ink-0">
               <span className="sm:hidden">Live</span>
               <span className="hidden sm:inline">The Feeding, live</span>
