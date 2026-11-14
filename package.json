@@ -13,6 +13,10 @@
   "scripts": {
     "check": "node --dns-result-order=ipv4first packages/layout/check.js",
     "sim": "node --max-old-space-size=2048 sim/run.js",
-    "test:js": "node --test \"packages/**/*.test.js\" \"sim/**/*.test.js\""
+    "test:js": "node --test \"packages/**/*.test.js\" \"sim/**/*.test.js\"",
+    "localnet": "node --dns-result-order=ipv4first scripts/localnet.mjs",
+    "deploy:local": "node --dns-result-order=ipv4first scripts/deploy.mjs --network localnet",
+    "load": "node --dns-result-order=ipv4first --max-old-space-size=2048 scripts/load.mjs",
+    "measure": "node --dns-result-order=ipv4first scripts/measure.mjs"
   }
 }

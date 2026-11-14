@@ -39,6 +39,13 @@ export function place(parent, layout, { taken = [] } = {}) {
   return [...byShard.values()].sort((x, y) => (x.account < y.account ? -1 : 1));
 }
 
+// Range bounds for the contracts' init args: troll i (in `place` order) holds ids in
+// [bounds[i-1], bounds[i]). Each bound is the layout boundary where that troll's shard starts, so a
+// troll's range covers its shard plus any unreachable shard just below it.
+export function bounds(trolls, { boundary_accounts, shard_ids }) {
+  return trolls.slice(1).map((t) => boundary_accounts[shard_ids.indexOf(t.shard) - 1]);
+}
+
 export async function rpc(url, method, params) {
   const res = await fetch(url, {
     method: 'POST',

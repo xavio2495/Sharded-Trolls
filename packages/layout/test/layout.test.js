@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shardOf, place } from '../index.js';
+import { shardOf, place, bounds } from '../index.js';
 
 // Layouts read from EXPERIMENTAL_protocol_config at protocol 88.
 const MAINNET = {
@@ -63,4 +63,17 @@ test('place: works for any parent', () => {
   const trolls = place('x.near', MAINNET);
   assert.equal(new Set(trolls.map((t) => t.shard)).size, 8);
   for (const t of trolls) assert.equal(shardOf(t.account, MAINNET), t.shard);
+});
+
+test('bounds: every account maps to the troll on its shard, unreachable shards to a neighbour', () => {
+  for (const [parent, layout] of [['shardedtrolls.near', MAINNET], ['shardedtrolls.testnet', TESTNET]]) {
+    const trolls = place(parent, layout);
+    const b = bounds(trolls, layout);
+    assert.equal(b.length, 7);
+    const home = (id) => trolls[b.filter((x) => id >= x).length];
+    for (const t of trolls) assert.equal(home(t.account).shard, t.shard);
+    for (const id of ['alice.near', 'zz.near', '00ff', 'f00d1234', 'kkz.near', 'wallet.kb', 'u.near']) assert.equal(home(id).shard, shardOf(id, layout));
+    assert.equal(home('aurora').shard, 11);
+    assert.equal(home('game.hot.tg').shard, 9);
+  }
 });
