@@ -4,5 +4,12 @@
   "installCommand": null,
   "outputDirectory": ".",
   "cleanUrls": false,
-  "redirects": [{ "source": "/", "destination": "/web/", "permanent": false }]
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/web/",
+      "permanent": false
+    }
+  ],
+  "trailingSlash": true
 }

@@ -5,6 +5,9 @@ import { shardOf, place } from '../packages/layout/index.js';
 import { renderCompare } from './compare.js';
 
 const RUNS = [
+  { id: 'control-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s (final build)' },
+  { id: 'trolls-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, same-troll · 2,000 transfers/s for 90 s (final build)' },
+  { id: 'trolls-mixed-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 2,000 transfers/s for 90 s (final build)' },
   { id: 'trolls-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 2,000 transfers/s for 90 s' },
   { id: 'control-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s' },
   { id: 'trolls-run2', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 1,000 transfers/s for 60 s' },
