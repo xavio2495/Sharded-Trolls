@@ -24,6 +24,7 @@ fn params(n: u8) -> Params {
         launch_claim_amount: U128(100_000),
         min_counted_transfer: U128(10),
         claim_fee: U128(0),
+        settle_bounty: U128(0),
     }
 }
 
@@ -140,7 +141,7 @@ impl Net {
             assert_eq!(ev.values().sum::<i128>() as u128, t.ft_total_supply().0, "troll {i}: events sum to ft_total_supply");
             for (who, b) in ev {
                 let want = if *who == self.ids[i].as_str() {
-                    t.hoard + t.launch_pool + pool_total(t)
+                    t.hoard + t.launch_pool + t.food + pool_total(t)
                 } else {
                     t.ft_balance_of(acc(who)).0
                 };
@@ -183,9 +184,13 @@ impl Net {
     }
 
     /// Delivers a cross-troll credit from troll `src` to troll `dst` (the runtime's job).
-    fn credit(&mut self, src: usize, dst: usize, sender: &AccountId, receiver: &AccountId, net: u128) {
+    /// `amount` is what the source debited; the receiver gets it less the toll, which the
+    /// destination eats.
+    fn credit(&mut self, src: usize, dst: usize, sender: &AccountId, receiver: &AccountId, amount: u128) {
+        let toll = bps_of(amount, self.t[src].params.toll_bps);
+        let net = amount - toll;
         let (s, r, from) = (sender.clone(), receiver.clone(), self.ids[src].clone());
-        self.as_(dst, &from, 0, |t| t.credit(s, r, U128(net)));
+        self.as_(dst, &from, 0, |t| t.credit(s, r, U128(net), U128(toll)));
     }
 
     fn on_credit(&mut self, src: usize, sender: &AccountId, amount: u128, toll: u128, ok: bool) -> bool {
@@ -213,11 +218,12 @@ fn trolls_are_self_describing_nep141_contracts() {
     let log = get_logs().join("\n");
     assert!(log.contains("\"ft_burn\"") && log.contains("\"amount\":\"40000\"") && log.contains("cross-troll to troll2.t"));
     assert_eq!(net.t[0].ft_total_supply().0, 333_334 - 40_000);
-    net.credit(0, 2, &a, &c, 39_900);
+    net.credit(0, 2, &a, &c, 40_000);
     let log = get_logs().join("\n");
     assert!(log.contains("\"ft_mint\"") && log.contains("\"amount\":\"39900\"") && log.contains("via troll0.t"));
     net.on_credit(0, &a, 40_000, 100, true);
-    assert_eq!(net.t.iter().map(|t| t.ft_total_supply().0).sum::<u128>(), 1_000_000 - 100);
+    assert_eq!(net.t.iter().map(|t| t.ft_total_supply().0).sum::<u128>(), 1_000_000, "the toll moved, nothing burned");
+    assert_eq!(net.t[2].food, 100);
     net.check_events();
 }
 
@@ -389,7 +395,7 @@ fn self_transfer_rejected() {
 // ---------- cross-troll transfers ----------
 
 #[test]
-fn cross_troll_transfer_credits_then_burns_toll() {
+fn cross_troll_transfer_credits_and_feeds_the_toll_to_the_destination() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let (a, c) = (net.user(0, 1), net.user(2, 1));
     net.launch(0, &a);
@@ -398,16 +404,35 @@ fn cross_troll_transfer_credits_then_burns_toll() {
     assert_eq!(net.bal(0, &a), 60_000);
     assert_eq!((net.t[0].supply, net.t[0].in_flight), (293_334, 40_000));
 
-    net.credit(0, 2, &a, &c, 40_000 - toll(40_000));
+    net.credit(0, 2, &a, &c, 40_000);
     assert_eq!(net.bal(2, &c), 39_900);
-    assert_eq!(net.t[2].supply, 333_333 + 39_900);
+    assert_eq!((net.t[2].supply, net.t[2].food), (333_333 + 40_000, 100));
+    assert!(get_logs().iter().any(|l| l.contains("toll_eaten")));
 
     assert!(net.on_credit(0, &a, 40_000, toll(40_000), true));
-    assert_eq!((net.t[0].in_flight, net.t[0].burned), (0, 100));
+    assert_eq!((net.t[0].in_flight, net.t[0].burned), (0, 0), "nothing burned");
     assert!(get_logs()[0].contains("\"event\":\"toll\"") && get_logs()[0].contains("\"amount\":\"100\""));
     net.check_events();
     let total: u128 = net.t.iter().map(|t| t.supply).sum::<u128>() + net.t.iter().map(|t| t.burned).sum::<u128>();
     assert_eq!(total, 1_000_000);
+}
+
+#[test]
+fn a_credit_to_an_unregistered_receiver_eats_no_toll() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let a = net.user(0, 1);
+    let c = net.user(2, 1); // never registered
+    net.launch(0, &a);
+    net.transfer_raw(0, &a, &c, 40_000);
+    let (s, r, from) = (a.clone(), c.clone(), net.ids[0].clone());
+    let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        net.as_(2, &from, 0, |t| t.credit(s, r, U128(39_900), U128(100)))
+    }));
+    assert!(res.is_err());
+    // the runtime rolls the failed receipt back; the mocked state was not touched before the panic
+    assert_eq!((net.t[2].food, net.t[2].supply), (0, 333_333));
+    assert!(!net.on_credit(0, &a, 40_000, 100, false));
+    assert_eq!(net.bal(0, &a), 100_000);
 }
 
 #[test]
@@ -428,7 +453,7 @@ fn failed_credit_refunds_in_full() {
 fn fake_troll_cannot_credit() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let c = net.user(2, 1);
-    net.as_(2, &acc("evil.t"), 0, |t| t.credit(acc("x.u"), c, U128(1_000_000)));
+    net.as_(2, &acc("evil.t"), 0, |t| t.credit(acc("x.u"), c, U128(1_000_000), U128(0)));
 }
 
 #[test]
@@ -437,7 +462,7 @@ fn troll_cannot_credit_itself() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let c = net.user(2, 1);
     let me = net.ids[2].clone();
-    net.as_(2, &me, 0, |t| t.credit(acc("x.u"), c, U128(1)));
+    net.as_(2, &me, 0, |t| t.credit(acc("x.u"), c, U128(1), U128(0)));
 }
 
 #[test]
@@ -524,6 +549,7 @@ fn report_reflects_counters() {
             in_flight: U128(0),
             hoard: U128(133_334),
             launch_pool: U128(0),
+            food: U128(0),
             minted: U128(0),
             burned: U128(0)
         }
@@ -539,7 +565,7 @@ fn reward_pool_split_among_feeders_and_claimed_once() {
     net.transfer(0, &a, &c, 10);
     net.transfer(0, &b, &c, 10);
     net.now += EPOCH;
-    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_001) }));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000) }));
     assert_eq!(net.t[0].pool(0), Some(Pool { share: U128(500), remaining: U128(1_000) }));
     assert_eq!((net.t[0].minted, net.t[0].supply), (1_000, 334_334));
     assert_eq!(net.as_(0, &a, 0, |t| t.claim(0)).0, 500);
@@ -628,7 +654,9 @@ fn conservation_run(seed: u64, steps: usize) {
     const USERS: usize = 6;
     // 50,000 launch tokens per troll stay unclaimed and fund rewards after the window
     let (total, launch) = (1_000_000_000u128, 8 * USERS as u128 * 100_000 + 8 * 50_000);
-    let mut net = Net::new(N as u8, total, launch);
+    // rewards up to 1,000,000 per troll and burns up to 100% so every funding source and burn size is hit
+    let p = Params { reward_per_epoch: U128(N as u128 * 1_000_000), starve_burn_bps: 10_000, ..params(N as u8) };
+    let mut net = Net::with_params(p, total, launch);
     let mut rng = Rng(seed);
     let users: Vec<(usize, AccountId)> = (0..N).flat_map(|i| (0..USERS).map(move |k| (i, k))).map(|(i, k)| (i, net.user(i, k))).collect();
     // Shadow model of every balance, keyed by (troll, account).
@@ -640,7 +668,7 @@ fn conservation_run(seed: u64, steps: usize) {
     let mut credits: Vec<Credit> = vec![];
     let mut callbacks: Vec<(Credit, bool)> = vec![];
     let (mut transfers, mut cross, mut failed, mut auto_paid, mut claimed) = (0, 0, 0, 0u128, 0u128);
-    let mut from_launch_pool = 0u128;
+    let (mut from_launch_pool, mut from_food) = (0u128, 0u128);
 
     let check = |net: &Net, callbacks: &[(Credit, bool)], model: &HashMap<(usize, AccountId), u128>| {
         let supply: u128 = net.t.iter().map(|t| t.supply).sum();
@@ -648,11 +676,11 @@ fn conservation_run(seed: u64, steps: usize) {
         let burned: u128 = net.t.iter().map(|t| t.burned).sum();
         let minted: u128 = net.t.iter().map(|t| t.minted).sum();
         // Credits already delivered whose source has not yet seen the callback are counted twice.
-        let delivered: u128 = callbacks.iter().filter(|(_, ok)| *ok).map(|(c, _)| c.amount - c.toll).sum();
+        let delivered: u128 = callbacks.iter().filter(|(_, ok)| *ok).map(|(c, _)| c.amount).sum();
         assert_eq!(supply + in_flight - delivered + burned, total + minted, "conservation");
         for (i, t) in net.t.iter().enumerate() {
             let held: u128 = model.iter().filter(|((ti, _), _)| *ti == i).map(|(_, v)| v).sum();
-            assert_eq!(t.supply, held + t.hoard + t.launch_pool + pool_total(t), "troll {i} supply = holdings");
+            assert_eq!(t.supply, held + t.hoard + t.launch_pool + t.food + pool_total(t), "troll {i} supply = holdings");
         }
     };
 
@@ -691,7 +719,7 @@ fn conservation_run(seed: u64, steps: usize) {
                 let c = credits.swap_remove(rng.below(credits.len() as u64) as usize);
                 let ok = rng.below(5) != 0;
                 if ok {
-                    net.credit(c.src, c.dst, &c.sender, &c.receiver, c.amount - c.toll);
+                    net.credit(c.src, c.dst, &c.sender, &c.receiver, c.amount);
                     *model.entry((c.dst, c.receiver.clone())).or_default() += c.amount - c.toll;
                 } else {
                     failed += 1;
@@ -712,18 +740,20 @@ fn conservation_run(seed: u64, steps: usize) {
                 net.now += EPOCH;
                 for i in 0..N {
                     let outcome = match rng.below(3) {
-                        0 => Outcome::Reward { amount: U128(rng.below(1_000_000) as u128) },
+                        0 => Outcome::Reward { amount: U128(rng.below(1_000_001) as u128) },
                         1 => Outcome::Burn { bps: rng.below(10_001) as u16 },
                         _ => Outcome::NoOp,
                     };
                     let r = net.as_(i, &root(), 0, |t| t.report(epoch));
                     assert_eq!((r.minted.0, r.burned.0), (net.t[i].minted, net.t[i].burned));
                     let booked = troll_types::outcome_effect(&r, &outcome);
-                    let pool_before = net.t[i].launch_pool;
+                    let (pool_before, food_before) = (net.t[i].launch_pool, net.t[i].food);
+                    assert_eq!(r.food.0, food_before, "report snapshots food");
                     net.as_(i, &root(), 0, |t| t.apply(epoch, outcome));
                     let t = &net.t[i];
                     assert_eq!((t.minted - r.minted.0, t.burned - r.burned.0), booked, "root books what troll {i} applies");
                     from_launch_pool += pool_before - t.launch_pool;
+                    from_food += food_before - t.food;
                     if net.t[i].pool(epoch).is_some() {
                         for (_, u) in users.iter().filter(|(ui, _)| *ui == i) {
                             if net.t[i].is_feeder(epoch, u.clone()) && rng.below(2) == 0 {
@@ -745,7 +775,7 @@ fn conservation_run(seed: u64, steps: usize) {
 
     // Drain everything in flight, then the books must close exactly.
     for c in credits.drain(..) {
-        net.credit(c.src, c.dst, &c.sender, &c.receiver, c.amount - c.toll);
+        net.credit(c.src, c.dst, &c.sender, &c.receiver, c.amount);
         *model.entry((c.dst, c.receiver.clone())).or_default() += c.amount - c.toll;
         callbacks.push((c, true));
     }
@@ -766,7 +796,10 @@ fn conservation_run(seed: u64, steps: usize) {
     assert_eq!(total + minted - burned, net.t.iter().map(|t| t.supply).sum::<u128>(), "books close at rest");
     assert!(transfers > 3_000 && cross > 1_000 && failed > 50, "coverage: {transfers} {cross} {failed}");
     assert!(auto_paid > 0 && claimed > 0, "rewards in play: auto {auto_paid}, claimed {claimed}");
-    assert!(from_launch_pool > 0 && net.t.iter().any(|t| t.minted > 0), "rewards from the pool and minted: {from_launch_pool}");
+    assert!(
+        from_food > 0 && from_launch_pool > 0 && net.t.iter().any(|t| t.minted > 0),
+        "rewards from food, the pool and minted: {from_food} {from_launch_pool}"
+    );
 }
 
 // One seed per test: each test thread gets its own fresh mocked storage.
@@ -865,7 +898,7 @@ fn cross_troll_transfer_to_unregistered_receiver_is_refunded() {
     let (from, (s, r)) = (net.ids[0].clone(), (a.clone(), c.clone()));
     ctx(&net.ids[2], &from, net.now, 0);
     let dest = &mut net.t[2];
-    let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| dest.credit(s, r, U128(39_900))));
+    let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| dest.credit(s, r, U128(39_900), U128(100))));
     assert!(res.is_err(), "credit must fail for an unregistered receiver");
     assert_eq!(net.t[2].supply, before, "failed credit changes nothing at the destination");
     assert!(!net.on_credit(0, &a, 40_000, 100, false));
@@ -953,14 +986,15 @@ fn troll_burning_more_than_it_issued_still_reports_and_settles() {
     net.launch(0, &a);
     net.launch(1, &b);
     net.transfer(0, &a, &b, 100_000);
-    net.credit(0, 1, &a, &b, 100_000 - toll(100_000));
+    net.credit(0, 1, &a, &b, 100_000);
     net.on_credit(0, &a, 100_000, toll(100_000), true);
     assert!(net.as_(1, &b, 1, |t| t.storage_unregister(Some(true))));
     assert!(net.t[1].burned > net.t[1].initial + net.t[1].minted);
     net.now += EPOCH;
     settle(&mut net, &mut root, 0);
     assert_eq!(root.ft_total_supply().0, troll_total(&net));
-    assert_eq!(root.ft_total_supply().0, total - toll(100_000) - (200_000 - toll(100_000)));
+    // b's whole balance is burned; the toll stays on troll 1 as food
+    assert_eq!(root.ft_total_supply().0, total - (200_000 - toll(100_000)));
 }
 
 // ---------- fed slots: auto-claim, freeing, forfeit ----------
@@ -1130,14 +1164,15 @@ fn root_total_supply_matches_trolls_after_each_settlement() {
         net.transfer(i, &a, &b, 1_000);
         net.transfer(i, &b, &c, 40_000);
         let dst = (i + 1) % 3;
-        net.credit(i, dst, &b, &c, 40_000 - toll(40_000));
+        net.credit(i, dst, &b, &c, 40_000);
         net.on_credit(i, &b, 40_000, toll(40_000), true);
     }
     net.now += EPOCH;
     settle(&mut net, &mut root, 0);
     assert_eq!(root.streak(), (1, 1));
     let minted: u128 = net.t.iter().map(|t| t.minted).sum();
-    assert_eq!(minted, 3_000, "1,000 per troll split between 2 feeders");
+    // 1,000 per troll split between 2 feeders; each troll ate a 100 toll, which pays first
+    assert_eq!(minted, 3_000 - 3 * toll(40_000), "only the part food did not cover is minted");
     assert_eq!(root.ft_total_supply().0, troll_total(&net), "after a fed epoch");
     assert_eq!(root.info().troll_supply, net.t.iter().map(|t| U128(t.supply)).collect::<Vec<_>>());
 
@@ -1205,6 +1240,75 @@ fn feed_and_reward(net: &mut Net, e: u64) -> (u128, u128) {
 }
 
 #[test]
+fn reward_comes_from_food_then_the_launch_pool_then_minting() {
+    // 10% toll so food is easy to see; 201,500 launch tokens per troll
+    let mut net = Net::with_params(Params { toll_bps: 1_000, ..params(3) }, 1_000_000, 604_500);
+    let (a, b) = (net.user(0, 1), net.user(0, 2));
+    let x = net.user(1, 1);
+    net.launch(0, &a);
+    net.launch(0, &b); // troll 0 keeps 1,500 launch tokens
+    net.launch(1, &x);
+    // x sends 6,000 across to a: troll 0 eats 600
+    net.transfer(1, &x, &a, 6_000);
+    net.credit(1, 0, &x, &a, 6_000);
+    net.on_credit(1, &x, 6_000, 600, true);
+    assert_eq!((net.t[0].food, net.t[1].burned), (600, 0));
+    // epoch 4 ends when the window closes: 600 from food, 400 from the launch pool
+    assert_eq!(feed_and_reward(&mut net, 4), (400, 0));
+    assert_eq!((net.t[0].food, net.t[0].launch_pool), (0, 1_100));
+    assert!(get_logs().iter().any(|l| l.contains("reward_from_food")));
+    assert_eq!(feed_and_reward(&mut net, 5), (1_000, 0));
+    assert_eq!(feed_and_reward(&mut net, 6), (100, 900), "food and pool empty: the rest is minted");
+    let t = &net.t[0];
+    assert_eq!(t.supply, t.initial + 6_000 + t.minted - t.burned);
+}
+
+#[test]
+fn food_is_snapshotted_at_report() {
+    let mut net = Net::with_params(Params { toll_bps: 1_000, ..params(3) }, 1_000_000, 600_000);
+    let (a, b, c) = (net.user(0, 1), net.user(0, 2), net.user(0, 3));
+    let x = net.user(1, 1);
+    net.launch(0, &a);
+    net.launch(0, &b);
+    net.launch(1, &x);
+    net.transfer(1, &x, &a, 3_000); // 300 food on troll 0
+    net.credit(1, 0, &x, &a, 3_000);
+    net.transfer(0, &a, &c, 10);
+    net.transfer(0, &b, &c, 10);
+    net.now += EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(0));
+    assert_eq!(r.food.0, 300);
+    // more tolls arrive before the root's apply
+    net.transfer(1, &x, &a, 5_000);
+    net.credit(1, 0, &x, &a, 5_000);
+    assert_eq!(net.t[0].food, 800);
+    let outcome = Outcome::Reward { amount: U128(1_000) };
+    let (booked, _) = troll_types::outcome_effect(&r, &outcome);
+    let minted_before = net.t[0].minted;
+    net.as_(0, &root(), 0, |t| t.apply(0, outcome));
+    // window still open: only the reported 300 food is used, 700 minted, as the root booked
+    assert_eq!((net.t[0].minted - minted_before, booked), (700, 700));
+    assert_eq!(net.t[0].food, 500, "food that arrived after the report waits for the next epoch");
+    net.check_events();
+}
+
+#[test]
+#[should_panic(expected = "reward above params")]
+fn apply_rejects_a_reward_above_params() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    net.now += EPOCH;
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_001) }));
+}
+
+#[test]
+#[should_panic(expected = "burn above params")]
+fn apply_rejects_a_burn_above_params() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    net.now += EPOCH;
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Burn { bps: 101 }));
+}
+
+#[test]
 fn reward_comes_from_the_launch_pool_after_the_window() {
     // 201,500 launch tokens on troll 0; two claims leave 1,500
     let mut net = Net::new(3, 1_000_000, 604_500);
@@ -1226,21 +1330,43 @@ fn reward_comes_from_the_launch_pool_after_the_window() {
 }
 
 #[test]
-fn claim_fee_is_kept_and_excess_refunded() {
+fn claim_fee_goes_to_the_root_less_the_claim_record_storage() {
     use near_sdk::test_utils::get_created_receipts;
-    let fee = 7_000u128;
+    let fee = 10u128.pow(22); // 0.01 NEAR
     let mut net = Net::with_params(Params { claim_fee: U128(fee), ..params(3) }, 1_000_000, 600_000);
     let min = net.min();
+    let deposits = |r: &[near_sdk::mock::Receipt]| -> Vec<(String, u128)> {
+        r.iter()
+            .map(|rc| {
+                let near_sdk::mock::MockAction::Transfer { deposit, .. } = &rc.actions[0] else { panic!("expected a transfer") };
+                (rc.receiver_id.to_string(), deposit.as_yoctonear())
+            })
+            .collect()
+    };
     // unregistered: storage minimum plus the fee; 5 yocto extra comes back
     let a = net.user(0, 1);
     assert_eq!(net.as_(0, &a, min + fee + 5, |t| t.claim_launch()).0, 100_000);
-    let r = get_created_receipts();
-    assert_eq!(r.len(), 1);
-    assert!(format!("{:?}", r[0].actions).contains("deposit: NearToken { inner: 5 }"), "{:?}", r[0].actions);
-    // registered: just the fee, nothing to refund
+    let d = deposits(&get_created_receipts());
+    assert_eq!(d[0], (a.to_string(), 5));
+    assert_eq!(d[1].0, ROOT);
+    let record = fee - d[1].1;
+    assert!(record > 0 && record < fee / 10, "the troll keeps only the claim record's storage: {record}");
+    // registered: just the fee, all of it but the record goes to the root
     let b = net.user(0, 2);
     net.reg(&b);
     assert_eq!(net.as_(0, &b, fee, |t| t.claim_launch()).0, 100_000);
+    let d = deposits(&get_created_receipts());
+    assert_eq!(d.len(), 1);
+    assert_eq!(d[0].0, ROOT);
+}
+
+#[test]
+fn a_fee_below_the_record_storage_stays_on_the_troll() {
+    use near_sdk::test_utils::get_created_receipts;
+    let mut net = Net::with_params(Params { claim_fee: U128(7_000), ..params(3) }, 1_000_000, 600_000);
+    let b = net.user(0, 2);
+    net.reg(&b);
+    net.as_(0, &b, 7_000, |t| t.claim_launch());
     assert!(get_created_receipts().is_empty());
 }
 
@@ -1340,7 +1466,7 @@ fn cross_troll_transfer_call_returns_unused_to_the_source() {
     // destination: credit 39_900 and call the receiver
     let from = net.ids[0].clone();
     let (s, r) = (a.clone(), w.clone());
-    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), "wrap".into()));
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), U128(100), "wrap".into()));
     assert_eq!(net.bal(2, &w), 39_900);
     // receiver used 30_000 and returned 9_900; destination takes it back and reports it
     let back = as_cb(&mut net, 2, Some(br#""9900""#), |t| t.resolve_credit_call(a.clone(), w.clone(), U128(39_900)));
@@ -1348,7 +1474,8 @@ fn cross_troll_transfer_call_returns_unused_to_the_source() {
     // source: refund the unused part, burn the toll, report what was used
     let used = as_cb(&mut net, 0, Some(br#""9900""#), |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
     assert_eq!(used.0, 30_000);
-    assert_eq!((net.bal(0, &a), net.t[0].in_flight, net.t[0].burned), (69_900, 0, 100));
+    assert_eq!((net.bal(0, &a), net.t[0].in_flight, net.t[0].burned), (69_900, 0, 0));
+    assert_eq!(net.t[2].food, 100);
     let logs = get_logs();
     assert!(logs[0].contains("\"ft_mint\"") && logs[0].contains("\"amount\":\"9900\"") && logs[1].contains("\"toll\""));
     assert_eq!(total_books(&net), 1_000_000);
@@ -1364,7 +1491,7 @@ fn cross_troll_transfer_call_to_unregistered_refunds_everything() {
     // the destination refuses by value, without panicking and without crediting
     let from = net.ids[0].clone();
     let (s, r) = (a.clone(), w.clone());
-    let res = net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), String::new()));
+    let res = net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), U128(100), String::new()));
     assert!(matches!(res, PromiseOrValue::Value(U128(NOT_CREDITED))));
     assert_eq!(net.t[2].supply, 333_333);
     let refused = format!("\"{NOT_CREDITED}\"");
@@ -1386,12 +1513,12 @@ fn cross_troll_resolve_failure_after_credit_refunds_nothing() {
     call(&mut net, 0, &a, &w, 40_000);
     let from = net.ids[0].clone();
     let (s, r) = (a.clone(), w.clone());
-    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), "wrap".into()));
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), U128(100), "wrap".into()));
     // resolve_credit_call failed: nothing happens at the destination
     let used = as_cb(&mut net, 0, None, |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
     assert_eq!(used.0, 39_900, "receiver kept everything");
     assert_eq!((net.bal(0, &a), net.bal(2, &w)), (60_000, 39_900));
-    assert_eq!((net.t[0].in_flight, net.t[0].burned), (0, 100));
+    assert_eq!((net.t[0].in_flight, net.t[0].burned, net.t[2].food), (0, 0, 100));
     assert!(get_logs().iter().any(|l| l.contains("credit_unresolved")));
     assert_eq!(total_books(&net), 1_000_000, "no tokens created");
     // the sender's pending amount is closed, so it can unregister once its balance is empty
@@ -1399,7 +1526,7 @@ fn cross_troll_resolve_failure_after_credit_refunds_nothing() {
     // garbage instead of a failure is treated the same way
     call(&mut net, 0, &a, &w, 1_000);
     let (s, r) = (a.clone(), w.clone());
-    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(998), String::new()));
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(998), U128(2), String::new()));
     as_cb(&mut net, 0, Some(b"oops"), |t| t.on_credit_call(a.clone(), U128(1_000), U128(2)));
     assert_eq!((net.bal(0, &a), net.bal(2, &w)), (59_000, 40_898));
     assert_eq!(total_books(&net), 1_000_000);
@@ -1458,7 +1585,7 @@ fn transfer_call_requires_enough_gas() {
 fn fake_troll_cannot_probe_credit_call_for_unregistered() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let w = net.user(2, 9);
-    net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), String::new()));
+    net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), U128(0), String::new()));
 }
 
 #[test]
@@ -1469,7 +1596,7 @@ fn cross_troll_receiver_failure_returns_all_but_the_toll() {
     call(&mut net, 0, &a, &w, 40_000);
     let from = net.ids[0].clone();
     let (s, r) = (a.clone(), w.clone());
-    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), String::new()));
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), U128(100), String::new()));
     let back = as_cb(&mut net, 2, None, |t| t.resolve_credit_call(a.clone(), w.clone(), U128(39_900)));
     assert_eq!(back.0, 39_900);
     let used = as_cb(&mut net, 0, Some(br#""39900""#), |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
@@ -1484,5 +1611,5 @@ fn fake_troll_cannot_credit_call() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let w = net.user(2, 9);
     net.reg(&w);
-    net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), String::new()));
+    net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), U128(0), String::new()));
 }

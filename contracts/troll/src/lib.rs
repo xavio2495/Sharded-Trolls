@@ -35,8 +35,8 @@ const MAX_RESULT_LEN: usize = 64;
 
 #[ext_contract(ext_sibling)]
 pub trait Sibling {
-    fn credit(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128);
-    fn credit_call(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, msg: String);
+    fn credit(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, toll: U128);
+    fn credit_call(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, toll: U128, msg: String);
 }
 
 #[ext_contract(ext_receiver)]
@@ -112,6 +112,7 @@ pub struct TrollInfo {
     pub in_flight: U128,
     pub hoard: U128,
     pub launch_pool: U128,
+    pub food: U128,
     pub minted: U128,
     pub burned: U128,
     pub last_applied: Option<u64>,
@@ -127,11 +128,16 @@ pub struct Troll {
     metadata: FungibleTokenMetadata,
     start_ms: u64,
     accounts: Map<AccountId, Account>,
-    /// Balances + hoard + launch pool + unclaimed reward pools. Excludes `in_flight`.
+    /// Balances + hoard + launch pool + food + unclaimed reward pools. Excludes `in_flight`.
     supply: u128,
     in_flight: u128,
     hoard: u128,
     launch_pool: u128,
+    /// Tolls eaten from cross-troll transfers arriving here, not yet paid out as rewards.
+    food: u128,
+    /// `food` as of the last `report`: what the next `apply` may use, so that the root's
+    /// booking and the troll's payout agree even if more tolls arrive in between.
+    food_reported: u128,
     initial: u128,
     minted: u128,
     burned: u128,
@@ -192,6 +198,8 @@ impl Troll {
             in_flight: 0,
             hoard,
             launch_pool,
+            food: 0,
+            food_reported: 0,
             initial: launch_pool + hoard,
             minted: 0,
             burned: 0,
@@ -209,7 +217,7 @@ impl Troll {
     // ---------- holders ----------
 
     /// NEP-141 transfer. Routes to the receiver's home troll; cross-troll transfers
-    /// burn the toll once the credit is confirmed and refund in full if it fails.
+    /// feed the toll to the receiving troll once the credit is confirmed, and refund in full if it fails.
     /// Resolves to `true` when the receiver was credited.
     #[payable]
     pub fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) -> PromiseOrValue<bool> {
@@ -232,7 +240,7 @@ impl Troll {
         let toll = bps_of(amount, self.params.toll_bps);
         ext_sibling::ext(self.trolls[dest].clone())
             .with_static_gas(GAS_FOR_CREDIT)
-            .credit(sender_id.clone(), receiver_id, U128(amount - toll))
+            .credit(sender_id.clone(), receiver_id, U128(amount - toll), U128(toll))
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_ON_CREDIT)
@@ -284,7 +292,7 @@ impl Troll {
         ext_sibling::ext(self.trolls[dest].clone())
             .with_static_gas(GAS_FOR_CREDIT_CALL)
             .with_unused_gas_weight(1)
-            .credit_call(sender_id.clone(), receiver_id, U128(amount - toll), msg)
+            .credit_call(sender_id.clone(), receiver_id, U128(amount - toll), U128(toll), msg)
             .then(Self::ext(me).with_static_gas(GAS_FOR_ON_CREDIT).with_unused_gas_weight(0).on_credit_call(sender_id, U128(amount), U128(toll)))
             .into()
     }
@@ -321,7 +329,8 @@ impl Troll {
 
     /// One launch claim per account, at its home troll, during the launch window.
     /// Registers the caller if needed. Attach the claim fee, plus `storage_balance_bounds().min` if not
-    /// registered yet; any excess is refunded. The fee stays on this contract.
+    /// registered yet; any excess is refunded. The fee goes to the root, less the storage this
+    /// claim's record takes here, which this contract keeps.
     #[payable]
     pub fn claim_launch(&mut self) -> U128 {
         let who = env::predecessor_account_id();
@@ -332,7 +341,9 @@ impl Troll {
         let amount = self.params.launch_claim_amount.0;
         require!(self.launch_pool >= amount, "launch allocation exhausted");
         require!(!self.launch_claimed.contains_key(&who), "already claimed");
+        let before = env::storage_usage();
         self.launch_claimed.insert(&who, &());
+        let record = env::storage_byte_cost().saturating_mul((env::storage_usage() - before) as u128);
         self.launch_pool -= amount;
         let deposit = env::attached_deposit();
         let fee = NearToken::from_yoctonear(self.params.claim_fee.0);
@@ -346,6 +357,10 @@ impl Troll {
         if !refund.is_zero() {
             Promise::new(who.clone()).transfer(refund).detach();
         }
+        let to_root = fee.saturating_sub(record);
+        if !to_root.is_zero() {
+            Promise::new(self.root.clone()).transfer(to_root).detach();
+        }
         self.add_balance(&who, amount);
         emit_ft_transfer(&env::current_account_id(), &who, amount, Some("launch claim"));
         U128(amount)
@@ -353,29 +368,44 @@ impl Troll {
 
     // ---------- sibling trolls ----------
 
-    /// Cross-troll leg. Only sibling trolls may call it.
-    pub fn credit(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128) {
+    /// Cross-troll leg. Only sibling trolls may call it. The receiver gets `amount`; this troll
+    /// eats `toll` (the source took it from the sender), which funds its feeders' rewards.
+    /// An unregistered receiver panics before anything changes, so nothing is eaten.
+    pub fn credit(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, toll: U128) {
         let caller = env::predecessor_account_id();
         require!(
             caller != env::current_account_id() && self.trolls.contains(&caller),
             "only sibling trolls can credit"
         );
         self.add_balance(&receiver_id, amount.0);
-        self.supply += amount.0;
+        self.supply += amount.0 + toll.0;
         emit_ft_mint(&receiver_id, amount.0, &format!("cross-troll from {sender_id} via {caller}"));
+        if toll.0 > 0 {
+            self.food += toll.0;
+            let me = env::current_account_id();
+            emit_ft_mint(&me, toll.0, &format!("troll toll from {sender_id}"));
+            emit_troll_event("toll_eaten", &format!(r#"{{"account_id":"{sender_id}","amount":"{}"}}"#, toll.0));
+        }
     }
 
     /// Cross-troll leg of `ft_transfer_call`, at the receiver's home troll. Only sibling trolls.
     /// Resolves to the unused amount, or to `NOT_CREDITED` if the receiver is not registered here.
     /// It does not panic on that, so a failed result at the source can only come from a later step,
     /// after the credit landed.
-    pub fn credit_call(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128> {
+    pub fn credit_call(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        toll: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
         if !self.accounts.contains_key(&receiver_id) {
             let caller = env::predecessor_account_id();
             require!(caller != env::current_account_id() && self.trolls.contains(&caller), "only sibling trolls can credit");
             return PromiseOrValue::Value(U128(NOT_CREDITED));
         }
-        self.credit(sender_id.clone(), receiver_id.clone(), amount);
+        self.credit(sender_id.clone(), receiver_id.clone(), amount, toll);
         ext_receiver::ext(receiver_id.clone())
             .with_static_gas(GAS_FOR_FT_ON_TRANSFER)
                 .with_unused_gas_weight(1)
@@ -455,6 +485,7 @@ impl Troll {
     pub fn report(&mut self, epoch: u64) -> EpochReport {
         self.assert_root();
         require!(epoch < self.current_epoch(), "epoch not finished");
+        self.food_reported = self.food;
         EpochReport {
             epoch,
             senders: self.senders_in(epoch),
@@ -462,6 +493,7 @@ impl Troll {
             in_flight: U128(self.in_flight),
             hoard: U128(self.hoard),
             launch_pool: U128(self.reward_launch_pool(epoch)),
+            food: U128(self.food_reported),
             minted: U128(self.minted),
             burned: U128(self.burned),
         }
@@ -472,20 +504,36 @@ impl Troll {
         self.assert_root();
         require!(epoch < self.current_epoch(), "epoch not finished");
         require!(self.last_applied.is_none_or(|l| epoch > l), "epoch already applied");
+        match &outcome {
+            Outcome::Reward { amount } => require!(
+                amount.0 <= self.params.reward_per_epoch.0 / self.params.troll_count as u128,
+                "reward above params"
+            ),
+            Outcome::Burn { bps } => require!(*bps <= self.params.starve_burn_bps, "burn above params"),
+            Outcome::NoOp => {}
+        }
         self.last_applied = Some(epoch);
+        let food = std::mem::take(&mut self.food_reported);
         let me = env::current_account_id();
         match outcome {
             Outcome::Reward { amount } => {
                 let feeders = self.senders_in(epoch);
-                let (from_pool, minted) = reward_funding(amount.0, feeders, self.reward_launch_pool(epoch));
-                let total = from_pool + minted;
+                // Food first, then unclaimed launch tokens, then new tokens. The first two are
+                // already supply held by this troll; they just move into the reward pool.
+                let (from_reserve, minted) = reward_funding(amount.0, feeders, food + self.reward_launch_pool(epoch));
+                let total = from_reserve + minted;
                 if total == 0 {
                     return;
                 }
                 let share = total / feeders as u128;
                 self.pools.insert(&epoch, &Pool { share: U128(share), remaining: U128(total) });
-                // Unclaimed launch tokens are already supply held by this troll; they just move pools.
+                let from_food = from_reserve.min(food);
+                let from_pool = from_reserve - from_food;
+                self.food -= from_food;
                 self.launch_pool -= from_pool;
+                if from_food > 0 {
+                    emit_troll_event("reward_from_food", &format!(r#"{{"epoch":{epoch},"amount":"{from_food}"}}"#));
+                }
                 self.supply += minted;
                 self.minted += minted;
                 if minted > 0 {
@@ -568,6 +616,7 @@ impl Troll {
             in_flight: U128(self.in_flight),
             hoard: U128(self.hoard),
             launch_pool: U128(self.launch_pool),
+            food: U128(self.food),
             minted: U128(self.minted),
             burned: U128(self.burned),
             last_applied: self.last_applied,
@@ -609,11 +658,10 @@ impl Troll {
         emit_troll_event("credit_refunded", &format!(r#"{{"account_id":"{who}","amount":"{amount}"}}"#));
     }
 
-    /// Books the toll of a confirmed cross-troll transfer. Its burn is already in the event log
-    /// (the source burned the full amount, the destination minted the amount minus the toll).
+    /// Notes the toll of a confirmed cross-troll transfer. Nothing is burned: the destination
+    /// minted the amount minus the toll to the receiver and the toll to itself as food.
     fn book_toll(&mut self, who: &AccountId, toll: u128) {
         if toll > 0 {
-            self.burned += toll;
             emit_troll_event("toll", &format!(r#"{{"account_id":"{who}","amount":"{toll}"}}"#));
         }
     }

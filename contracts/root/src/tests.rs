@@ -29,6 +29,7 @@ fn params() -> Params {
         launch_claim_amount: U128(100),
         min_counted_transfer: U128(10),
         claim_fee: U128(0),
+        settle_bounty: U128(0),
     }
 }
 
@@ -59,7 +60,7 @@ fn new_root() -> Root {
 }
 
 fn report(epoch: u64, senders: u32, supply: u128) -> EpochReport {
-    EpochReport { epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), launch_pool: U128(0), minted: U128(0), burned: U128(0) }
+    EpochReport { epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), launch_pool: U128(0), food: U128(0), minted: U128(0), burned: U128(0) }
 }
 
 fn ok(r: &EpochReport) -> PromiseResult {
@@ -291,4 +292,101 @@ fn total_supply_includes_the_settlement_own_mint_and_burn() {
     r.decide(1, &reps);
     assert_eq!(r.ft_total_supply().0, 1_000 + 2_993 - 7 - 19);
     assert_eq!(r.info().troll_supply[0], U128(3_000 - 19));
+}
+
+// ---------- settle bounty ----------
+
+const BOUNTY: u128 = 5 * 10u128.pow(21); // 0.005 NEAR
+
+fn bounty_root() -> Root {
+    ctx(&acc("deployer.t"), START, vec![]);
+    Root::new(Params { settle_bounty: U128(BOUNTY), ..params() }, trolls(), START, U128(1_000), metadata())
+}
+
+/// A context for the root with `balance` yoctoNEAR and the given promise results.
+fn ctx_balance(pred: &AccountId, ms: u64, height: u64, balance: u128, results: Vec<PromiseResult>) {
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(root_id())
+        .predecessor_account_id(pred.clone())
+        .block_timestamp(ms * 1_000_000)
+        .block_height(height)
+        .account_balance(near_sdk::NearToken::from_yoctonear(balance))
+        .prepaid_gas(Gas::from_tgas(300));
+    testing_env!(b.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), results);
+}
+
+fn three_reports() -> Vec<PromiseResult> {
+    (0..3).map(|_| ok(&report(0, 5, 333))).collect()
+}
+
+/// Bounty transfers created by the last call: (receiver, yoctoNEAR).
+fn bounty_transfers() -> Vec<(String, u128)> {
+    get_created_receipts()
+        .into_iter()
+        .filter_map(|rc| match &rc.actions[0] {
+            near_sdk::mock::MockAction::Transfer { deposit, .. } => Some((rc.receiver_id.to_string(), deposit.as_yoctonear())),
+            _ => None,
+        })
+        .collect()
+}
+
+const RICH: u128 = 10u128.pow(25); // 10 NEAR
+
+#[test]
+fn settle_bounty_is_paid_to_the_settler_on_success() {
+    let mut r = bounty_root();
+    ctx_balance(&acc("keeper.t"), START + EPOCH, 10, RICH, vec![]);
+    let _ = r.settle(0);
+    ctx_balance(&root_id(), START + EPOCH, 12, RICH, three_reports());
+    assert!(r.on_reports(0, 1));
+    assert_eq!(bounty_transfers(), vec![("keeper.t".to_string(), BOUNTY)]);
+    assert!(get_logs().join("").contains("settle_bounty_paid"));
+}
+
+#[test]
+fn settle_bounty_is_skipped_without_panicking_when_the_balance_is_low() {
+    let mut r = bounty_root();
+    ctx_balance(&acc("keeper.t"), START + EPOCH, 10, RICH, vec![]);
+    let _ = r.settle(0);
+    // storage plus 0.01 NEAR reserve is not covered once the bounty is added
+    let storage = env::storage_byte_cost().as_yoctonear() * env::storage_usage() as u128;
+    let low = storage + BOUNTY_RESERVE.as_yoctonear() + BOUNTY - 1;
+    ctx_balance(&root_id(), START + EPOCH, 12, low, three_reports());
+    assert!(r.on_reports(0, 1), "the settlement itself still goes through");
+    assert!(bounty_transfers().is_empty());
+    assert!(get_logs().join("").contains("settle_bounty_skipped"));
+    assert_eq!(r.info().next_epoch, 1);
+}
+
+#[test]
+fn no_bounty_on_a_failed_or_stale_settlement() {
+    let mut r = bounty_root();
+    ctx_balance(&acc("keeper.t"), START + EPOCH, 10, RICH, vec![]);
+    let _ = r.settle(0);
+    // a failed report: settle_failed, no bounty
+    let reps = vec![ok(&report(0, 5, 1)), PromiseResult::Failed, ok(&report(0, 5, 1))];
+    ctx_balance(&root_id(), START + EPOCH, 12, RICH, reps);
+    assert!(!r.on_reports(0, 1));
+    assert!(bounty_transfers().is_empty());
+    // retried by someone else; the old attempt's callback is stale and pays nothing
+    ctx_balance(&acc("other.t"), START + EPOCH, 20, RICH, vec![]);
+    let _ = r.settle(0);
+    ctx_balance(&root_id(), START + EPOCH, 22, RICH, three_reports());
+    assert!(!r.on_reports(0, 1));
+    assert!(bounty_transfers().is_empty());
+}
+
+#[test]
+fn only_the_latest_attempts_settler_is_paid() {
+    let mut r = bounty_root();
+    ctx_balance(&acc("first.t"), START + EPOCH, 100, RICH, vec![]);
+    let _ = r.settle(0);
+    ctx_balance(&acc("second.t"), START + EPOCH, 100 + SETTLE_TIMEOUT_BLOCKS, RICH, vec![]);
+    let _ = r.settle(0);
+    ctx_balance(&root_id(), START + EPOCH, 101 + SETTLE_TIMEOUT_BLOCKS, RICH, three_reports());
+    assert!(!r.on_reports(0, 1));
+    assert!(bounty_transfers().is_empty());
+    ctx_balance(&root_id(), START + EPOCH, 102 + SETTLE_TIMEOUT_BLOCKS, RICH, three_reports());
+    assert!(r.on_reports(0, 2));
+    assert_eq!(bounty_transfers(), vec![("second.t".to_string(), BOUNTY)]);
 }

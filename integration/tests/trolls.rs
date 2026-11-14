@@ -17,6 +17,8 @@ const LAUNCH: u128 = 500_000_000 * ONE;
 const CLAIM: u128 = 100_000 * ONE;
 const TOLL_BPS: u128 = 25;
 const EPOCH_MS: u64 = 60_000;
+/// Settle bounty: 0.005 NEAR.
+const BOUNTY: u128 = 5_000_000_000_000_000_000_000;
 
 struct Token {
     root: AccountId,
@@ -36,6 +38,7 @@ fn params(feed_target: u32) -> Value {
         "launch_claim_amount": CLAIM.to_string(),
         "min_counted_transfer": ONE.to_string(),
         "claim_fee": "0",
+        "settle_bounty": BOUNTY.to_string(),
     })
 }
 
@@ -217,6 +220,17 @@ async fn totals(env: &Env, t: &Token) -> testresult::TestResult<(u128, u128)> {
     Ok((held, burned))
 }
 
+/// Σ over trolls of minted and of food, from `info()`.
+async fn minted_and_food(env: &Env, t: &Token) -> testresult::TestResult<(u128, u128)> {
+    let (mut minted, mut food) = (0u128, 0u128);
+    for troll in &t.trolls {
+        let i: Value = view(env, troll, "info", json!({})).await?;
+        minted += i["minted"].as_str().unwrap().parse::<u128>()?;
+        food += i["food"].as_str().unwrap().parse::<u128>()?;
+    }
+    Ok((minted, food))
+}
+
 async fn wait_for_epoch_end(env: &Env, t: &Token, epoch: u64) -> testresult::TestResult<()> {
     let end = t.start_ms + (epoch + 1) * EPOCH_MS;
     while block_ms(env).await? <= end {
@@ -250,7 +264,7 @@ async fn transfers_tolls_refunds_and_access() -> testresult::TestResult<()> {
     assert!(transfer(&env, &t, &alice, &amy, 10 * ONE).await?);
     assert_eq!(balance(&env, &t, &amy).await?, 10 * ONE);
 
-    // Cross-troll transfer: receiver gets amount − toll, toll burned at source.
+    // Cross-troll transfer: receiver gets amount − toll; the receiver's troll eats the toll.
     let amount = 1_000 * ONE;
     let toll = amount * TOLL_BPS / 10_000;
     assert!(transfer(&env, &t, &alice, &bob, amount).await?);
@@ -264,10 +278,11 @@ async fn transfers_tolls_refunds_and_access() -> testresult::TestResult<()> {
     assert_eq!(balance(&env, &t, &alice).await?, before);
     assert_eq!(totals(&env, &t).await?.1, burned_before);
 
-    // Conservation: everything held + everything burned = initial supply.
+    // Conservation: the toll moved to the receiver's troll as food; nothing was burned.
     let (held, burned) = totals(&env, &t).await?;
-    assert_eq!(held + burned, TOTAL);
-    assert_eq!(burned, toll);
+    assert_eq!((held, burned), (TOTAL, 0));
+    let b_info: Value = view(&env, &home(&env, &t, &bob).await?, "info", json!({})).await?;
+    assert_eq!(b_info["food"].as_str().unwrap().parse::<u128>()?, toll);
 
     // Each troll is a self-describing NEP-141: its own metadata, and its own share of the
     // supply. Nothing is in flight now, so the shares add up to the token-wide total.
@@ -277,7 +292,7 @@ async fn transfers_tolls_refunds_and_access() -> testresult::TestResult<()> {
         assert_eq!((m["symbol"].as_str(), m["decimals"].as_u64()), (Some("TROLL"), Some(24)));
         sum += view::<String>(&env, troll, "ft_total_supply", json!({})).await?.parse::<u128>()?;
     }
-    assert_eq!(sum, TOTAL - toll);
+    assert_eq!(sum, TOTAL);
 
     // Access control.
     let eve = common::create_account(&env, "eve.sandbox").await?.0;
@@ -357,7 +372,11 @@ async fn feeding_all_fed_then_starved() -> testresult::TestResult<()> {
     let supply: String = view(&env, &t.root, "ft_total_supply", json!({})).await?;
     let (held, burned) = totals(&env, &t).await?;
     assert_eq!(supply.parse::<u128>()?, held);
-    assert_eq!(held + burned, TOTAL + 250_000 * ONE);
+    // Tolls the sink's troll ate pay part of its reward, so less than the full reward is minted.
+    let (minted, food) = minted_and_food(&env, &t).await?;
+    assert!(minted < 250_000 * ONE && minted + 7 * (2 * ONE * TOLL_BPS / 10_000) == 250_000 * ONE);
+    assert_eq!(food, 0, "all eaten tolls were paid out");
+    assert_eq!(held + burned, TOTAL + minted);
 
     // Epoch 1: nobody sends, so every troll starves, hoards burn and the streak resets.
     wait_for_epoch_end(&env, &t, 1).await?;
@@ -369,7 +388,7 @@ async fn feeding_all_fed_then_starved() -> testresult::TestResult<()> {
     assert_eq!(streak, (0, 1));
     let (held2, burned2) = totals(&env, &t).await?;
     assert!(burned2 > burned, "starving trolls burned part of their hoards");
-    assert_eq!(held2 + burned2, TOTAL + 250_000 * ONE);
+    assert_eq!(held2 + burned2, TOTAL + minted);
     Ok(())
 }
 
@@ -567,17 +586,35 @@ async fn settle_at_minimum_gas() -> testresult::TestResult<()> {
         claim_launch(&env, &t, &f).await?;
         assert!(transfer(&env, &t, &f, &sink, 2 * ONE).await?);
     }
+    // One cross-troll transfer to measure `credit`, which now also feeds the toll to the troll.
+    let far = names_at(&env, &t, &t.trolls[0], false, 1, "credit").await?;
+    let far = user(&env, &t, &far[0]).await?;
+    let r = call(&env, &sink, &t.trolls[0], "ft_transfer", json!({ "receiver_id": far, "amount": ONE.to_string() }), NearToken::from_yoctonear(1)).await?;
+    let credit = r.receipt_outcomes().iter().find(|o| o.logs.iter().any(|l| l.contains("toll_eaten"))).ok_or("no credit receipt")?;
+    let credit_tgas = credit.gas_burnt.as_gas() as f64 / 1e12;
+    println!("credit burnt {credit_tgas:.2} Tgas of its 5 Tgas");
+    assert!(credit.is_success() && credit_tgas * 2.0 <= 5.0, "credit keeps a 2x margin");
+
     wait_for_epoch_end(&env, &t, 0).await?;
     call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 249).await?.assert_failure();
+    let sink_before = near_api::Tokens::account(sink.clone()).near_balance().fetch_from(&env.network).await?.total;
     let r = call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 250).await?;
     let on_reports = r.receipt_outcomes().iter().filter(|o| o.executor_id == t.root).nth(1).cloned();
     let on_reports = on_reports.ok_or("no on_reports receipt")?;
     println!("settle at 250 Tgas: on_reports burnt {:.2} Tgas (plus 8 x 10 Tgas attached to apply)", on_reports.gas_burnt.as_gas() as f64 / 1e12);
     assert!(on_reports.is_success());
+    let bounty_logged = r.logs().iter().any(|l| l.contains("settle_bounty_paid"));
+    let burnt: u128 = r.outcomes().iter().map(|o| o.tokens_burnt.as_yoctonear()).sum();
     assert!(r.json::<bool>()?);
     let info: Value = view(&env, &t.root, "info", json!({})).await?;
     assert_eq!((info["settling"].clone(), info["next_epoch"].as_u64()), (Value::Null, Some(1)));
     let streak: (u64, u64) = view(&env, &t.root, "streak", json!({})).await?;
     assert_eq!(streak, (1, 1));
+    // The settler is paid the bounty: its balance moves by the bounty less the gas it paid.
+    assert!(bounty_logged);
+    let sink_after = near_api::Tokens::account(sink.clone()).near_balance().fetch_from(&env.network).await?.total;
+    let delta = sink_after.as_yoctonear() as i128 - sink_before.as_yoctonear() as i128 + burnt as i128;
+    println!("settler: balance change + gas burnt = {delta} yocto (bounty {BOUNTY})");
+    assert!((delta - BOUNTY as i128).abs() < 10i128.pow(20), "settler gained the bounty (within 0.0001 NEAR)");
     Ok(())
 }

@@ -3,7 +3,7 @@
 use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
 use near_sdk::json_types::U128;
 use near_sdk::serde_json::{self, json};
-use near_sdk::{AccountId, Gas, PanicOnDefault, Promise, env, ext_contract, near, require};
+use near_sdk::{AccountId, Gas, NearToken, PanicOnDefault, Promise, env, ext_contract, near, require};
 use troll_types::{
     EpochReport, Outcome, Params, emit_troll_event, epoch_at, home_index, now_ms, outcome_effect, validate_metadata_sizes,
     validate_setup,
@@ -18,6 +18,8 @@ pub const GAS_FOR_SETTLE_MIN: Gas = Gas::from_tgas(250);
 /// Blocks after which an unfinished settlement may be started again. A settlement normally
 /// finishes within a few blocks; this only matters if `on_reports` never completes.
 pub const SETTLE_TIMEOUT_BLOCKS: u64 = 600;
+/// NEAR the root keeps on top of its storage before it pays a settle bounty.
+pub const BOUNTY_RESERVE: NearToken = NearToken::from_millinear(10);
 const MAX_REPORT_LEN: usize = 1_024;
 
 /// `json!` serialized to a `String`.
@@ -69,6 +71,8 @@ pub struct Root {
     settling_since: u64,
     /// Counts settlement attempts; `on_reports` acts only for the latest one.
     attempt: u64,
+    /// Who started the latest settlement attempt; paid the settle bounty if it succeeds.
+    settler: AccountId,
 }
 
 #[near]
@@ -106,6 +110,7 @@ impl Root {
             settling: None,
             settling_since: 0,
             attempt: 0,
+            settler: env::current_account_id(),
         }
     }
 
@@ -125,6 +130,7 @@ impl Root {
         self.settling = Some(epoch);
         self.settling_since = env::block_height();
         self.attempt += 1;
+        self.settler = env::predecessor_account_id();
         // Reports have a fixed cost; any gas left over goes to `on_reports`.
         let report = |t: &AccountId| ext_troll::ext(t.clone()).with_static_gas(GAS_FOR_REPORT).with_unused_gas_weight(0).report(epoch);
         let mut reports = report(&self.trolls[0]);
@@ -166,6 +172,7 @@ impl Root {
         for (i, outcome) in self.decide(epoch, &reports).into_iter().enumerate() {
             ext_troll::ext(self.trolls[i].clone()).with_static_gas(GAS_FOR_APPLY).apply(epoch, outcome).detach();
         }
+        self.pay_bounty(epoch);
         true
     }
 
@@ -218,6 +225,26 @@ impl Root {
 }
 
 impl Root {
+    /// Pays the settle bounty to the latest attempt's settler, only if the balance still covers
+    /// storage plus `BOUNTY_RESERVE` afterwards. Checks first, so it never fails `on_reports`.
+    fn pay_bounty(&mut self, epoch: u64) {
+        let bounty = self.params.settle_bounty.0;
+        if bounty == 0 {
+            return;
+        }
+        let reserve = env::storage_byte_cost()
+            .saturating_mul(env::storage_usage() as u128)
+            .saturating_add(BOUNTY_RESERVE)
+            .as_yoctonear();
+        let account_id = self.settler.clone();
+        if env::account_balance().as_yoctonear() >= reserve.saturating_add(bounty) {
+            Promise::new(account_id.clone()).transfer(NearToken::from_yoctonear(bounty)).detach();
+            emit_troll_event("settle_bounty_paid", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty) }));
+        } else {
+            emit_troll_event("settle_bounty_skipped", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty) }));
+        }
+    }
+
     /// The Feeding: all trolls fed → streak + 1 and every troll mints its reward share;
     /// otherwise the streak resets and each starving troll burns part of its hoard.
     fn decide(&mut self, epoch: u64, reports: &[EpochReport]) -> Vec<Outcome> {
