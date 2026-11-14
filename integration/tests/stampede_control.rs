@@ -3,7 +3,7 @@ mod common;
 use near_api::{Contract, NearGas, NearToken};
 use serde_json::json;
 
-/// K2 (sandbox): one `fire` transaction issues 50 `ft_transfer` receipts
+/// One `fire` transaction issues 50 `ft_transfer` receipts
 /// on the single-contract baseline token, and all of them land.
 #[tokio::test]
 async fn stampede_fans_out_50_transfers_on_control() -> testresult::TestResult<()> {
