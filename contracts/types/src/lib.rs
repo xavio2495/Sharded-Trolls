@@ -59,12 +59,10 @@ pub enum Outcome {
 }
 
 /// Checks the init arguments shared by the root and the trolls.
-pub fn validate_setup(params: &Params, trolls: &[AccountId], bounds: &[String]) {
+pub fn validate_setup(params: &Params, trolls: &[AccountId]) {
     let n = params.troll_count as usize;
     require!(n > 0, "troll_count must be > 0");
     require!(trolls.len() == n, "trolls.len() must equal troll_count");
-    require!(bounds.len() + 1 == n, "bounds.len() must be troll_count - 1");
-    require!(bounds.windows(2).all(|w| w[0] < w[1]), "bounds must be strictly increasing");
     for (i, t) in trolls.iter().enumerate() {
         require!(!trolls[..i].contains(t), "duplicate troll account");
     }
@@ -73,10 +71,14 @@ pub fn validate_setup(params: &Params, trolls: &[AccountId], bounds: &[String]) 
     require!(params.epoch_ms > 0, "epoch_ms must be > 0");
 }
 
-/// Index of the troll whose account range holds `account_id`. Troll `i` holds
-/// ids in `[bounds[i-1], bounds[i])`; the ranges cover every possible id.
-pub fn home_index(bounds: &[String], account_id: &str) -> usize {
-    bounds.iter().take_while(|b| account_id >= b.as_str()).count()
+/// Index of the home troll of `account_id` among `n` trolls: the first 16 bytes of
+/// sha256(account_id), read as a big-endian u128, modulo `n`. Uniform over trolls and
+/// independent of the shard layout.
+pub fn home_index(n: usize, account_id: &str) -> usize {
+    let h = env::sha256_array(account_id.as_bytes());
+    let mut first = [0u8; 16];
+    first.copy_from_slice(&h[..16]);
+    (u128::from_be_bytes(first) % n as u128) as usize
 }
 
 /// `amount * bps / 10_000` rounded down, without overflow.
@@ -166,20 +168,30 @@ pub fn emit_troll_event(event: &str, data: &str) {
 mod tests {
     use super::*;
 
-    fn b(v: &[&str]) -> Vec<String> {
-        v.iter().map(|s| s.to_string()).collect()
+    /// Shared with the JS client tests: both must produce exactly these indices.
+    #[test]
+    fn home_index_matches_the_shared_vectors() {
+        use near_sdk::serde_json;
+        let v: serde_json::Value = serde_json::from_str(include_str!("../home_vectors.json")).unwrap();
+        let n = v["troll_count"].as_u64().unwrap() as usize;
+        let cases = v["cases"].as_array().unwrap();
+        assert!(cases.len() >= 20);
+        for c in cases {
+            let id = c["account_id"].as_str().unwrap();
+            assert_eq!(home_index(n, id), c["home"].as_u64().unwrap() as usize, "{id}");
+        }
     }
 
     #[test]
-    fn home_index_follows_lexicographic_ranges() {
-        let bounds = b(&["650", "earn.kaiching", "wallet.ka"]);
-        assert_eq!(home_index(&bounds, "0.shardedtrolls.near"), 0);
-        assert_eq!(home_index(&bounds, "650"), 1);
-        assert_eq!(home_index(&bounds, "alice.near"), 1);
-        assert_eq!(home_index(&bounds, "h.shardedtrolls.near"), 2);
-        assert_eq!(home_index(&bounds, "wallet.ka"), 3);
-        assert_eq!(home_index(&bounds, "zz.near"), 3);
-        assert_eq!(home_index(&[], "anyone.near"), 0);
+    fn home_index_spreads_evenly() {
+        let mut counts = [0u32; 8];
+        for i in 0..8_000 {
+            counts[home_index(8, &format!("{i:064x}"))] += 1;
+            counts[home_index(8, &format!("0x{i:040x}"))] += 1;
+        }
+        // 2,000 expected per troll; allow a wide margin
+        assert!(counts.iter().all(|c| (1_700..2_300).contains(c)), "{counts:?}");
+        assert_eq!(home_index(1, "anyone.near"), 0);
     }
 
     #[test]

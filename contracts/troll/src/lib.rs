@@ -1,6 +1,6 @@
-//! One troll: the slice of the token ledger for holders whose account ids fall
-//! in this troll's range. Same-troll transfers settle in one receipt; cross-troll
-//! transfers debit here and send a `credit` to the receiver's home troll.
+//! One troll: the slice of the token ledger for the holders whose home it is (by hash of
+//! the account id). Same-troll transfers settle in one receipt; cross-troll transfers debit
+//! here and send a `credit` to the receiver's home troll.
 use near_sdk::json_types::U128;
 use near_sdk::{
     AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError, PromiseOrValue, assert_one_yocto, env,
@@ -98,7 +98,6 @@ pub struct Troll {
     root: AccountId,
     index: u8,
     trolls: Vec<AccountId>,
-    bounds: Vec<String>,
     params: Params,
     start_ms: u64,
     accounts: Map<AccountId, Account>,
@@ -131,19 +130,18 @@ fn split(total: u128, n: u8, index: u8) -> u128 {
 
 #[near]
 impl Troll {
-    /// `trolls` are ordered by account range: troll `i` holds ids in `[bounds[i-1], bounds[i])`.
-    /// The caller must be deployed at one of `trolls`.
+    /// Every account's home is `trolls[home_index(trolls.len(), account_id)]`, so `trolls`
+    /// must be given in the same order to the root and every troll. The caller must be one of `trolls`.
     #[init]
     pub fn new(
         root: AccountId,
         trolls: Vec<AccountId>,
-        bounds: Vec<String>,
         params: Params,
         start_ms: u64,
         total_supply: U128,
         launch_supply: U128,
     ) -> Self {
-        validate_setup(&params, &trolls, &bounds);
+        validate_setup(&params, &trolls);
         require!(launch_supply.0 <= total_supply.0, "launch_supply > total_supply");
         let me = env::current_account_id();
         let index = trolls.iter().position(|t| *t == me).expect("this account is not in trolls") as u8;
@@ -154,7 +152,6 @@ impl Troll {
             root,
             index,
             trolls,
-            bounds,
             params,
             start_ms,
             accounts: Map::new(key(b'a', index)),
@@ -190,7 +187,7 @@ impl Troll {
         self.debit(&sender_id, amount);
         self.count_sender(&sender_id, amount);
 
-        let dest = home_index(&self.bounds, receiver_id.as_str());
+        let dest = home_index(self.trolls.len(), receiver_id.as_str());
         if dest == self.index as usize {
             self.add_balance(&receiver_id, amount);
             emit_ft_transfer(&sender_id, &receiver_id, amount, memo.as_deref());
@@ -232,7 +229,7 @@ impl Troll {
         self.add_pending(&sender_id, amount);
         let me = env::current_account_id();
 
-        let dest = home_index(&self.bounds, receiver_id.as_str());
+        let dest = home_index(self.trolls.len(), receiver_id.as_str());
         if dest == self.index as usize {
             self.add_balance(&receiver_id, amount);
             emit_ft_transfer(&sender_id, &receiver_id, amount, memo.as_deref());
@@ -296,7 +293,7 @@ impl Troll {
         let now = now_ms();
         require!(now >= self.start_ms, "launch has not started");
         require!(now < self.start_ms + self.params.launch_window_ms, "launch window closed");
-        require!(home_index(&self.bounds, who.as_str()) == self.index as usize, "claim at your home troll");
+        require!(home_index(self.trolls.len(), who.as_str()) == self.index as usize, "claim at your home troll");
         let amount = self.params.launch_claim_amount.0;
         require!(self.launch_pool >= amount, "launch allocation exhausted");
         require!(!self.launch_claimed.contains_key(&who), "already claimed");
@@ -479,7 +476,7 @@ impl Troll {
     }
 
     pub fn home_troll(&self, account_id: AccountId) -> AccountId {
-        self.trolls[home_index(&self.bounds, account_id.as_str())].clone()
+        self.trolls[home_index(self.trolls.len(), account_id.as_str())].clone()
     }
 
     pub fn has_claimed_launch(&self, account_id: AccountId) -> bool {
@@ -633,7 +630,7 @@ impl Troll {
         let caller = env::predecessor_account_id();
         let account_id = account_id.unwrap_or_else(|| caller.clone());
         require!(
-            home_index(&self.bounds, account_id.as_str()) == self.index as usize,
+            home_index(self.trolls.len(), account_id.as_str()) == self.index as usize,
             "register at the account's home troll"
         );
         let min = self.storage_min();

@@ -43,7 +43,6 @@ pub struct RootInfo {
 pub struct Root {
     params: Params,
     trolls: Vec<AccountId>,
-    bounds: Vec<String>,
     start_ms: u64,
     metadata: FungibleTokenMetadata,
     initial_supply: u128,
@@ -63,18 +62,17 @@ pub struct Root {
 
 #[near]
 impl Root {
-    /// `trolls` are ordered by account range: troll `i` holds ids in `[bounds[i-1], bounds[i])`.
-    /// The same `trolls`, `bounds`, `params`, `start_ms` and supplies must be given to every troll.
+    /// Every account's home is `trolls[home_index(trolls.len(), account_id)]`. The same `trolls`
+    /// (same order), `params`, `start_ms` and supplies must be given to every troll.
     #[init]
     pub fn new(
         params: Params,
         trolls: Vec<AccountId>,
-        bounds: Vec<String>,
         start_ms: u64,
         total_supply: U128,
         metadata: FungibleTokenMetadata,
     ) -> Self {
-        validate_setup(&params, &trolls, &bounds);
+        validate_setup(&params, &trolls);
         metadata.assert_valid();
         let n = trolls.len();
         let share = total_supply.0 / n as u128;
@@ -83,7 +81,6 @@ impl Root {
         Self {
             params,
             trolls,
-            bounds,
             start_ms,
             metadata,
             initial_supply: total_supply.0,
@@ -153,12 +150,8 @@ impl Root {
         self.trolls.clone()
     }
 
-    pub fn bounds(&self) -> Vec<String> {
-        self.bounds.clone()
-    }
-
     pub fn home_troll(&self, account_id: AccountId) -> AccountId {
-        self.trolls[home_index(&self.bounds, account_id.as_str())].clone()
+        self.trolls[home_index(self.trolls.len(), account_id.as_str())].clone()
     }
 
     pub fn params(&self) -> Params {

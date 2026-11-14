@@ -54,7 +54,7 @@ fn ctx(pred: &AccountId, ms: u64, results: Vec<PromiseResult>) {
 
 fn new_root() -> Root {
     ctx(&acc("deployer.t"), START, vec![]);
-    Root::new(params(), trolls(), vec!["h".into(), "q".into()], START, U128(1_000), metadata())
+    Root::new(params(), trolls(), START, U128(1_000), metadata())
 }
 
 fn report(epoch: u64, senders: u32, supply: u128) -> EpochReport {
@@ -77,7 +77,7 @@ fn init_state() {
     assert_eq!(r.ft_total_supply().0, 1_000);
     assert_eq!(r.info().troll_supply, vec![U128(334), U128(333), U128(333)]);
     for who in ["alice.near", "kim.near", "zed.near"] {
-        assert_eq!(r.home_troll(acc(who)), trolls()[home_index(&r.bounds(), who)]);
+        assert_eq!(r.home_troll(acc(who)), trolls()[home_index(3, who)]);
     }
     assert_eq!(r.streak(), (0, 0));
     assert_eq!(r.ft_metadata().decimals, 24);
@@ -87,7 +87,7 @@ fn init_state() {
 #[should_panic(expected = "trolls.len() must equal troll_count")]
 fn init_rejects_wrong_troll_count() {
     ctx(&acc("d.t"), START, vec![]);
-    Root::new(params(), trolls()[..2].to_vec(), vec!["h".into()], START, U128(1), metadata());
+    Root::new(params(), trolls()[..2].to_vec(), START, U128(1), metadata());
 }
 
 #[test]

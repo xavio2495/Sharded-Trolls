@@ -11,11 +11,6 @@ use serde_json::{Value, json};
 
 /// Troll prefixes that land on 8 distinct shards under mainnet's layout.
 const PREFIXES: [&str; 8] = ["0", "7", "ax", "f", "h", "kz", "u", "wz"];
-/// Range bounds between consecutive trolls, from the same layout.
-const BOUNDS: [&str; 7] = [
-    "650", "aurora-0", "earn.kaiching", "game.hot.tg-0",
-    "kkuuue2akv_1630967379.near", "tge-lockup.sweat", "wallet.ka",
-];
 const ONE: u128 = 1_000_000_000_000_000_000_000_000; // 1 token, 24 decimals
 const TOTAL: u128 = 1_000_000_000 * ONE;
 const LAUNCH: u128 = 500_000_000 * ONE;
@@ -64,7 +59,7 @@ async fn deploy(env: &Env, feed_target: u32) -> testresult::TestResult<Token> {
             .with_init_call(
                 "new",
                 json!({
-                    "root": root, "trolls": trolls, "bounds": BOUNDS, "params": p,
+                    "root": root, "trolls": trolls, "params": p,
                     "start_ms": start_ms, "total_supply": TOTAL.to_string(),
                     "launch_supply": LAUNCH.to_string(),
                 }),
@@ -79,7 +74,7 @@ async fn deploy(env: &Env, feed_target: u32) -> testresult::TestResult<Token> {
         .with_init_call(
             "new",
             json!({
-                "params": p, "trolls": trolls, "bounds": BOUNDS, "start_ms": start_ms,
+                "params": p, "trolls": trolls, "start_ms": start_ms,
                 "total_supply": TOTAL.to_string(),
                 "metadata": {
                     "spec": "ft-1.0.0", "name": "Sharded Trolls", "symbol": "TROLL",

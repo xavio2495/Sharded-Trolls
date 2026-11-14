@@ -1,0 +1,118 @@
+{
+ "comment": "home troll = first 16 bytes of sha256(account_id) as big-endian u128, mod troll_count. Expected values computed independently with Python hashlib; the Rust and JS tests must both match.",
+ "troll_count": 8,
+ "cases": [
+  {
+   "account_id": "alice.near",
+   "home": 4
+  },
+  {
+   "account_id": "bob.near",
+   "home": 4
+  },
+  {
+   "account_id": "shardedtrolls.near",
+   "home": 4
+  },
+  {
+   "account_id": "0.shardedtrolls.near",
+   "home": 3
+  },
+  {
+   "account_id": "h.shardedtrolls.near",
+   "home": 2
+  },
+  {
+   "account_id": "wz.shardedtrolls.near",
+   "home": 3
+  },
+  {
+   "account_id": "wtroll.shardedtrolls.near",
+   "home": 4
+  },
+  {
+   "account_id": "wallet.ka",
+   "home": 5
+  },
+  {
+   "account_id": "kkuuue2akv_1630967379.near",
+   "home": 2
+  },
+  {
+   "account_id": "a.b.c.near",
+   "home": 5
+  },
+  {
+   "account_id": "aurora",
+   "home": 4
+  },
+  {
+   "account_id": "aurora.near",
+   "home": 3
+  },
+  {
+   "account_id": "650",
+   "home": 4
+  },
+  {
+   "account_id": "game.hot.tg",
+   "home": 6
+  },
+  {
+   "account_id": "123456789.tg",
+   "home": 4
+  },
+  {
+   "account_id": "user_1.tg",
+   "home": 5
+  },
+  {
+   "account_id": "sweat_welcome.near",
+   "home": 6
+  },
+  {
+   "account_id": "alice.testnet",
+   "home": 0
+  },
+  {
+   "account_id": "0000000000000000000000000000000000000000000000000000000000000000",
+   "home": 0
+  },
+  {
+   "account_id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "home": 7
+  },
+  {
+   "account_id": "98793cd91a3f870fb126f66285808c7e094afcfc4eda8a970f6648cdf0dbd6de",
+   "home": 0
+  },
+  {
+   "account_id": "e1b3e7ab0e2b1e3b2b0f8b7b3e1c9d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e",
+   "home": 2
+  },
+  {
+   "account_id": "0x0000000000000000000000000000000000000000",
+   "home": 5
+  },
+  {
+   "account_id": "0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
+   "home": 3
+  },
+  {
+   "account_id": "0xffffffffffffffffffffffffffffffffffffffff",
+   "home": 3
+  },
+  {
+   "account_id": "holder10.near",
+   "home": 7
+  },
+  {
+   "account_id": "holder18.near",
+   "home": 1
+  },
+  {
+   "account_id": "holder48.near",
+   "home": 1
+  }
+ ]
+}

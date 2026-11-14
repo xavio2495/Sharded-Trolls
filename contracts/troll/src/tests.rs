@@ -41,23 +41,21 @@ fn ctx(current: &AccountId, pred: &AccountId, ms: u64, yocto: u128) {
 struct Net {
     t: Vec<Troll>,
     ids: Vec<AccountId>,
-    bounds: Vec<String>,
     now: u64,
 }
 
 impl Net {
     /// `n` trolls with ranges split on single letters; troll `i` holds ids starting with `first_letter(i)`.
     fn new(n: u8, total: u128, launch: u128) -> Self {
-        let bounds: Vec<String> = (1..n as u32).map(|i| ((b'a' + (i * 26 / n as u32) as u8) as char).to_string()).collect();
         let ids: Vec<AccountId> = (0..n).map(|i| acc(&format!("troll{i}.t"))).collect();
         let t = ids
             .iter()
             .map(|id| {
                 ctx(id, &acc("deployer.t"), START, 0);
-                Troll::new(acc(ROOT), ids.clone(), bounds.clone(), params(n), START, U128(total), U128(launch))
+                Troll::new(acc(ROOT), ids.clone(), params(n), START, U128(total), U128(launch))
             })
             .collect();
-        Net { t, ids, bounds, now: START }
+        Net { t, ids, now: START }
     }
 
     /// The `k`-th account (in a fixed name sequence) whose home is troll `i`; independent of how
@@ -65,7 +63,7 @@ impl Net {
     fn user(&self, i: usize, k: usize) -> AccountId {
         (0..)
             .map(|j| acc(&format!("{}{j}.u", (b'a' + (j % 26) as u8) as char)))
-            .filter(|a| home_index(&self.bounds, a.as_str()) == i)
+            .filter(|a| home_index(self.ids.len(), a.as_str()) == i)
             .nth(k)
             .unwrap()
     }
@@ -81,7 +79,7 @@ impl Net {
 
     /// Registers `who` at its home troll (NEP-145) unless already registered.
     fn reg(&mut self, who: &AccountId) {
-        let h = home_index(&self.bounds, who.as_str());
+        let h = home_index(self.ids.len(), who.as_str());
         if self.t[h].storage_balance_of(who.clone()).is_none() {
             let (w, m) = (who.clone(), self.min());
             self.as_(h, who, m, |t| t.storage_deposit(Some(w), None));
@@ -140,15 +138,15 @@ fn init_splits_supply_and_launch_pool() {
 fn init_rejects_foreign_account() {
     let ids = vec![acc("troll0.t"), acc("troll1.t")];
     ctx(&acc("other.t"), &acc("d.t"), START, 0);
-    Troll::new(acc(ROOT), ids, vec!["m".into()], params(2), START, U128(10), U128(0));
+    Troll::new(acc(ROOT), ids, params(2), START, U128(10), U128(0));
 }
 
 #[test]
-#[should_panic(expected = "bounds must be strictly increasing")]
-fn init_rejects_unsorted_bounds() {
-    let ids = vec![acc("troll0.t"), acc("troll1.t"), acc("troll2.t")];
+#[should_panic(expected = "duplicate troll account")]
+fn init_rejects_duplicate_trolls() {
+    let ids = vec![acc("troll0.t"), acc("troll1.t"), acc("troll0.t")];
     ctx(&ids[0], &acc("d.t"), START, 0);
-    Troll::new(acc(ROOT), ids, vec!["q".into(), "h".into()], params(3), START, U128(10), U128(0));
+    Troll::new(acc(ROOT), ids, params(3), START, U128(10), U128(0));
 }
 
 // ---------- launch ----------
@@ -204,7 +202,11 @@ fn claim_launch_exhausted() {
 fn sybil_sub_accounts_each_claim_once() {
     // Distinct accounts are distinct claimers; the contract cannot tell sub-accounts apart.
     let mut net = Net::new(3, 1_000_000, 900_000);
-    let (x, y) = (acc("bob.u"), acc("a.bob.u"));
+    // a parent and its sub-account that both live on troll 0
+    let (x, y) = (0..)
+        .map(|k| (acc(&format!("bob{k}.u")), acc(&format!("a.bob{k}.u"))))
+        .find(|(x, y)| home_index(3, x.as_str()) == 0 && home_index(3, y.as_str()) == 0)
+        .unwrap();
     net.launch(0, &x);
     net.launch(0, &y);
     assert_eq!(net.t[0].launch_pool, 100_000);
@@ -530,7 +532,7 @@ fn conservation_run(seed: u64, steps: usize) {
                     continue;
                 }
                 let amount = 1 + rng.below(bal as u64) as u128;
-                let dst = home_index(&net.bounds, to.as_str());
+                let dst = home_index(N, to.as_str());
                 let pools_before = pool_total(&net.t[i]);
                 net.transfer(i, &from, &to, amount);
                 // A counted send auto-pays the sender's settled rewards out of the pools.
@@ -800,7 +802,7 @@ fn troll_burning_more_than_it_issued_still_reports_and_settles() {
         reference_hash: None,
         decimals: 24,
     };
-    let mut root = root::Root::new(params(3), net.ids.clone(), net.bounds.clone(), START, U128(total), meta);
+    let mut root = root::Root::new(params(3), net.ids.clone(), START, U128(total), meta);
     let (a, b) = (net.user(0, 1), net.user(1, 1));
     net.launch(0, &a);
     net.launch(1, &b);
@@ -967,7 +969,7 @@ fn root_total_supply_matches_trolls_after_each_settlement() {
         reference_hash: None,
         decimals: 24,
     };
-    let mut root = root::Root::new(params(3), net.ids.clone(), net.bounds.clone(), START, U128(total), meta);
+    let mut root = root::Root::new(params(3), net.ids.clone(), START, U128(total), meta);
     let users: Vec<Vec<AccountId>> = (0..3).map(|i| (0..2).map(|k| net.user(i, k)).collect()).collect();
     for (i, us) in users.iter().enumerate() {
         for u in us {
