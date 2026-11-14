@@ -10,9 +10,10 @@
 //   setup     test accounts: one stampede and two holders homed on distinct trolls, receivers, registrations,
 //             launch claims (inside the launch window)
 //   k2        one fire of 50 same-troll transfers, one fire of 25 mixed transfers; counts executed transfers
-//   k3        cross-troll transfer (toll burned), transfer to an unregistered receiver (credit fails,
+//   k3        100 tokens per case: cross-troll transfer (toll burned), transfer to an unregistered receiver (credit fails,
 //             full refund), cross-troll ft_transfer_call to an account without ft_on_transfer (refund);
 //             conservation checked over all eight trolls before and after
+//   k7        read-only: records K7 (parent spend, each troll's global code hash and storage)
 //   report    writes measurements/testnet-<date>/k-tests.json from target/testnet/*.json
 // Env: SECRET_PHRASE (funder seed phrase) from .env; never printed.
 import { createHash } from 'node:crypto';
@@ -60,7 +61,14 @@ function funderKey() {
   return keyPairFromSeedPhrase(process.env.SECRET_PHRASE);
 }
 const parentAccount = () => new Account(near, values.parent, KeyPair.fromString(load('parent-key.json').secret_key));
-const balance = async (id) => (await near.rpc('query', { request_type: 'view_account', finality: 'final', account_id: id }));
+// Final state; right after a transaction executes, 'final' can still report a new account as missing
+// for a few blocks, so wait up to ~10 s for it.
+async function balance(id) {
+  for (let i = 0; ; i++) {
+    try { return await near.rpc('query', { request_type: 'view_account', finality: 'final', account_id: id }); }
+    catch (e) { if (i >= 9 || !/UNKNOWN_ACCOUNT|does not exist/.test(e.message + e.kind)) throw e; await new Promise((r) => setTimeout(r, 1000)); }
+  }
+}
 
 // Sends unless dry run; returns the full outcome (never throws on receipt failures, the caller checks).
 async function submit(signer, receiver, actions, what) {
@@ -96,7 +104,7 @@ if (step === 'plan') {
     ['global troll code (10x storage, burned)', 10n * perByte * BigInt(troll.length)],
     ['root code + state (locked on the parent)', perByte * BigInt(root.length + 4000)],
     [`8 troll accounts x ${values['troll-near']} NEAR`, 8n * BigInt(values['troll-near']) * NEAR],
-    ['stampede account (code + 0.5 NEAR)', perByte * BigInt(stampede.length) + NEAR / 2n],
+    ['stampede account (funded with 2.5 NEAR; code locks part of it)', NEAR / 2n + 2n * NEAR],
     ['2 holders + 3 receivers x 0.2 NEAR', NEAR],
     ['registrations, claims, fires, gas (upper bound)', NEAR / 2n],
   ];
@@ -125,8 +133,10 @@ if (step === 'plan') {
     ...(values['window-ms'] ? ['--window-ms', values['window-ms']] : [])];
   log(`node ${args.join(' ')}`);
   if (!SEND) process.exit(0);
-  const before = await balance(values.parent);
   execFileSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' });
+  console.log('deployed; record K7 with: testnet-k.mjs k7');
+} else if (step === 'k7') {
+  // Read-only. The parent was created with --parent-near and pays only for the deploy before setup.
   const dep = JSON.parse(readFileSync(resolve(ROOT, 'target/deploy-testnet.json')));
   const after = await balance(values.parent);
   const trolls = await Promise.all(dep.trolls.map(async (t) => {
@@ -134,7 +144,8 @@ if (step === 'plan') {
     return { account: t.account, shard: t.shard, storage_usage: a.storage_usage, code_hash: a.code_hash, global_contract_hash: a.global_contract_hash ?? null };
   }));
   const k7 = {
-    parent_spent_near: fmt(yocto(before.amount) - yocto(after.amount)),
+    parent_funded_near: values['parent-near'], parent_left_near: fmt(after.amount), parent_storage_bytes: after.storage_usage,
+    parent_spent_near: fmt(BigInt(values['parent-near']) * NEAR - yocto(after.amount)),
     troll_near_each: values['troll-near'], troll_code_bytes: wasm('troll').length, troll_code_hash: dep.troll_code_hash,
     trolls, conservation_at_start: await conservation(dep), at: new Date().toISOString(),
   };
@@ -204,8 +215,10 @@ if (step === 'plan') {
     if (!r) continue;
     await sleep(5000);
     const ev = events(r);
-    const transfers = ev.filter((e) => e.standard === 'nep141' && e.event === 'ft_transfer').length;
-    const toll = ev.filter((e) => e.event === 'ft_burn').length;
+    // A same-troll transfer logs ft_transfer; a cross-troll one logs ft_burn at the source and
+    // ft_mint at the destination, plus a toll event.
+    const transfers = ev.filter((e) => e.standard === 'nep141' && (e.event === 'ft_transfer' || e.event === 'ft_mint')).length;
+    const toll = ev.filter((e) => e.standard === 'shardedtrolls' && e.event === 'toll').length;
     const fires = { label, n, hash: r.hash, url: EXPLORER + r.hash, ft_transfer_events: transfers, toll_burns: toll,
       failed_receipts: failures(r).length, shards: [...new Set(r.receipts_outcome.map((o) => o.outcome.executor_id))],
       conservation_before: before, conservation_after: await conservation(dep), pass: transfers >= n && failures(r).length === 0 };
@@ -218,7 +231,7 @@ if (step === 'plan') {
   const acc = load('accounts.json');
   const h = new Account(near, acc.holderA, KeyPair.fromString(acc.keys[acc.holderA]));
   const trollA = dep.trolls[0].account, trollB = dep.trolls[1].account;
-  const amt = (10n ** 3n * NEAR).toString(); // 1,000 tokens
+  const amt = (100n * NEAR).toString(); // 100 tokens per case; a launch claim is 1,000
   const bal = async (t, id) => BigInt(await near.view(t, 'ft_balance_of', { account_id: id }));
   const out = { at: new Date().toISOString(), cases: [] };
   for (const [label, method, args, gas, expect] of [
