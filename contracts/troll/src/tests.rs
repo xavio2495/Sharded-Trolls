@@ -1396,6 +1396,38 @@ fn cross_troll_resolve_failure_after_credit_refunds_nothing() {
 }
 
 #[test]
+#[should_panic(expected = "msg longer than 4096 bytes")]
+fn transfer_call_rejects_long_msg() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let (a, w) = (net.user(0, 1), net.user(2, 9));
+    net.launch(0, &a);
+    net.reg(&w);
+    net.as_(0, &a, 1, |t| t.ft_transfer_call(w, U128(1_000), None, "x".repeat(MAX_MSG_LEN + 1)));
+}
+
+#[test]
+fn transfer_call_accepts_msg_at_the_limit() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let (a, w) = (net.user(0, 1), net.user(2, 9));
+    net.launch(0, &a);
+    net.reg(&w);
+    let to = w.clone();
+    let r = net.as_(0, &a, 1, |t| t.ft_transfer_call(to, U128(1_000), None, "x".repeat(MAX_MSG_LEN)));
+    assert!(matches!(r, PromiseOrValue::Promise(_)));
+    assert_eq!(net.bal(0, &a), 99_000);
+}
+
+#[test]
+#[should_panic(expected = "troll accounts cannot hold tokens")]
+fn troll_ids_cannot_register_as_holders() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let id = net.ids[1].clone();
+    let h = home_index(3, id.as_str());
+    let m = net.min();
+    net.as_(h, &acc("anyone.u"), m, |t| t.storage_deposit(Some(id), None));
+}
+
+#[test]
 #[should_panic(expected = "attach at least 100 Tgas")]
 fn transfer_call_requires_enough_gas() {
     let mut net = Net::new(3, 1_000_000, 600_000);

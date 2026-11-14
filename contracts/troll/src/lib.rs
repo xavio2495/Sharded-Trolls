@@ -21,9 +21,12 @@ pub const GAS_FOR_FT_ON_TRANSFER: Gas = Gas::from_tgas(35);
 /// usual 5 Tgas, because a cross-troll resolve that fails is booked as "receiver kept everything".
 pub const GAS_FOR_RESOLVE: Gas = Gas::from_tgas(10);
 /// `credit_call` itself plus the receiver's `ft_on_transfer` and the destination's resolve.
-pub const GAS_FOR_CREDIT_CALL: Gas = Gas::from_tgas(5 + 35 + 10);
-/// Minimum gas for `ft_transfer_call`. With it, `credit_call` always has room to finish its own
-/// work, so it fails only after crediting (see `on_credit_call`).
+pub const GAS_FOR_CREDIT_CALL: Gas = Gas::from_tgas(10 + 35 + 10);
+/// Longest `msg` `ft_transfer_call` accepts. `credit_call` parses and forwards it, so its gas
+/// grows with the length; a bound keeps it within the reserved gas at the minimum attached.
+pub const MAX_MSG_LEN: usize = 4096;
+/// Minimum gas for `ft_transfer_call`. With it and `MAX_MSG_LEN`, `credit_call` always has room to
+/// finish its own work, so it fails only after crediting (see `on_credit_call`).
 pub const GAS_FOR_TRANSFER_CALL_MIN: Gas = Gas::from_tgas(100);
 /// What `credit_call` returns when it did not credit (receiver not registered). Larger than any
 /// real unused amount, which is at most the amount credited.
@@ -250,6 +253,7 @@ impl Troll {
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
         require!(env::prepaid_gas() >= GAS_FOR_TRANSFER_CALL_MIN, "attach at least 100 Tgas");
+        require!(msg.len() <= MAX_MSG_LEN, "msg longer than 4096 bytes");
         let sender_id = env::predecessor_account_id();
         let amount = amount.0;
         require!(amount > 0, "amount must be > 0");
@@ -724,6 +728,9 @@ impl Troll {
             home_index(self.trolls.len(), account_id.as_str()) == self.index as usize,
             "register at the account's home troll"
         );
+        // The trolls' own holdings (hoard, pools) are not account records; tokens sent to a troll
+        // id would be stuck, since no one signs for it.
+        require!(!self.trolls.contains(&account_id), "troll accounts cannot hold tokens");
         let min = self.storage_min();
         let refund = if self.accounts.contains_key(&account_id) {
             deposit

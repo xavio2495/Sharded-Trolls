@@ -463,3 +463,71 @@ async fn wrapper_cross_troll_wrap_and_unwrap() -> testresult::TestResult<()> {
     assert_eq!(held + burned, TOTAL);
     Ok(())
 }
+
+/// One cross-troll `ft_transfer_call` with exactly `tgas` attached and a `msg` of `len` bytes.
+async fn transfer_call_with(
+    env: &Env,
+    from: &AccountId,
+    troll: &AccountId,
+    to: &AccountId,
+    amount: u128,
+    len: usize,
+    tgas: u64,
+) -> testresult::TestResult<near_api::types::transaction::result::ExecutionFinalResult> {
+    Ok(Contract(troll.clone())
+        .call_function(
+            "ft_transfer_call",
+            json!({ "receiver_id": to, "amount": amount.to_string(), "msg": "x".repeat(len) }),
+        )
+        .transaction()
+        .gas(NearGas::from_tgas(tgas))
+        .deposit(NearToken::from_yoctonear(1))
+        .with_signer(from.clone(), env.signer.clone())
+        .send_to(&env.network)
+        .await?
+        .into_full()
+        .ok_or("transaction did not reach a final result")?)
+}
+
+/// At exactly the 100 Tgas floor: a cross-troll transfer-and-call with a small or limit-sized `msg`
+/// completes and the books close; a longer `msg` is rejected before anything is debited. Without
+/// the bound, a msg of about 220 KB made `credit_call` run out of gas after the source had
+/// debited, so the sender lost the transfer and the books came up short.
+#[tokio::test]
+async fn transfer_call_at_minimum_gas_and_msg_bound() -> testresult::TestResult<()> {
+    let env = common::start_mainnet_layout().await?;
+    let t = deploy(&env, 1).await?;
+    let alice = user(&env, &t, "alice").await?;
+    let a_troll = home(&env, &t, &alice).await?;
+    let far = names_at(&env, &t, &a_troll, false, 1, "far").await?;
+    let bob = user(&env, &t, &far[0]).await?;
+    let b_troll = home(&env, &t, &bob).await?;
+    claim_launch(&env, &t, &alice).await?;
+    let amount = 1_000 * ONE;
+    let toll = amount * TOLL_BPS / 10_000;
+    for (len, accepted) in [(0usize, true), (4096, true), (4097, false), (220 * 1024, false)] {
+        let before = balance(&env, &t, &alice).await?;
+        let r = transfer_call_with(&env, &alice, &a_troll, &bob, amount, len, 100).await?;
+        let credit_call = r.receipt_outcomes().iter().find(|o| o.executor_id == b_troll && o.logs.iter().any(|l| l.contains("ft_mint")));
+        println!(
+            "msg {len} B at 100 Tgas: success {}, credit_call burnt {:?} Tgas",
+            r.is_success(),
+            credit_call.map(|o| o.gas_burnt.as_gas() as f64 / 1e12)
+        );
+        let after = balance(&env, &t, &alice).await?;
+        let logs = r.logs().join("\n");
+        assert!(!logs.contains("credit_unresolved"), "msg {len}: credit_call must not fail");
+        if accepted {
+            assert!(r.is_success() && credit_call.is_some_and(|o| o.is_success()), "msg {len}: accepted and credited");
+            // bob is a plain account, so ft_on_transfer fails and everything but the toll comes back
+            assert_eq!(after, before - toll, "msg {len}");
+        } else {
+            assert!(credit_call.is_none(), "msg {len}: nothing sent to the destination");
+            r.assert_failure();
+            assert_eq!(after, before, "msg {len}: nothing debited");
+        }
+        let (held, burned) = totals(&env, &t).await?;
+        assert_eq!(held + burned, TOTAL, "msg {len}: books close");
+    }
+    Ok(())
+}
