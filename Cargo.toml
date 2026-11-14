@@ -1,0 +1,26 @@
+[workspace]
+resolver = "3"
+members = ["contracts/*", "integration"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+
+[workspace.dependencies]
+near-sdk = "5.30.2"
+near-contract-standards = "5.30.2"
+troll-types = { path = "contracts/types" }
+
+[workspace.lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(near)']
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

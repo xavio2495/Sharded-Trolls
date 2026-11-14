@@ -1,0 +1,6 @@
+{
+  "name": "@sharded-trolls/sim",
+  "private": true,
+  "type": "module",
+  "description": "60-day supply simulation used to pick the launch parameters"
+}

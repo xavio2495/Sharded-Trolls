@@ -1,0 +1,8 @@
+{
+  "name": "sharded-trolls",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": ["packages/*", "sim"],
+  "engines": { "node": ">=24" }
+}

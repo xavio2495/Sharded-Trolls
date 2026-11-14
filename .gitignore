@@ -1,0 +1,10 @@
+/target
+node_modules/
+
+# Research, specs and session notes stay local; only README.md is committed.
+/context/
+/claude-docs/
+*.md
+!/README.md
+
+.env

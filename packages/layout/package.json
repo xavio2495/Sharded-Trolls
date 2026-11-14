@@ -1,0 +1,6 @@
+{
+  "name": "@sharded-trolls/layout",
+  "private": true,
+  "type": "module",
+  "description": "shardOf, place and check: map account ids to NEAR shards from the live layout"
+}
