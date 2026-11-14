@@ -13,7 +13,7 @@ export default function Kit() {
           </p>
         </div>
         <pre
-          className="slab -rotate-1 overflow-x-auto whitespace-pre p-6 font-mono text-xs leading-relaxed sm:text-sm"
+          className="slab -rotate-1 overflow-x-auto whitespace-pre-wrap break-all p-6 font-mono sm:whitespace-pre sm:break-normal text-xs leading-relaxed sm:text-sm"
           style={{ background: "#18211b", color: "#cfe3bd" }}
           data-reveal
           data-reveal-delay="0.1"

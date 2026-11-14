@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function Closing() {
   return (
-    <section className="tone-light px-[var(--gutter)] py-32">
+    <section className="tone-light px-[var(--gutter)] pt-32 pb-10">
       <div className="grid items-center gap-12 md:grid-cols-[1fr_auto]">
         <div>
           <h2 className="display max-w-5xl" data-reveal="lines">
@@ -26,7 +26,7 @@ export default function Closing() {
         </div>
         <Image src="/art/trolls-v3/troll-8.webp" alt="The mushroom-crowned troll, delighted" width={720} height={720} className="w-[22rem] -rotate-6" data-reveal data-parallax="0.15" />
       </div>
-      <footer className="mt-28 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-8">
+      <footer className="mt-28 flex flex-wrap items-center justify-between gap-4">
         <span className="font-display text-xl">Sharded Trolls</span>
         <span className="tag text-ink-1">MIT · live on NEAR testnet</span>
       </footer>

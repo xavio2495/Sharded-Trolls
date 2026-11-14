@@ -21,7 +21,7 @@ export default function Toll() {
       <div className="mt-16 grid items-start gap-12 lg:grid-cols-[1fr_1.1fr]">
         <div className="space-y-0">
           {HOPS.map((h, i) => (
-            <div key={h.word} className={`border-t-[3px] border-ink-0 py-6 ${i % 2 ? "lg:ml-16" : ""}`} data-reveal data-reveal-delay={(i * 0.12).toFixed(2)}>
+            <div key={h.word} className={`py-6 ${i % 2 ? "lg:ml-16" : ""}`} data-reveal data-reveal-delay={(i * 0.12).toFixed(2)}>
               <p className="font-display text-6xl text-ink-0">
                 {h.word}
                 {i < HOPS.length - 1 && <span className="ml-3 text-accent-deep">→</span>}

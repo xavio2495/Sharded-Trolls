@@ -172,3 +172,7 @@ html.js [data-reveal] { opacity: 0; }
 
 /* legacy: the dashboard's paper grain is retired on white */
 .grain::after { content: none; }
+
+/* swipe rows on phones: keep the swipe, hide the browser scrollbar */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

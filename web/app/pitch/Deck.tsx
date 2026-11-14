@@ -266,7 +266,7 @@ const SLIDES: Slide[] = [
     ],
   },
   {
-    title: "Under load (synthetic).",
+    title: "Under synthetic load.",
     visual: <LoadBars />,
     points: [
       "Local network with mainnet's 10-shard layout, offered 2,000 transfers/s.",
@@ -337,29 +337,30 @@ export default function Deck() {
           )}
         </div>
         {s.visual && (
-          <div className="slab p-5">
-            {isValidElement(s.visual) && (s.visual.type === Stats || s.visual.type === Image) ? (
-              s.visual
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <div className="min-w-[560px]">{s.visual}</div>
-                </div>
-                <p className="tag mt-3 text-ink-1 sm:hidden">scroll →</p>
-              </>
-            )}
-          </div>
+          isValidElement(s.visual) && s.visual.type === Stats ? (
+            // stat slabs carry their own frames; a second frame around them only doubles the borders
+            s.visual
+          ) : isValidElement(s.visual) && s.visual.type === Image ? (
+            <div className="slab mx-auto w-full max-w-[min(100%,62svh)] p-5 [&_img]:h-auto [&_img]:w-full">{s.visual}</div>
+          ) : (
+            <div className="slab p-5">
+              <div className="no-scrollbar overflow-x-auto">
+                <div className="min-w-[560px]">{s.visual}</div>
+              </div>
+              <p className="tag mt-3 text-ink-1 sm:hidden">swipe the diagram →</p>
+            </div>
+          )
         )}
       </div>
       <div className="flex items-center justify-between gap-4 border-t-[3px] border-ink-0 px-6 py-4 md:px-10">
         <nav className="flex items-center gap-5" onClick={(e) => e.stopPropagation()}>
-          <Link href="/" className="nav inline-flex min-h-11 items-center text-ink-0">
+          <Link href="/" className="nav inline-flex min-h-11 items-center text-ink-0" style={{ fontSize: "0.95rem" }}>
             ← Site
           </Link>
-          <Link href="/app" className="nav hidden min-h-11 items-center text-ink-0 sm:inline-flex">
+          <Link href="/app" className="nav hidden min-h-11 items-center text-ink-0 sm:inline-flex" style={{ fontSize: "0.95rem" }}>
             Open the app
           </Link>
-          <Link href="/evidence" className="nav hidden min-h-11 items-center text-ink-0 md:inline-flex">
+          <Link href="/evidence" className="nav hidden min-h-11 items-center text-ink-0 md:inline-flex" style={{ fontSize: "0.95rem" }}>
             Evidence
           </Link>
         </nav>

@@ -10,7 +10,7 @@ export default function Problem() {
         happened before.
       </p>
 
-      <div className="mt-16 grid gap-10 md:grid-cols-[1.2fr_1fr] md:gap-0">
+      <div className="mt-16 grid items-start gap-10 md:grid-cols-[1.2fr_1fr] md:gap-0">
         <div className="slab -rotate-1 p-8 md:mr-[-3rem] md:mt-10" data-reveal data-parallax="0.08">
           <p className="tag text-ink-1">HOT · split on 2024-03-21</p>
           <p className="mt-2 font-display text-[clamp(4rem,9vw,8rem)] leading-none text-ink-0">42.5%</p>

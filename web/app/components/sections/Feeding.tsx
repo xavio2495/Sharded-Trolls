@@ -54,7 +54,7 @@ export default function Feeding() {
           <h2 className="h2 max-w-3xl" data-reveal="lines">
             Feed them all, or they starve.
           </h2>
-          <div className="mt-5 grid max-w-5xl gap-x-10 gap-y-3 border-t-[3px] border-ink-0 pt-4 sm:grid-cols-3">
+          <div className="mt-6 grid max-w-5xl gap-x-10 gap-y-3 sm:grid-cols-3">
             {RULES.map((r, i) => (
               <p key={r.title} className="body" data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
                 <span className="font-display text-xl text-ink-0">{r.title}.</span> {r.text}
@@ -62,7 +62,7 @@ export default function Feeding() {
             ))}
           </div>
         </div>
-        <div data-track className="flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] md:snap-none md:overflow-visible">
+        <div data-track className="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-px-[var(--gutter)] px-[var(--gutter)] md:snap-none md:overflow-visible">
           {TROLLS.map((t, i) => (
             <figure key={t.name} className={`slab w-[12rem] flex-none snap-start p-4 text-center md:w-[min(15rem,26svh)] ${i % 2 ? "rotate-2" : "-rotate-1"}`}>
               <div data-troll>

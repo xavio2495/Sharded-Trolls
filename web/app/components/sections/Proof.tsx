@@ -44,7 +44,7 @@ export default function Proof() {
       </h2>
       <dl className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {FIGURES.map((f, i) => (
-          <div key={f.label} className={`border-t-[3px] border-[#a9cf86] pt-6 ${i % 2 ? "lg:mt-16" : ""}`} data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
+          <div key={f.label} className={`pt-6 ${i % 2 ? "lg:mt-16" : ""}`} data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
             <dt className="font-display text-7xl text-[#a9cf86]">
               <span data-count={f.value}>{f.value}</span>
               {f.suffix}
@@ -53,7 +53,7 @@ export default function Proof() {
           </div>
         ))}
       </dl>
-      <p className="small mt-14 max-w-3xl text-[#9fb0a3]" data-reveal>
+      <p className="body mt-14 max-w-3xl" style={{ color: "#d6e2d9" }} data-reveal>
         Honest limits: not faster per transfer, wallets list one entry per troll, the Feeding is a game and not
         Sybil-proof, and DEX trading goes through a single-shard wrapper.
       </p>
