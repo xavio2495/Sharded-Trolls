@@ -5,7 +5,7 @@
 // Usage: node --dns-result-order=ipv4first scripts/deploy.mjs [--network localnet|testnet]
 //          [--parent sandbox] [--signer <parent>] [--key-file target/localnet/validator_key.json]
 //          [--epoch-ms <localnet 300000, testnet 3600000>] [--window-ms <default: launch_window_epochs epochs>]
-//          [--params launch|sim] [--symbol TROLL] [--troll-near 5] [--start-ms <unix ms, default now>]
+//          [--params launch|sim] [--symbol STRL] [--troll-near 5] [--start-ms <unix ms, default now>]
 //          [--wrapper <prefix>]
 // --params launch (default) uses LAUNCH_PARAMS (launch claim 1,000 tokens, claim fee 0.01 NEAR);
 // --params sim uses the simulation's DEFAULT_PARAMS (claim 100,000 tokens, no fee).
@@ -24,7 +24,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const RPC = { localnet: 'http://127.0.0.1:3040', testnet: 'https://rpc.testnet.fastnear.com' };
 const { values } = parseArgs({ options: {
   network: { type: 'string', default: 'localnet' }, parent: { type: 'string' }, signer: { type: 'string' },
-  'key-file': { type: 'string' }, 'epoch-ms': { type: 'string' }, 'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' }, symbol: { type: 'string', default: 'TROLL' },
+  'key-file': { type: 'string' }, 'epoch-ms': { type: 'string' }, 'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' }, symbol: { type: 'string', default: 'STRL' },
   'troll-near': { type: 'string', default: '5' }, 'start-ms': { type: 'string' }, wrapper: { type: 'string' },
 } });
 const net = values.network;
