@@ -89,3 +89,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Streams scene: boats drift down their own channel; the landing troll bobs when it eats a toll. */
+@keyframes st-boat-drift { from { transform: translateY(-40px); } to { transform: translateY(700px); } }
+.st-boat { animation: st-boat-drift 12s linear infinite; }
+@keyframes st-chew { 0%, 66%, 100% { transform: translateY(0); } 72% { transform: translateY(-10px) scale(1.04); } 80% { transform: translateY(0); } }
+.st-chew { animation: st-chew 5s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@media (prefers-reduced-motion: reduce) { .st-boat, .st-chew { animation: none; } }
