@@ -26,7 +26,7 @@ pub trait TrollToken {
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) -> bool;
 }
 
-#[near(contract_state)]
+#[near(contract_state, contract_metadata(standard(standard = "nep141", version = "1.0.0"), standard(standard = "nep145", version = "1.0.0"), standard(standard = "nep148", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
 #[derive(PanicOnDefault)]
 pub struct Wrapper {
     token: FungibleToken,

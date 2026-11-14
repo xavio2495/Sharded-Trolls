@@ -38,7 +38,7 @@ pub struct RootInfo {
     pub last_senders: Vec<u32>,
 }
 
-#[near(contract_state)]
+#[near(contract_state, contract_metadata(standard(standard = "nep148", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
 #[derive(PanicOnDefault)]
 pub struct Root {
     params: Params,

@@ -92,7 +92,7 @@ pub struct TrollInfo {
     pub last_applied: Option<u64>,
 }
 
-#[near(contract_state)]
+#[near(contract_state, contract_metadata(standard(standard = "nep145", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
 #[derive(PanicOnDefault)]
 pub struct Troll {
     root: AccountId,

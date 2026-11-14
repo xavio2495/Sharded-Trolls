@@ -457,7 +457,7 @@ fn starve_burns_hoard_slice_only() {
     assert!(get_logs()[0].contains("starved epoch 0"));
 }
 
-// ---------- K3: conservation under random transfers and failed credits ----------
+// ---------- conservation under random transfers and failed credits ----------
 
 struct Rng(u64);
 impl Rng {
@@ -623,17 +623,17 @@ fn conservation_run(seed: u64, steps: usize) {
 
 // One seed per test: each test thread gets its own fresh mocked storage.
 #[test]
-fn k3_conservation_10k_random_transfers_seed_a() {
+fn conservation_10k_random_transfers_seed_a() {
     conservation_run(0x9E37_79B9_7F4A_7C15, 10_000);
 }
 
 #[test]
-fn k3_conservation_10k_random_transfers_seed_b() {
+fn conservation_10k_random_transfers_seed_b() {
     conservation_run(42, 10_000);
 }
 
 #[test]
-fn k3_conservation_10k_random_transfers_seed_c() {
+fn conservation_10k_random_transfers_seed_c() {
     conservation_run(7_777_777, 10_000);
 }
 

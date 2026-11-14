@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 # Placeholder until the public repository exists; reproducible-build metadata links to it.
-repository = "https://github.com/PLACEHOLDER-D6/sharded_trolls"
+repository = "https://github.com/PLACEHOLDER/sharded_trolls"
 
 [package.metadata.near.reproducible_build]
 # Build environment: the tag is descriptive only, the image is pinned by digest (cargo-near 0.23.0, Rust 1.100.0).
