@@ -28,13 +28,13 @@ function Architecture() {
               <text x={x + 34} y="176" textAnchor="middle" fill={on ? "#fff" : INK} fontWeight="700">troll {i}</text>
               <text x={x + 34} y="196" textAnchor="middle" fill={on ? "#fff" : INK}>shard</text>
               <text x={x + 34} y="214" textAnchor="middle" fill={on ? "#fff" : INK} fontWeight="700">{s}</text>
-              <text x={x + 34} y="250" textAnchor="middle" fill={on ? "#fff" : INK} fontSize="11">ledger</text>
+              <text x={x + 34} y="250" textAnchor="middle" fill={on ? "#fff" : INK} fontSize="13">ledger</text>
             </g>
           );
         })}
         <rect x="14" y="300" width="612" height="34" fill={MIST} stroke={INK} strokeWidth="3" />
         <text x="320" y="322" textAnchor="middle">one global contract code, published once, used by all eight by hash</text>
-        <text x="320" y="364" textAnchor="middle" fontSize="12">+ a single-shard NEP-141 wrapper for DEXes</text>
+        <text x="320" y="364" textAnchor="middle" fontSize="13">+ a single-shard NEP-141 wrapper for DEXes</text>
       </g>
     </svg>
   );
@@ -105,16 +105,15 @@ function OneVsEight() {
         <text x="130" y="22" textAnchor="middle" fontWeight="700">one contract</text>
         <rect x="70" y="40" width="120" height="220" fill={MOSS} stroke={INK} strokeWidth="3" />
         <text x="130" y="155" textAnchor="middle" fill="#fff">shard</text>
-        {Array.from({ length: 7 }, (_, k) => <rect key={k} x={40 + k * 4} y={270} width="3" height="18" fill={INK} />)}
-        <text x="130" y="296" textAnchor="middle" fontSize="11">every holder queues here</text>
+        <text x="130" y="296" textAnchor="middle" fontSize="13">every holder queues here</text>
         <text x="450" y="22" textAnchor="middle" fontWeight="700">eight trolls</text>
         {SHARDS.map((sh, i) => (
           <g key={sh}>
             <rect x={290 + i * 40} y="40" width="32" height="220" fill={i % 2 ? "#fff" : MIST} stroke={INK} strokeWidth="3" />
-            <text x={306 + i * 40} y="155" textAnchor="middle" fontSize="11">{sh}</text>
+            <text x={306 + i * 40} y="155" textAnchor="middle" fontSize="13">{sh}</text>
           </g>
         ))}
-        <text x="450" y="296" textAnchor="middle" fontSize="11">holders spread over eight shards</text>
+        <text x="450" y="296" textAnchor="middle" fontSize="13">holders spread over eight shards</text>
       </g>
     </svg>
   );
@@ -127,15 +126,16 @@ function HomesBars() {
     <rect key={`${y0}-${i}`} x={60 + i * 68} y={y0 - v * 2.2} width="48" height={v * 2.2} fill={fill} stroke={INK} strokeWidth="2" />
   );
   return (
-    <svg viewBox="0 0 640 330" className="w-full" role="img" aria-label="Share of random implicit accounts per troll. Name ranges: 39.5, 29.3, 23.2 and 8.1 percent on trolls 0 to 3, none on 4 to 7. Hash: 12.5 percent on every troll.">
-      <g fontFamily="ui-monospace, monospace" fontSize="12" fill={INK}>
+    <svg viewBox="0 0 640 300" className="w-full" role="img" aria-label="Share of random implicit accounts per troll. Name ranges: 39.5, 29.3, 23.2 and 8.1 percent on trolls 0 to 3, none on 4 to 7. Hash: 12.5 percent on every troll.">
+      <g fontFamily="ui-monospace, monospace" fontSize="13" fill={INK}>
         <text x="20" y="20" fontWeight="700">name ranges</text>
         {ranges.map((v, i) => bar(v, i, 120, "#fff"))}
         {ranges.map((v, i) => <text key={`r${i}`} x={84 + i * 68} y={135} textAnchor="middle">{v ? `${v}%` : "0"}</text>)}
-        <text x="20" y="180" fontWeight="700">hash (expected)</text>
-        {hash.map((v, i) => bar(v, i, 280, MOSS))}
-        {hash.map((_, i) => <text key={`t${i}`} x={84 + i * 68} y={300} textAnchor="middle">troll {i}</text>)}
-        <text x="320" y="322" textAnchor="middle" fontSize="11">random implicit accounts, share per troll</text>
+        <text x="20" y="170" fontWeight="700">hash (expected)</text>
+        {hash.map((v, i) => bar(v, i, 240, MOSS))}
+        {hash.map((v, i) => <text key={`h${i}`} x={84 + i * 68} y={206} textAnchor="middle">{v}%</text>)}
+        {hash.map((_, i) => <text key={`t${i}`} x={84 + i * 68} y={260} textAnchor="middle">troll {i}</text>)}
+        <text x="320" y="290" textAnchor="middle" fontSize="13">random implicit accounts, share per troll</text>
       </g>
     </svg>
   );
@@ -165,8 +165,7 @@ function SettleFlow() {
         <line x1="545" y1="80" x2="397" y2="160" stroke={INK} strokeWidth="2" markerEnd="url(#b)" />
         <line x1="290" y1="210" x2="190" y2="258" stroke={INK} strokeWidth="2" markerEnd="url(#b)" />
         <line x1="350" y1="210" x2="450" y2="258" stroke={INK} strokeWidth="2" markerEnd="url(#b)" />
-        <text x="95" y="110" textAnchor="middle" fontSize="12">bounty 0.005 NEAR</text>
-        <line x1="245" y1="185" x2="110" y2="80" stroke={INK} strokeWidth="1.5" strokeDasharray="4 4" markerEnd="url(#b)" />
+        <text x="95" y="102" textAnchor="middle" fontSize="13">earns 0.005 NEAR</text>
       </g>
     </svg>
   );
@@ -179,17 +178,17 @@ function LoadBars() {
     { name: "trolls, mixed (low run)", v: 1358, rej: "0 rejected", fill: MIST },
   ];
   return (
-    <svg viewBox="0 0 640 300" className="w-full" role="img" aria-label="Transfers per second executed at 2,000 offered: one ordinary token 703 with 280 of 728 rejected; trolls same-troll 1,980 with none rejected; trolls mixed 1,358 on the lowest run, none rejected.">
+    <svg viewBox="0 0 640 330" className="w-full" role="img" aria-label="Transfers per second executed at 2,000 offered: one ordinary token 703 with 280 of 728 rejected; trolls same-troll 1,980 with none rejected; trolls mixed 1,358 on the lowest run, none rejected.">
       <g fontFamily="ui-monospace, monospace" fontSize="13" fill={INK}>
         {rows.map((r, i) => (
           <g key={r.name}>
             <text x="20" y={48 + i * 90}>{r.name}</text>
             <rect x="20" y={58 + i * 90} width={(r.v / 2000) * 560} height="34" fill={r.fill} stroke={INK} strokeWidth="3" />
             <text x={30 + (r.v / 2000) * 560} y={81 + i * 90} fontWeight="700">{r.v.toLocaleString("en-US")}/s</text>
-            <text x="20" y={110 + i * 90} fontSize="11">{r.rej}</text>
+            <text x="20" y={110 + i * 90} fontSize="13">{r.rej}</text>
           </g>
         ))}
-        <text x="20" y="292" fontSize="11">offered 2,000 transfers/s for 90 s, single-node local network with mainnet&apos;s layout</text>
+        <text x="20" y="322" fontSize="13">offered 2,000 transfers/s for 90 s, single-node local network with mainnet&apos;s layout</text>
       </g>
     </svg>
   );
@@ -323,7 +322,7 @@ export default function Deck() {
       <div className="h-2 bg-surface-2">
         <div className="h-full bg-accent-deep transition-[width] duration-300" style={{ width: `${((i + 1) / SLIDES.length) * 100}%` }} />
       </div>
-      <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-12 overflow-y-auto px-6 py-6 md:px-10 lg:grid-cols-[1fr_1.1fr]">
+      <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-[minmax(0,1fr)] items-center gap-12 overflow-y-auto px-6 py-6 md:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div>
           <h1 className="h1 leading-[0.95] text-ink-0">{s.title}</h1>
           {s.body && <p className="lead mt-8 max-w-xl text-2xl">{s.body}</p>}
