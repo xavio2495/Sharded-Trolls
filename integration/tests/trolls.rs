@@ -55,15 +55,18 @@ async fn block_ms(env: &Env) -> testresult::TestResult<u64> {
 }
 
 async fn deploy(env: &Env, feed_target: u32) -> testresult::TestResult<Token> {
+    deploy_with(env, params(feed_target), "trolls.sandbox").await
+}
+
+async fn deploy_with(env: &Env, p: Value, root_id: &str) -> testresult::TestResult<Token> {
     let troll_wasm = common::wasm("troll")?;
     let root_wasm = common::wasm("root")?;
-    let root = common::create_account(env, "trolls.sandbox").await?.0;
+    let root = common::create_account(env, root_id).await?.0;
     let mut trolls = Vec::new();
     for p in PREFIXES {
         trolls.push(common::create_account(env, &format!("{p}.sandbox")).await?.0);
     }
     let start_ms = block_ms(env).await?;
-    let p = params(feed_target);
     for t in &trolls {
         Contract::deploy(t.clone())
             .use_code(troll_wasm.clone())
@@ -208,6 +211,13 @@ async fn transfer(
     Ok(r.json::<bool>()?)
 }
 
+/// Asserts the transaction failed, and with `msg` (not some other error such as bad arguments).
+fn fails_with(r: near_api::types::transaction::result::ExecutionFinalResult, msg: &str) {
+    let failures = format!("{:?}", r.failures());
+    assert!(failures.contains(msg), "expected a failure with {msg:?}, got {failures}");
+    r.assert_failure();
+}
+
 /// Σ over trolls of (supply + in_flight) and of burned, from `info()`.
 async fn totals(env: &Env, t: &Token) -> testresult::TestResult<(u128, u128)> {
     let (mut held, mut burned) = (0u128, 0u128);
@@ -297,23 +307,23 @@ async fn transfers_tolls_refunds_and_access() -> testresult::TestResult<()> {
     // Access control.
     let eve = common::create_account(&env, "eve.sandbox").await?.0;
     let b_troll = home(&env, &t, &bob).await?;
-    call(
+    let r = call(
         &env, &eve, &b_troll, "credit",
-        json!({ "sender_id": eve, "receiver_id": bob, "amount": ONE.to_string() }),
+        json!({ "sender_id": eve, "receiver_id": bob, "amount": ONE.to_string(), "toll": "0" }),
         NearToken::from_yoctonear(0),
     )
-    .await?
-    .assert_failure();
-    call(&env, &eve, &a_troll, "report", json!({ "epoch": 0 }), NearToken::from_yoctonear(0))
-        .await?
-        .assert_failure();
-    call(
+    .await?;
+    fails_with(r, "only sibling trolls can credit");
+    let r = call(&env, &eve, &a_troll, "report", json!({ "epoch": 0 }), NearToken::from_yoctonear(0)).await?;
+    fails_with(r, "only the root");
+    // well-formed arguments, so the call gets past parsing and is refused by the access check
+    let r = call(
         &env, &eve, &a_troll, "apply",
-        json!({ "epoch": 0, "outcome": { "Reward": { "amount": ONE.to_string() } } }),
+        json!({ "epoch": 0, "outcome": { "Reward": { "amount": ONE.to_string(), "food": "0" } } }),
         NearToken::from_yoctonear(0),
     )
-    .await?
-    .assert_failure();
+    .await?;
+    fails_with(r, "only the root");
     assert_eq!(balance(&env, &t, &bob).await?, amount - toll);
     Ok(())
 }
@@ -597,6 +607,8 @@ async fn settle_at_minimum_gas() -> testresult::TestResult<()> {
 
     wait_for_epoch_end(&env, &t, 0).await?;
     call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 249).await?.assert_failure();
+    // Fund the bounty budget (only fund_bounty does; plain NEAR on the root is never paid out).
+    call(&env, &sink, &t.root, "fund_bounty", json!({}), NearToken::from_millinear(100)).await?.assert_success();
     let sink_before = near_api::Tokens::account(sink.clone()).near_balance().fetch_from(&env.network).await?.total;
     let r = call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 250).await?;
     let on_reports = r.receipt_outcomes().iter().filter(|o| o.executor_id == t.root).nth(1).cloned();
@@ -616,5 +628,183 @@ async fn settle_at_minimum_gas() -> testresult::TestResult<()> {
     let delta = sink_after.as_yoctonear() as i128 - sink_before.as_yoctonear() as i128 + burnt as i128;
     println!("settler: balance change + gas burnt = {delta} yocto (bounty {BOUNTY})");
     assert!((delta - BOUNTY as i128).abs() < 10i128.pow(20), "settler gained the bounty (within 0.0001 NEAR)");
+    Ok(())
+}
+
+
+// ---------- the whole Feeding lifecycle, end to end ----------
+
+fn b64_encode(data: &[u8]) -> String {
+    const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for c in data.chunks(3) {
+        let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            out.push(if i <= c.len() { A[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
+        }
+    }
+    out
+}
+
+fn b64_decode(s: &str) -> Vec<u8> {
+    let val = |c: u8| match c {
+        b'A'..=b'Z' => c - b'A',
+        b'a'..=b'z' => c - b'a' + 26,
+        b'0'..=b'9' => c - b'0' + 52,
+        b'+' => 62,
+        _ => 63,
+    };
+    let bytes: Vec<u8> = s.bytes().filter(|c| *c != b'=').collect();
+    let mut out = vec![];
+    for c in bytes.chunks(4) {
+        let n = c.iter().enumerate().fold(0u32, |n, (i, b)| n | (val(*b) as u32) << (18 - 6 * i));
+        for i in 0..c.len() - 1 {
+            out.push((n >> (16 - 8 * i)) as u8);
+        }
+    }
+    out
+}
+
+/// Puts the root into a stuck settlement of `epoch` started at the current block, as if its
+/// `on_reports` had never completed. Not reachable honestly (settle needs 250 Tgas); this is the
+/// only way to exercise the timeout escape in the sandbox. The root's state ends with
+/// settling: Option<u64>, settling_since: u64, attempt: u64, settler: AccountId, bounty_budget: u128.
+async fn force_stuck_settlement(env: &Env, t: &Token, epoch: u64, settler: &AccountId) -> testresult::TestResult<()> {
+    let state = Contract(t.root.clone()).view_storage().fetch_from(&env.network).await?.data;
+    let v = serde_json::to_value(&state)?;
+    let item = v["values"].as_array().unwrap().iter().find(|i| i["key"] == "U1RBVEU=").ok_or("no STATE")?;
+    let mut raw = b64_decode(item["value"].as_str().unwrap());
+    let l = settler.as_str().len();
+    let tail = 16 + 4 + l + 8 + 8;
+    let at = raw.len() - tail - 1;
+    assert_eq!(raw[at], 0, "settling is None");
+    assert_eq!(u32::from_le_bytes(raw[raw.len() - 16 - 4 - l..raw.len() - 16 - l].try_into()?) as usize, l, "layout");
+    let b = near_api::Chain::block().fetch_from(&env.network).await?;
+    let height = b.header.height;
+    let since = at + 1;
+    raw[since..since + 8].copy_from_slice(&height.to_le_bytes());
+    let mut some = vec![1u8];
+    some.extend_from_slice(&epoch.to_le_bytes());
+    raw.splice(at..at + 1, some);
+    env.sandbox.patch_state(t.root.as_str().parse()?).storage("U1RBVEU=".into(), b64_encode(&raw)).send().await?;
+    Ok(())
+}
+
+async fn root_info(env: &Env, t: &Token) -> testresult::TestResult<Value> {
+    view(env, &t.root, "info", json!({})).await
+}
+
+async fn near_of(env: &Env, who: &AccountId) -> testresult::TestResult<u128> {
+    Ok(near_api::Tokens::account(who.clone()).near_balance().fetch_from(&env.network).await?.total.as_yoctonear())
+}
+
+/// Σ(supply + in_flight + burned) = initial + minted, and the root agrees after each settlement.
+async fn check_books(env: &Env, t: &Token, settled: bool) -> testresult::TestResult<()> {
+    let (held, burned) = totals(env, t).await?;
+    let (minted, _) = minted_and_food(env, t).await?;
+    assert_eq!(held + burned, TOTAL + minted, "conservation");
+    if settled {
+        let supply: String = view(env, &t.root, "ft_total_supply", json!({})).await?;
+        assert_eq!(supply.parse::<u128>()?, held, "root == trolls");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn feeding_lifecycle_end_to_end() -> testresult::TestResult<()> {
+    let env = common::start_mainnet_layout().await?;
+    let fee: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
+    let mut p = params(1);
+    p["claim_fee"] = json!(fee.to_string());
+    // The root sits on the layout's first shard (ids below "650"): the sandbox applies state
+    // patches only there, and step 6 patches the root.
+    let t = deploy_with(&env, p, "00root.sandbox").await?;
+    let budget = |i: &Value| i["bounty_budget"].as_str().unwrap().parse::<u128>().unwrap();
+    assert_eq!(budget(&root_info(&env, &t).await?), 0);
+
+    // 1. Claims, one holder per troll, each attaching the fee; the fee (less the claim record's
+    //    storage) goes into the root's bounty budget.
+    let sink_name = names_at(&env, &t, &t.trolls[0], true, 1, "sink").await?;
+    let sink = user(&env, &t, &sink_name[0]).await?;
+    let mut feeders = Vec::new();
+    for (i, troll) in t.trolls.iter().enumerate() {
+        let n = names_at(&env, &t, troll, true, 1, &format!("life{i}x")).await?;
+        let f = user(&env, &t, &n[0]).await?;
+        let r = call(&env, &f, troll, "claim_launch", json!({}), NearToken::from_yoctonear(fee)).await?;
+        if i == 0 {
+            let fb = r.receipt_outcomes().iter().find(|o| o.executor_id == t.root).ok_or("no fund_bounty receipt")?;
+            println!("fund_bounty burnt {:.2} Tgas of its 3 Tgas", fb.gas_burnt.as_gas() as f64 / 1e12);
+            assert!(fb.is_success() && fb.gas_burnt.as_gas() * 2 <= 3 * 10u64.pow(12), "fund_bounty keeps a 2x margin");
+        }
+        r.assert_success();
+        feeders.push(f);
+    }
+    let funded = budget(&root_info(&env, &t).await?);
+    println!("bounty budget after 8 claims: {funded} yocto");
+    assert!(funded > 8 * fee * 8 / 10 && funded < 8 * fee, "fee less the record's storage, per claim");
+    check_books(&env, &t, false).await?;
+
+    // 2. Cross-troll sends to the sink on troll 0: troll 0 eats 7 tolls.
+    for f in &feeders {
+        assert!(transfer(&env, &t, f, &sink, 2 * ONE).await?);
+    }
+    let toll = 2 * ONE * TOLL_BPS / 10_000;
+    let food0: Value = view(&env, &t.trolls[0], "info", json!({})).await?;
+    assert_eq!(food0["food"].as_str().unwrap().parse::<u128>()?, 7 * toll);
+    check_books(&env, &t, false).await?;
+
+    // 3. Settle epoch 0 at the 250 Tgas floor: every troll fed, the settler earns the bounty, and
+    //    troll 0 pays its feeder from food first.
+    wait_for_epoch_end(&env, &t, 0).await?;
+    let keeper = common::create_account(&env, "keeper.sandbox").await?.0;
+    let before = near_of(&env, &keeper).await?;
+    let r = call_with_gas(&env, &keeper, &t.root, "settle", json!({ "epoch": 0 }), 250).await?;
+    let burnt: u128 = r.outcomes().iter().map(|o| o.tokens_burnt.as_yoctonear()).sum();
+    let on_reports = r.receipt_outcomes().iter().filter(|o| o.executor_id == t.root).nth(1).ok_or("no on_reports")?;
+    println!("settle at 250 Tgas: on_reports burnt {:.2} Tgas (+ 8 x 10 attached to apply)", on_reports.gas_burnt.as_gas() as f64 / 1e12);
+    let apply_max = r.receipt_outcomes().iter().filter(|o| t.trolls.contains(&o.executor_id) && o.logs.iter().any(|l| l.contains("feeding reward") || l.contains("reward_from")))
+        .map(|o| o.gas_burnt.as_gas()).max().unwrap_or(0);
+    println!("apply (reward) burnt at most {:.2} Tgas of its 10 Tgas", apply_max as f64 / 1e12);
+    assert!(apply_max > 0 && apply_max * 2 <= 10 * 10u64.pow(12), "apply keeps a 2x margin");
+    assert!(r.logs().iter().any(|l| l.contains("settle_bounty_paid")));
+    assert!(r.logs().iter().any(|l| l.contains("reward_from_food")));
+    assert!(r.json::<bool>()?);
+    let gained = near_of(&env, &keeper).await? as i128 - before as i128 + burnt as i128;
+    assert!((gained - BOUNTY as i128).abs() < 10i128.pow(20), "keeper gained the bounty: {gained}");
+    assert_eq!(budget(&root_info(&env, &t).await?), funded - BOUNTY);
+    let streak: (u64, u64) = view(&env, &t.root, "streak", json!({})).await?;
+    assert_eq!(streak, (1, 1));
+    check_books(&env, &t, true).await?;
+
+    // 4. A feeder claims its epoch-0 reward.
+    let f0 = &feeders[0];
+    let f0_troll = home(&env, &t, f0).await?;
+    let before = balance(&env, &t, f0).await?;
+    call(&env, f0, &f0_troll, "claim", json!({ "epoch": 0 }), NearToken::from_yoctonear(0)).await?.assert_success();
+    assert_eq!(balance(&env, &t, f0).await?, before + 250_000 * ONE / 8);
+    check_books(&env, &t, true).await?;
+
+    // 5. Epoch 1: nobody sends; every troll starves and burns part of its hoard.
+    wait_for_epoch_end(&env, &t, 1).await?;
+    let (_, burned_before) = totals(&env, &t).await?;
+    assert!(call_with_gas(&env, &keeper, &t.root, "settle", json!({ "epoch": 1 }), 250).await?.json::<bool>()?);
+    assert_eq!(view::<(u64, u64)>(&env, &t.root, "streak", json!({})).await?, (0, 1));
+    assert!(totals(&env, &t).await?.1 > burned_before);
+    check_books(&env, &t, true).await?;
+
+    // 6. A settlement of epoch 2 that never finished: refused for 600 blocks, then restarted.
+    wait_for_epoch_end(&env, &t, 2).await?;
+    force_stuck_settlement(&env, &t, 2, &keeper).await?;
+    assert_eq!(root_info(&env, &t).await?["settling"], json!(2));
+    let second = common::create_account(&env, "second.sandbox").await?.0;
+    call_with_gas(&env, &second, &t.root, "settle", json!({ "epoch": 2 }), 250).await?.assert_failure();
+    env.sandbox.fast_forward(601).await?;
+    let r = call_with_gas(&env, &second, &t.root, "settle", json!({ "epoch": 2 }), 250).await?;
+    assert!(r.logs().iter().any(|l| l.contains("settle_expired")));
+    assert!(r.logs().iter().any(|l| l.contains("settle_bounty_paid") && l.contains("second.sandbox")));
+    assert!(r.json::<bool>()?);
+    let info = root_info(&env, &t).await?;
+    assert_eq!((info["settling"].clone(), info["next_epoch"].as_u64()), (Value::Null, Some(3)));
+    check_books(&env, &t, true).await?;
     Ok(())
 }

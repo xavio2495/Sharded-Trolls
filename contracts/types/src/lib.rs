@@ -6,7 +6,11 @@ pub const BPS_DENOM: u128 = 10_000;
 pub const NEP141: &str = "nep141";
 pub const NEP141_VERSION: &str = "1.0.0";
 pub const TROLL_STANDARD: &str = "shardedtrolls";
-pub const TROLL_VERSION: &str = "1.0.0";
+/// Version of the token-specific events and of the troll/root wire format. 2.0.0: tolls feed
+/// the receiving troll, reports carry food and a format number, rewards carry the booked food.
+pub const TROLL_VERSION: &str = "2.0.0";
+/// Format of `EpochReport`; the root refuses reports in any other format.
+pub const REPORT_FORMAT: u16 = 2;
 
 /// Immutable token parameters, set once at init of the root and every troll.
 #[near(serializers = [json, borsh])]
@@ -27,20 +31,39 @@ pub struct Params {
     /// Transfers below this amount don't count the sender as a feeder.
     pub min_counted_transfer: U128,
     /// NEAR (yocto) a launch claim must attach on top of any storage deposit. It goes to the
-    /// root (less the claim record's storage), which funds the settle bounty from it.
+    /// root's settle-bounty budget, less the claim record's storage, which the troll keeps.
     pub claim_fee: U128,
-    /// NEAR (yocto) the root pays whoever settles an epoch, while its balance allows.
+    /// NEAR (yocto) the root pays whoever settles an epoch, out of its bounty budget only.
     #[serde(default)]
     pub settle_bounty: U128,
+    /// Epochs a feeding reward can be taken (claimed, or paid on a later send) after the epoch
+    /// is settled: its pool's deadline is the epoch in which it was applied plus this. After the
+    /// deadline the reward is forfeit and the pool can be swept back into food. At least 2.
+    #[serde(default = "default_claim_epochs")]
+    pub claim_epochs: u64,
+}
+
+pub const DEFAULT_CLAIM_EPOCHS: u64 = 30;
+
+fn default_claim_epochs() -> u64 {
+    DEFAULT_CLAIM_EPOCHS
+}
+
+/// True once a reward pool with `deadline` can no longer be taken from at `current` epoch.
+pub fn reward_expired(deadline: u64, current: u64) -> bool {
+    current > deadline
 }
 
 /// What a troll tells the root about one finished epoch.
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq)]
 pub struct EpochReport {
+    /// `REPORT_FORMAT` of the troll that wrote it.
+    pub format: u16,
     pub epoch: u64,
     pub senders: u32,
-    /// Balances + hoard + unclaimed reward pools held by this troll (excludes in-flight).
+    /// Everything this troll holds: balances, hoard, launch pool, food and unclaimed reward
+    /// pools (excludes in-flight).
     pub supply: U128,
     /// Debited for outgoing cross-troll transfers, not yet confirmed or refunded.
     pub in_flight: U128,
@@ -62,8 +85,10 @@ pub struct EpochReport {
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Outcome {
-    /// Mint `amount` into the epoch's reward pool for that troll's feeders.
-    Reward { amount: U128 },
+    /// Fund the epoch's reward pool for that troll's feeders with `amount`: from at most `food`
+    /// of its food (the food it reported, as the root booked it), then its unclaimed launch
+    /// tokens, then new tokens.
+    Reward { amount: U128, food: U128 },
     /// Burn `bps` of the troll's hoard.
     Burn { bps: u16 },
     NoOp,
@@ -80,6 +105,8 @@ pub fn validate_setup(params: &Params, trolls: &[AccountId]) {
     require!(params.toll_bps as u128 <= BPS_DENOM, "toll_bps > 10000");
     require!(params.starve_burn_bps as u128 <= BPS_DENOM, "starve_burn_bps > 10000");
     require!(params.epoch_ms > 0, "epoch_ms must be > 0");
+    // 2 or more, so a feeder settled in one epoch can still be paid on its send in the next
+    require!(params.claim_epochs >= 2, "claim_epochs must be at least 2");
 }
 
 /// Index of the home troll of `account_id` among `n` trolls: the first 16 bytes of
@@ -142,8 +169,8 @@ pub fn reward_funding(amount: u128, feeders: u32, pool: u128) -> (u128, u128) {
 /// The root uses this to book a settlement exactly as the troll will apply it.
 pub fn outcome_effect(report: &EpochReport, outcome: &Outcome) -> (u128, u128) {
     match outcome {
-        Outcome::Reward { amount } => {
-            (reward_funding(amount.0, report.senders, report.food.0.saturating_add(report.launch_pool.0)).1, 0)
+        Outcome::Reward { amount, food } => {
+            (reward_funding(amount.0, report.senders, food.0.min(report.food.0).saturating_add(report.launch_pool.0)).1, 0)
         }
         Outcome::Burn { bps } => (0, starve_burned(report.hoard.0, *bps)),
         Outcome::NoOp => (0, 0),
@@ -248,17 +275,17 @@ mod tests {
 
     #[test]
     fn outcome_effects() {
-        let mut r = EpochReport { epoch: 0, senders: 3, supply: U128(0), in_flight: U128(0), hoard: U128(1_999), launch_pool: U128(0), food: U128(0), minted: U128(0), burned: U128(0) };
-        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (999, 0));
+        let mut r = EpochReport { format: REPORT_FORMAT, epoch: 0, senders: 3, supply: U128(0), in_flight: U128(0), hoard: U128(1_999), launch_pool: U128(0), food: U128(0), minted: U128(0), burned: U128(0) };
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000), food: r.food }), (999, 0));
         // the unclaimed launch pool pays first; only the shortfall is new supply
         r.launch_pool = U128(400);
-        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (599, 0));
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000), food: r.food }), (599, 0));
         r.launch_pool = U128(5_000);
-        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (0, 0));
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000), food: r.food }), (0, 0));
         // food and launch pool together
         r.launch_pool = U128(300);
         r.food = U128(400);
-        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000) }), (299, 0));
+        assert_eq!(outcome_effect(&r, &Outcome::Reward { amount: U128(1_000), food: r.food }), (299, 0));
         r.launch_pool = U128(5_000);
         r.food = U128(0);
         assert_eq!(reward_funding(1_000, 3, 5_000), (999, 0));
@@ -272,7 +299,7 @@ mod tests {
     fn launch_window_closes_by_epoch_end() {
         let p = Params {
             troll_count: 1, toll_bps: 0, feed_target: 1, reward_per_epoch: U128(0), starve_burn_bps: 0,
-            epoch_ms: 100, launch_window_ms: 250, launch_claim_amount: U128(0), min_counted_transfer: U128(0), claim_fee: U128(0), settle_bounty: U128(0),
+            epoch_ms: 100, launch_window_ms: 250, launch_claim_amount: U128(0), min_counted_transfer: U128(0), claim_fee: U128(0), settle_bounty: U128(0), claim_epochs: 30,
         };
         assert!(!launch_closed_by(0, &p) && !launch_closed_by(1, &p));
         assert!(launch_closed_by(2, &p) && launch_closed_by(9, &p));
@@ -282,7 +309,8 @@ mod tests {
     fn params_json_without_settle_bounty_parses() {
         let j = r#"{"troll_count":8,"toll_bps":25,"feed_target":10,"reward_per_epoch":"1","starve_burn_bps":100,"epoch_ms":1,"launch_window_ms":1,"launch_claim_amount":"1","min_counted_transfer":"1","claim_fee":"0"}"#;
         let p: Params = near_sdk::serde_json::from_str(j).unwrap();
-        assert_eq!(p.settle_bounty, U128(0));
+        assert_eq!((p.settle_bounty, p.claim_epochs), (U128(0), DEFAULT_CLAIM_EPOCHS));
+        assert!(!reward_expired(35, 35) && reward_expired(35, 36));
     }
 
     #[test]
@@ -310,8 +338,8 @@ mod tests {
     #[test]
     fn outcome_json_shape() {
         use near_sdk::serde_json;
-        let o = Outcome::Reward { amount: U128(5) };
-        assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"Reward":{"amount":"5"}}"#);
+        let o = Outcome::Reward { amount: U128(5), food: U128(2) };
+        assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"Reward":{"amount":"5","food":"2"}}"#);
         assert_eq!(serde_json::to_string(&Outcome::NoOp).unwrap(), r#""NoOp""#);
     }
 }

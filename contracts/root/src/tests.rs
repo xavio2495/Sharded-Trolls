@@ -30,6 +30,7 @@ fn params() -> Params {
         min_counted_transfer: U128(10),
         claim_fee: U128(0),
         settle_bounty: U128(0),
+        claim_epochs: 30,
     }
 }
 
@@ -60,7 +61,7 @@ fn new_root() -> Root {
 }
 
 fn report(epoch: u64, senders: u32, supply: u128) -> EpochReport {
-    EpochReport { epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), launch_pool: U128(0), food: U128(0), minted: U128(0), burned: U128(0) }
+    EpochReport { format: REPORT_FORMAT, epoch, senders, supply: U128(supply), in_flight: U128(0), hoard: U128(0), launch_pool: U128(0), food: U128(0), minted: U128(0), burned: U128(0) }
 }
 
 fn ok(r: &EpochReport) -> PromiseResult {
@@ -232,7 +233,7 @@ fn all_fed_extends_streak_and_rewards_every_troll() {
 fn decide_rewards_split_evenly() {
     let mut r = new_root();
     let out = r.decide(0, &[report(0, 2, 1), report(0, 2, 1), report(0, 2, 1)]);
-    assert_eq!(out, vec![Outcome::Reward { amount: U128(1_000) }; 3]);
+    assert_eq!(out, vec![Outcome::Reward { amount: U128(1_000), food: U128(0) }; 3]);
 }
 
 #[test]
@@ -299,8 +300,22 @@ fn total_supply_includes_the_settlement_own_mint_and_burn() {
 const BOUNTY: u128 = 5 * 10u128.pow(21); // 0.005 NEAR
 
 fn bounty_root() -> Root {
+    let mut r = unfunded_bounty_root();
+    fund(&mut r, 100 * BOUNTY);
+    r
+}
+
+fn unfunded_bounty_root() -> Root {
     ctx(&acc("deployer.t"), START, vec![]);
     Root::new(Params { settle_bounty: U128(BOUNTY), ..params() }, trolls(), START, U128(1_000), metadata())
+}
+
+/// `fund_bounty` with `yocto` attached, as a troll forwarding a claim fee would.
+fn fund(r: &mut Root, yocto: u128) {
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(root_id()).predecessor_account_id(acc("troll0.t")).attached_deposit(near_sdk::NearToken::from_yoctonear(yocto));
+    testing_env!(b.build());
+    r.fund_bounty();
 }
 
 /// A context for the root with `balance` yoctoNEAR and the given promise results.
@@ -389,4 +404,47 @@ fn only_the_latest_attempts_settler_is_paid() {
     ctx_balance(&root_id(), START + EPOCH, 102 + SETTLE_TIMEOUT_BLOCKS, RICH, three_reports());
     assert!(r.on_reports(0, 2));
     assert_eq!(bounty_transfers(), vec![("second.t".to_string(), BOUNTY)]);
+}
+
+#[test]
+fn bounties_come_only_from_the_funded_budget() {
+    // A rich root with nothing forwarded: a backlog of 100 empty epochs settled back to back
+    // pays no bounty at all.
+    let mut r = unfunded_bounty_root();
+    let mut paid = 0;
+    for e in 0..100u64 {
+        ctx_balance(&acc("keeper.t"), START + 101 * EPOCH, 10 + 2 * e, RICH, vec![]);
+        let _ = r.settle(e);
+        let reps: Vec<_> = (0..3).map(|_| ok(&report(e, 0, 333))).collect();
+        ctx_balance(&root_id(), START + 101 * EPOCH, 11 + 2 * e, RICH, reps);
+        assert!(r.on_reports(e, e + 1));
+        paid += bounty_transfers().len();
+    }
+    assert_eq!(paid, 0);
+    assert!(get_logs().join("").contains("\"reason\":\"budget\""));
+    // fund three bounties: exactly three are paid, then the budget is empty
+    fund(&mut r, 3 * BOUNTY);
+    assert_eq!(r.info().bounty_budget.0, 3 * BOUNTY);
+    for e in 100..105u64 {
+        ctx_balance(&acc("keeper.t"), START + 106 * EPOCH, 300 + 2 * e, RICH, vec![]);
+        let _ = r.settle(e);
+        let reps: Vec<_> = (0..3).map(|_| ok(&report(e, 0, 333))).collect();
+        ctx_balance(&root_id(), START + 106 * EPOCH, 301 + 2 * e, RICH, reps);
+        assert!(r.on_reports(e, e + 1));
+        paid += bounty_transfers().len();
+    }
+    assert_eq!((paid, r.info().bounty_budget.0), (3, 0));
+}
+
+#[test]
+fn reports_in_another_format_are_refused() {
+    let mut r = new_root();
+    ctx(&acc("anyone.t"), START + EPOCH, vec![]);
+    let _ = r.settle(0);
+    let mut old = report(0, 5, 333);
+    old.format = REPORT_FORMAT - 1;
+    let reps = vec![ok(&report(0, 5, 333)), ok(&old), ok(&report(0, 5, 333))];
+    assert!(!resolve(&mut r, 0, reps));
+    assert!(get_logs().join("").contains("settle_failed"));
+    assert_eq!(r.info().next_epoch, 0, "retryable");
 }

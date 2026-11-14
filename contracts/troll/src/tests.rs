@@ -25,6 +25,7 @@ fn params(n: u8) -> Params {
         min_counted_transfer: U128(10),
         claim_fee: U128(0),
         settle_bounty: U128(0),
+        claim_epochs: 30,
     }
 }
 
@@ -543,6 +544,7 @@ fn report_reflects_counters() {
     assert_eq!(
         r,
         EpochReport {
+            format: troll_types::REPORT_FORMAT,
             epoch: 0,
             senders: 1,
             supply: U128(333_334),
@@ -565,8 +567,8 @@ fn reward_pool_split_among_feeders_and_claimed_once() {
     net.transfer(0, &a, &c, 10);
     net.transfer(0, &b, &c, 10);
     net.now += EPOCH;
-    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000) }));
-    assert_eq!(net.t[0].pool(0), Some(Pool { share: U128(500), remaining: U128(1_000) }));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000), food: U128(0) }));
+    assert_eq!(net.t[0].pool(0), Some(Pool { share: U128(500), remaining: U128(1_000), open: 2, deadline: 31 }));
     assert_eq!((net.t[0].minted, net.t[0].supply), (1_000, 334_334));
     assert_eq!(net.as_(0, &a, 0, |t| t.claim(0)).0, 500);
     assert_eq!(net.bal(0, &a), 100_000 - 10 + 500);
@@ -582,7 +584,7 @@ fn claim_replay_rejected() {
     net.launch(0, &a);
     net.transfer(0, &a, &c, 10);
     net.now += EPOCH;
-    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000) }));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000), food: U128(0) }));
     net.as_(0, &a, 0, |t| t.claim(0));
     net.as_(0, &a, 0, |t| t.claim(0));
 }
@@ -595,7 +597,7 @@ fn non_feeder_claim_rejected() {
     net.launch(0, &a);
     net.transfer(0, &a, &c, 10);
     net.now += EPOCH;
-    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000) }));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000), food: U128(0) }));
     net.as_(0, &c, 0, |t| t.claim(0));
 }
 
@@ -740,7 +742,11 @@ fn conservation_run(seed: u64, steps: usize) {
                 net.now += EPOCH;
                 for i in 0..N {
                     let outcome = match rng.below(3) {
-                        0 => Outcome::Reward { amount: U128(rng.below(1_000_001) as u128) },
+                        // the root passes the food it booked; sometimes cap it below what is there
+                        0 => Outcome::Reward {
+                            amount: U128(rng.below(1_000_001) as u128),
+                            food: U128(if rng.below(3) == 0 { rng.below(5_000) as u128 } else { u128::MAX }),
+                        },
                         1 => Outcome::Burn { bps: rng.below(10_001) as u16 },
                         _ => Outcome::NoOp,
                     };
@@ -920,7 +926,7 @@ fn unregister_requires_zero_balance_or_force_burns() {
 }
 
 #[test]
-#[should_panic(expected = "token balance is not zero")]
+#[should_panic(expected = "is not zero; move it first, or use force to burn it")]
 fn unregister_with_balance_without_force_rejected() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let a = net.user(0, 1);
@@ -1015,12 +1021,12 @@ fn reward_auto_paid_on_next_epoch_send() {
     net.launch(0, &a);
     feed(&mut net, &a, &b);
     net.now += EPOCH;
-    apply(&mut net, 0, Outcome::Reward { amount: U128(700) });
+    apply(&mut net, 0, Outcome::Reward { amount: U128(700), food: U128(0) });
     assert!(net.t[0].is_feeder(0, a.clone()));
     feed(&mut net, &a, &b); // epoch 1 send pays epoch 0's share
     assert_eq!(net.bal(0, &a), 100_000 - 20 + 700);
     assert!(!net.t[0].is_feeder(0, a.clone()) && net.t[0].is_feeder(1, a.clone()));
-    assert_eq!(net.t[0].pool(0).unwrap().remaining.0, 0);
+    assert!(net.t[0].pool(0).is_none(), "every share paid: pool pruned");
     assert!(get_logs().iter().any(|l| l.contains("feeding reward")));
 }
 
@@ -1032,7 +1038,7 @@ fn manual_claim_after_auto_pay_rejected() {
     net.launch(0, &a);
     feed(&mut net, &a, &b);
     net.now += EPOCH;
-    apply(&mut net, 0, Outcome::Reward { amount: U128(700) });
+    apply(&mut net, 0, Outcome::Reward { amount: U128(700), food: U128(0) });
     feed(&mut net, &a, &b);
     net.as_(0, &a, 0, |t| t.claim(0));
 }
@@ -1068,10 +1074,12 @@ fn late_settlement_forfeits_the_oldest_slot() {
     assert!(get_logs().iter().any(|l| l.contains("reward_forfeited") && l.contains(r#""epoch":0"#)));
     assert!(!net.t[0].is_feeder(0, a.clone()));
     assert!(net.t[0].is_feeder(1, a.clone()) && net.t[0].is_feeder(2, a.clone()));
-    // epoch 0 still counted a as a sender; its pool share stays unclaimable
-    apply(&mut net, 0, Outcome::Reward { amount: U128(500) });
-    assert_eq!(net.t[0].pool(0).unwrap().remaining.0, 500);
-    apply(&mut net, 1, Outcome::Reward { amount: U128(300) });
+    // epoch 0 still counted a as a sender, but its slot was given up: the share goes to food
+    let food = net.t[0].food;
+    apply(&mut net, 0, Outcome::Reward { amount: U128(500), food: U128(0) });
+    assert!(net.t[0].pool(0).is_none());
+    assert_eq!(net.t[0].food, food + 500);
+    apply(&mut net, 1, Outcome::Reward { amount: U128(300), food: U128(0) });
     assert_eq!(net.as_(0, &a, 0, |t| t.claim(1)).0, 300);
 }
 
@@ -1100,7 +1108,10 @@ fn settle(net: &mut Net, root: &mut root::Root, epoch: u64) {
     use near_sdk::test_utils::get_created_receipts;
     use near_sdk::test_utils::test_env::alice;
     use near_sdk::{PromiseResult, RuntimeFeesConfig, test_vm_config};
-    ctx(&acc(ROOT), &alice(), net.now, 0);
+    // the mock's fee schedule is costlier than mainnet's: give settle room for many trolls
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(acc(ROOT)).predecessor_account_id(alice()).block_timestamp(net.now * 1_000_000).prepaid_gas(Gas::from_tgas(1_000));
+    testing_env!(b.build());
     let _ = root.settle(epoch);
     let results: Vec<PromiseResult> = (0..net.t.len())
         .map(|i| {
@@ -1225,7 +1236,7 @@ fn feed_and_reward(net: &mut Net, e: u64) -> (u128, u128) {
     net.now = START + (e + 1) * EPOCH;
     let r = net.as_(0, &root(), 0, |t| t.report(e));
     let before = (net.t[0].supply, net.t[0].minted, net.t[0].launch_pool);
-    let outcome = Outcome::Reward { amount: U128(1_000) };
+    let outcome = Outcome::Reward { amount: U128(1_000), food: r.food };
     let (booked, _) = troll_types::outcome_effect(&r, &outcome);
     net.as_(0, &root(), 0, |t| t.apply(e, outcome));
     let t = &net.t[0];
@@ -1282,7 +1293,7 @@ fn food_is_snapshotted_at_report() {
     net.transfer(1, &x, &a, 5_000);
     net.credit(1, 0, &x, &a, 5_000);
     assert_eq!(net.t[0].food, 800);
-    let outcome = Outcome::Reward { amount: U128(1_000) };
+    let outcome = Outcome::Reward { amount: U128(1_000), food: r.food };
     let (booked, _) = troll_types::outcome_effect(&r, &outcome);
     let minted_before = net.t[0].minted;
     net.as_(0, &root(), 0, |t| t.apply(0, outcome));
@@ -1297,7 +1308,7 @@ fn food_is_snapshotted_at_report() {
 fn apply_rejects_a_reward_above_params() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     net.now += EPOCH;
-    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_001) }));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_001), food: U128(0) }));
 }
 
 #[test]
@@ -1337,9 +1348,13 @@ fn claim_fee_goes_to_the_root_less_the_claim_record_storage() {
     let min = net.min();
     let deposits = |r: &[near_sdk::mock::Receipt]| -> Vec<(String, u128)> {
         r.iter()
-            .map(|rc| {
-                let near_sdk::mock::MockAction::Transfer { deposit, .. } = &rc.actions[0] else { panic!("expected a transfer") };
-                (rc.receiver_id.to_string(), deposit.as_yoctonear())
+            .map(|rc| match &rc.actions[0] {
+                near_sdk::mock::MockAction::Transfer { deposit, .. } => (rc.receiver_id.to_string(), deposit.as_yoctonear()),
+                near_sdk::mock::MockAction::FunctionCallWeight { method_name, attached_deposit, .. } => {
+                    assert_eq!(method_name, b"fund_bounty");
+                    (rc.receiver_id.to_string(), attached_deposit.as_yoctonear())
+                }
+                a => panic!("unexpected {a:?}"),
             })
             .collect()
     };
@@ -1612,4 +1627,760 @@ fn fake_troll_cannot_credit_call() {
     let w = net.user(2, 9);
     net.reg(&w);
     net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), U128(0), String::new()));
+}
+
+// ---------- hardening: the whole lifecycle against a real root ----------
+
+/// One cross-troll operation in flight, delivered step by step in random order.
+#[derive(Clone)]
+struct Flight {
+    src: usize,
+    dst: usize,
+    sender: AccountId,
+    receiver: AccountId,
+    amount: u128,
+    toll: u128,
+    call: bool,
+    stage: Stage,
+}
+
+#[derive(Clone, PartialEq)]
+enum Stage {
+    /// Debited at the source; nothing at the destination yet.
+    Sent,
+    /// The destination credited `held` (net + toll, less anything taken back) and the source
+    /// has not heard back; `result` is what the source will see.
+    Credited { held: u128, result: Option<Vec<u8>> },
+    /// The destination refused or failed; the source will see `result`.
+    NotCredited { result: Option<Vec<u8>> },
+}
+
+/// A root context with a block height, an account balance and promise results.
+fn root_ctx(now: u64, height: u64, pred: &AccountId, results: Vec<near_sdk::PromiseResult>) {
+    use near_sdk::{RuntimeFeesConfig, test_vm_config};
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(acc(ROOT))
+        .predecessor_account_id(pred.clone())
+        .block_timestamp(now * 1_000_000)
+        .block_height(height)
+        .account_balance(NearToken::from_near(100))
+        // the mock's test fee schedule is costlier than mainnet's; 8 report promises plus the
+        // callback exceed 300 Tgas there (the real floor is checked in the sandbox)
+        .prepaid_gas(Gas::from_tgas(1_000));
+    testing_env!(b.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), results);
+}
+
+struct Life {
+    net: Net,
+    root: root::Root,
+    rng: Rng,
+    flights: Vec<Flight>,
+    users: Vec<(usize, AccountId)>,
+    ghosts: Vec<(usize, AccountId)>,
+    initial: u128,
+    height: u64,
+    attempts: u64,
+    stats: HashMap<&'static str, u64>,
+}
+
+impl Life {
+    fn bump(&mut self, k: &'static str) {
+        *self.stats.entry(k).or_default() += 1;
+    }
+
+    /// Tokens counted twice right now: credited at a destination, still in flight at the source.
+    fn double_counted(&self) -> u128 {
+        self.flights.iter().map(|f| if let Stage::Credited { held, .. } = &f.stage { *held } else { 0 }).sum()
+    }
+
+    fn check(&self) {
+        // a fresh context: the checks read a lot of storage, which the mock charges as gas
+        ctx(&self.net.ids[0], &acc("viewer.t"), self.net.now, 0);
+        let t = &self.net.t;
+        let held: u128 = t.iter().map(|t| t.supply + t.in_flight).sum();
+        let burned: u128 = t.iter().map(|t| t.burned).sum();
+        let minted: u128 = t.iter().map(|t| t.minted).sum();
+        assert_eq!(held - self.double_counted() + burned, self.initial + minted, "conservation");
+        self.net.check_events();
+    }
+
+    fn random_user(&mut self) -> (usize, AccountId) {
+        self.users[self.rng.below(self.users.len() as u64) as usize].clone()
+    }
+
+    /// A transfer or transfer-and-call from a random holder, to a holder or (rarely) a ghost.
+    fn send(&mut self) {
+        let (i, from) = self.random_user();
+        let bal = self.net.bal(i, &from);
+        if bal == 0 {
+            return;
+        }
+        let (dst, to) = if self.rng.below(12) == 0 {
+            self.ghosts[self.rng.below(self.ghosts.len() as u64) as usize].clone()
+        } else {
+            self.random_user()
+        };
+        if to == from || (dst == i && self.ghosts.iter().any(|(_, g)| *g == to)) {
+            return; // same-troll sends to an unregistered account fail up front; nothing to model
+        }
+        let amount = 1 + self.rng.below(bal as u64) as u128;
+        let call = self.rng.below(3) == 0;
+        let toll = bps_of(amount, self.net.t[i].params.toll_bps);
+        if dst == i {
+            if call {
+                let t2 = to.clone();
+                self.net.as_(i, &from, 1, |t| t.ft_transfer_call(t2, U128(amount), None, "x".into()));
+                // the receiver keeps a random part; failure or garbage means "all unused"
+                let r = match self.rng.below(4) {
+                    0 => None,
+                    1 => Some(b"oops".to_vec()),
+                    _ => Some(format!("\"{}\"", self.rng.below(amount as u64 + 1)).into_bytes()),
+                };
+                as_cb(&mut self.net, i, r.as_deref(), |t| t.ft_resolve_transfer(from.clone(), to.clone(), U128(amount)));
+                self.bump("same_call");
+            } else {
+                self.net.transfer_raw(i, &from, &to, amount);
+                self.bump("same");
+            }
+            return;
+        }
+        if call {
+            let t2 = to.clone();
+            self.net.as_(i, &from, 1, |t| t.ft_transfer_call(t2, U128(amount), None, "x".into()));
+        } else {
+            self.net.transfer_raw(i, &from, &to, amount);
+        }
+        self.flights.push(Flight { src: i, dst, sender: from, receiver: to, amount, toll, call, stage: Stage::Sent });
+        self.bump(if call { "cross_call" } else { "cross" });
+    }
+
+    /// Advances one random flight by one step, as the runtime would.
+    fn deliver(&mut self) {
+        if self.flights.is_empty() {
+            return;
+        }
+        let k = self.rng.below(self.flights.len() as u64) as usize;
+        let mut f = self.flights[k].clone();
+        let net = f.amount - f.toll;
+        let from = self.net.ids[f.src].clone();
+        let registered = self.net.t[f.dst].storage_balance_of(f.receiver.clone()).is_some();
+        match f.stage.clone() {
+            Stage::Sent if !f.call => {
+                if registered {
+                    let (s, r, toll) = (f.sender.clone(), f.receiver.clone(), f.toll);
+                    self.net.as_(f.dst, &from, 0, |t| t.credit(s, r, U128(net), U128(toll)));
+                    f.stage = Stage::Credited { held: f.amount, result: Some(vec![]) };
+                } else {
+                    // credit panics; the runtime reverts it and the source sees a failure
+                    f.stage = Stage::NotCredited { result: None };
+                    self.bump("credit_failed");
+                }
+            }
+            Stage::Sent => {
+                let (s, r, toll) = (f.sender.clone(), f.receiver.clone(), f.toll);
+                let res = self.net.as_(f.dst, &from, 0, |t| t.credit_call(s, r, U128(net), U128(toll), "x".into()));
+                if let PromiseOrValue::Value(U128(v)) = res {
+                    assert_eq!(v, NOT_CREDITED);
+                    f.stage = Stage::NotCredited { result: Some(format!("\"{NOT_CREDITED}\"").into_bytes()) };
+                    self.bump("not_credited");
+                } else {
+                    // receiver and resolve run now: a random unused amount, or the resolve fails
+                    let (s, r) = (f.sender.clone(), f.receiver.clone());
+                    let result = if self.rng.below(6) == 0 {
+                        self.bump("unresolved");
+                        None
+                    } else {
+                        let unused = format!("\"{}\"", self.rng.below(net as u64 + 1));
+                        let back = as_cb(&mut self.net, f.dst, Some(unused.as_bytes()), |t| t.resolve_credit_call(s, r, U128(net))).0;
+                        f.stage = Stage::Credited { held: f.amount - back, result: None };
+                        Some(format!("\"{back}\"").into_bytes())
+                    };
+                    let held = if let Stage::Credited { held, .. } = f.stage { held } else { f.amount };
+                    f.stage = Stage::Credited { held, result };
+                }
+            }
+            Stage::Credited { result, .. } | Stage::NotCredited { result } => {
+                let (s, amount, toll) = (f.sender.clone(), f.amount, f.toll);
+                if f.call {
+                    as_cb(&mut self.net, f.src, result.as_deref(), |t| t.on_credit_call(s, U128(amount), U128(toll)));
+                } else {
+                    let ok = matches!(f.stage, Stage::Credited { .. });
+                    let res = if ok { Ok(()) } else { Err(PromiseError::Failed) };
+                    let me = self.net.ids[f.src].clone();
+                    self.net.as_(f.src, &me, 0, |t| t.on_credit(s, U128(amount), U128(toll), res));
+                }
+                self.flights.swap_remove(k);
+                return;
+            }
+        }
+        self.flights[k] = f;
+    }
+
+    fn claim_rewards(&mut self) {
+        let (i, u) = self.random_user();
+        if let Some(l) = self.net.t[i].last_applied {
+            let e = self.rng.below(l + 1);
+            let t = &self.net.t[i];
+            let open = t.pool(e).is_some_and(|p| !troll_types::reward_expired(p.deadline, t.current_epoch()));
+            if t.is_feeder(e, u.clone()) && open {
+                self.net.as_(i, &u, 0, |t| t.claim(e));
+                self.bump("claims");
+            }
+        }
+    }
+
+    /// Anyone sweeps an expired pool, if there is one.
+    fn sweep_expired(&mut self) {
+        let i = self.rng.below(self.net.t.len() as u64) as usize;
+        let t = &self.net.t[i];
+        let now = t.current_epoch();
+        if let Some(e) = (0..now).find(|e| t.pool(*e).is_some_and(|p| troll_types::reward_expired(p.deadline, now))) {
+            self.net.as_(i, &acc("sweeper.u"), 0, |t| t.sweep(e));
+            self.bump("sweeps");
+        }
+    }
+
+    fn act(&mut self) {
+        match self.rng.below(20) {
+            0..=9 => self.send(),
+            10..=17 => self.deliver(),
+            18 => self.claim_rewards(),
+            _ => self.sweep_expired(),
+        }
+        self.height += 1;
+        self.check();
+    }
+
+    /// Starts a settlement attempt for `epoch`: root.settle, then every troll reports.
+    fn begin(&mut self, epoch: u64, settler: &AccountId) -> Vec<near_sdk::PromiseResult> {
+        root_ctx(self.net.now, self.height, settler, vec![]);
+        let _ = self.root.settle(epoch);
+        self.attempts += 1;
+        (0..self.net.t.len())
+            .map(|i| {
+                let r = self.net.as_(i, &acc(ROOT), 0, |t| t.report(epoch));
+                near_sdk::PromiseResult::Successful(near_sdk::serde_json::to_vec(&r).unwrap())
+            })
+            .collect()
+    }
+
+    /// The root's callback; returns the troll applies it sent and whether a bounty went out.
+    fn finish(&mut self, epoch: u64, attempt: u64, reports: Vec<near_sdk::PromiseResult>) -> (bool, Vec<(usize, Outcome)>, bool) {
+        use near_sdk::mock::MockAction;
+        root_ctx(self.net.now, self.height, &acc(ROOT), reports);
+        let ok = self.root.on_reports(epoch, attempt);
+        let mut applies = vec![];
+        let mut bounty = false;
+        for rc in near_sdk::test_utils::get_created_receipts() {
+            match &rc.actions[0] {
+                MockAction::FunctionCallWeight { method_name, args, .. } => {
+                    assert_eq!(method_name, b"apply");
+                    let i = self.net.ids.iter().position(|id| *id == rc.receiver_id).unwrap();
+                    let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_slice(args).unwrap();
+                    applies.push((i, near_sdk::serde_json::from_value(v["outcome"].clone()).unwrap()));
+                }
+                MockAction::Transfer { .. } => bounty = true,
+                _ => panic!("unexpected receipt"),
+            }
+        }
+        (ok, applies, bounty)
+    }
+
+    /// Settles `epoch` with traffic interleaved: between the reports and the root's callback,
+    /// and between the troll applies. Sometimes the first attempt is abandoned and restarted
+    /// after the timeout, and its late callback is delivered too.
+    fn settle(&mut self, epoch: u64) {
+        let keeper = acc("keeper.t");
+        let mut reports = self.begin(epoch, &keeper);
+        for _ in 0..self.rng.below(6) {
+            self.act();
+        }
+        if self.rng.below(5) == 0 {
+            let stale = (self.attempts, reports);
+            self.height += root::SETTLE_TIMEOUT_BLOCKS;
+            reports = self.begin(epoch, &acc("second.t"));
+            for _ in 0..self.rng.below(4) {
+                self.act();
+            }
+            let (ok, applies, bounty) = self.finish(epoch, stale.0, stale.1);
+            assert!(!ok && applies.is_empty() && !bounty, "a stale attempt changes nothing");
+            self.bump("restarts");
+        }
+        let attempt = self.attempts;
+        let (ok, applies, bounty) = self.finish(epoch, attempt, reports);
+        assert!(ok && bounty, "settled and the settler paid");
+        assert_eq!(applies.len(), self.net.t.len());
+        for (i, o) in applies {
+            match &o {
+                Outcome::Reward { .. } => self.bump("rewards"),
+                Outcome::Burn { .. } => self.bump("burns"),
+                Outcome::NoOp => {}
+            }
+            self.net.as_(i, &acc(ROOT), 0, |t| t.apply(epoch, o));
+            if near_sdk::test_utils::get_logs().iter().any(|l| l.contains("reward_expired")) {
+                self.bump("expired");
+            }
+            self.check();
+            if self.rng.below(2) == 0 {
+                self.act();
+            }
+        }
+        // after every apply the root's total is exact
+        let t = &self.net.t;
+        let minted: u128 = t.iter().map(|t| t.minted).sum();
+        let burned: u128 = t.iter().map(|t| t.burned).sum();
+        assert_eq!(self.root.ft_total_supply().0, self.initial + minted - burned, "root == trolls after epoch {epoch}");
+    }
+}
+
+fn lifecycle_run(seed: u64, epochs: u64) {
+    const N: u8 = 8;
+    let p = Params {
+        reward_per_epoch: U128(N as u128 * 50_000),
+        starve_burn_bps: 500,
+        toll_bps: 300,
+        feed_target: 2,
+        settle_bounty: U128(5 * 10u128.pow(21)),
+        // a short claim window, so expiry and sweeping happen many times in 30 epochs
+        claim_epochs: 2,
+        ..params(N)
+    };
+    // 4 holders per troll claim 100,000 each; 30,000 more per troll stay unclaimed
+    let (total, launch) = (100_000_000u128, N as u128 * (4 * 100_000 + 30_000));
+    let net = Net::with_params(p.clone(), total, launch);
+    root_ctx(START, 1, &acc("deployer.t"), vec![]);
+    let meta = near_contract_standards::fungible_token::metadata::FungibleTokenMetadata {
+        spec: "ft-1.0.0".into(),
+        name: "T".into(),
+        symbol: "T".into(),
+        icon: None,
+        reference: None,
+        reference_hash: None,
+        decimals: 24,
+    };
+    let mut root = root::Root::new(p, net.ids.clone(), START, U128(total), meta);
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(acc(ROOT)).predecessor_account_id(acc("funder.t")).attached_deposit(NearToken::from_near(1));
+    testing_env!(b.build());
+    root.fund_bounty();
+    let users: Vec<(usize, AccountId)> = (0..N as usize).flat_map(|i| (0..4).map(move |k| (i, k))).map(|(i, k)| (i, net.user(i, k))).collect();
+    let ghosts: Vec<(usize, AccountId)> = (0..N as usize).map(|i| (i, net.user(i, 9))).collect();
+    let mut life = Life {
+        net,
+        root,
+        rng: Rng(seed),
+        flights: vec![],
+        users: users.clone(),
+        ghosts,
+        initial: total,
+        height: 10,
+        attempts: 0,
+        stats: HashMap::new(),
+    };
+    for (i, u) in &users {
+        life.net.launch(*i, u);
+    }
+    for e in 0..epochs {
+        life.net.now = START + e * EPOCH + 1;
+        // quiet epochs starve some trolls
+        let steps = if life.rng.below(4) == 0 { life.rng.below(6) } else { 80 + life.rng.below(80) };
+        for _ in 0..steps {
+            life.act();
+            life.net.now += 1;
+        }
+        life.net.now = START + (e + 1) * EPOCH;
+        life.settle(e);
+    }
+    // drain everything in flight; the books close exactly
+    while !life.flights.is_empty() {
+        life.deliver();
+        life.check();
+    }
+    assert_eq!(life.net.t.iter().map(|t| t.in_flight).sum::<u128>(), 0);
+    let s = &life.stats;
+    let n = |k: &str| s.get(k).copied().unwrap_or(0);
+    println!("seed {seed}: {s:?}");
+    for k in ["same", "same_call", "cross", "cross_call", "credit_failed", "not_credited", "unresolved", "claims", "rewards", "burns", "restarts", "expired"] {
+        assert!(n(k) > 0, "coverage: no {k} in {s:?}");
+    }
+    let food_used = life.net.t.iter().any(|t| t.minted > 0) && life.net.t.iter().all(|t| t.launch_pool < 30_000);
+    assert!(food_used, "rewards drew on the launch pool and minting");
+}
+
+#[test]
+fn lifecycle_30_epochs_seed_a() {
+    lifecycle_run(0xA5A5_1234_5678_9ABC, 30);
+}
+
+#[test]
+fn lifecycle_30_epochs_seed_b() {
+    lifecycle_run(99, 30);
+}
+
+#[test]
+fn lifecycle_30_epochs_seed_c() {
+    lifecycle_run(31_337, 30);
+}
+
+/// The root's reward per troll never exceeds what a troll accepts, for every troll count and
+/// awkward reward sizes (B3 bound against the root's rounding).
+#[test]
+fn root_outcomes_always_within_troll_bounds() {
+    for n in 1..=12u8 {
+        for reward in [0u128, 1, n as u128 - 1, n as u128, 7_777, 1_000_003, u64::MAX as u128] {
+            let p = Params { reward_per_epoch: U128(reward), starve_burn_bps: 10_000, feed_target: 1, ..params(n) };
+            let mut net = Net::with_params(p.clone(), 1_000_000, 0);
+            ctx(&acc(ROOT), &acc("deployer.t"), START, 0);
+            let meta = near_contract_standards::fungible_token::metadata::FungibleTokenMetadata {
+                spec: "ft-1.0.0".into(),
+                name: "T".into(),
+                symbol: "T".into(),
+                icon: None,
+                reference: None,
+                reference_hash: None,
+                decimals: 24,
+            };
+            let mut root = root::Root::new(p, net.ids.clone(), START, U128(1_000_000), meta);
+            // epoch 0: everyone starves (no senders), epoch 1: troll 0's only holder feeds
+            net.now = START + EPOCH;
+            settle(&mut net, &mut root, 0);
+            let a = net.user(0, 1);
+            net.reg(&a);
+            net.now = START + 2 * EPOCH;
+            settle(&mut net, &mut root, 1);
+            assert_eq!(root.ft_total_supply().0, troll_total(&net), "n {n} reward {reward}");
+        }
+    }
+}
+
+// ---------- Tier B audit fixes ----------
+
+/// The root books food from report(e). Another report reaching the troll before apply(e) must
+/// not change what apply(e) uses.
+#[test]
+fn apply_uses_exactly_the_food_the_root_booked() {
+    let mut net = Net::with_params(Params { toll_bps: 1_000, ..params(3) }, 1_000_000, 600_000);
+    let (a, b, c) = (net.user(0, 1), net.user(0, 2), net.user(0, 3));
+    let x = net.user(1, 1);
+    net.launch(0, &a);
+    net.launch(0, &b);
+    net.launch(1, &x);
+    net.transfer(1, &x, &a, 3_000); // 300 food on troll 0
+    net.credit(1, 0, &x, &a, 3_000);
+    net.transfer(0, &a, &c, 10);
+    net.transfer(0, &b, &c, 10);
+    net.now = START + 2 * EPOCH;
+    let r0 = net.as_(0, &root(), 0, |t| t.report(0));
+    net.transfer(1, &x, &a, 5_000); // 500 more food
+    net.credit(1, 0, &x, &a, 5_000);
+    let r1 = net.as_(0, &root(), 0, |t| t.report(1)); // out of order: lands before apply(0)
+    assert_eq!((r0.food.0, r1.food.0), (300, 800));
+    let o = Outcome::Reward { amount: U128(1_000), food: r0.food };
+    let (booked, _) = troll_types::outcome_effect(&r0, &o);
+    let before = net.t[0].minted;
+    net.as_(0, &root(), 0, |t| t.apply(0, o));
+    assert_eq!((net.t[0].minted - before, booked), (700, 700));
+    assert_eq!(net.t[0].food, 500);
+    net.check_events();
+}
+
+/// Feeders of `epoch` on troll 0 send, then the root reports and rewards `epoch`.
+fn epoch_with(net: &mut Net, epoch: u64, feeders: &[AccountId], sink: &AccountId) {
+    net.now = START + epoch * EPOCH + 1;
+    for f in feeders {
+        net.transfer(0, f, sink, 10);
+    }
+    net.now = START + (epoch + 1) * EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(epoch));
+    net.as_(0, &root(), 0, |t| t.apply(epoch, Outcome::Reward { amount: U128(1_000), food: r.food }));
+}
+
+#[test]
+fn pools_are_pruned_when_every_slot_is_paid_or_given_up() {
+    let mut net = Net::new(3, 1_000_000, 900_000);
+    let (a, b, c, s) = (net.user(0, 1), net.user(0, 2), net.user(0, 3), net.user(0, 4));
+    for u in [&a, &b, &c] {
+        net.launch(0, u);
+    }
+    net.reg(&s);
+    // epoch 0: a, b, c feed; 1,000 / 3 leaves 1 unminted, pool 999 with 3 open slots
+    epoch_with(&mut net, 0, &[a.clone(), b.clone(), c.clone()], &s);
+    assert_eq!(net.t[0].pool(0).unwrap().open, 3);
+    assert_eq!(net.t[0].senders_in(0), 0, "senders pruned at apply");
+    net.as_(0, &a, 0, |t| t.claim(0));
+    // c leaves with force: its claimable share is paid out first, then burned with its balance
+    let (burned, c_bal) = (net.t[0].burned, net.bal(0, &c));
+    net.as_(0, &c, 1, |t| t.storage_unregister(Some(true)));
+    assert_eq!(net.t[0].burned, burned + c_bal + 333);
+    assert_eq!(net.t[0].pool(0).unwrap().open, 1);
+    let food = net.t[0].food;
+    net.as_(0, &b, 0, |t| t.claim(0));
+    assert!(net.t[0].pool(0).is_none(), "pruned once every slot is paid");
+    assert_eq!(net.t[0].food, food, "nothing left over: every share was paid");
+    net.check_events();
+}
+
+#[test]
+fn a_slot_given_up_before_its_epoch_is_applied_is_not_waited_for() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let (a, b, s) = (net.user(0, 1), net.user(0, 2), net.user(0, 4));
+    net.launch(0, &a);
+    net.launch(0, &b);
+    net.reg(&s);
+    // a feeds epochs 0 and 1 while nothing is applied, then epoch 2: epoch 0 is forfeited
+    for e in 0..3 {
+        net.now = START + e * EPOCH + 1;
+        net.transfer(0, &a, &s, 10);
+    }
+    net.transfer(0, &b, &s, 10); // b feeds epoch 2
+    net.now = START + 3 * EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(0));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000), food: r.food }));
+    // a was epoch 0's only feeder and gave the slot up: nothing to wait for, all back to food
+    assert!(net.t[0].pool(0).is_none());
+    assert_eq!(net.t[0].food, 1_000);
+    net.check_events();
+}
+
+/// Per-epoch entries do not pile up: over 1,000 epochs, only the epochs some slot still waits
+/// for keep an entry. (The mock resets storage_usage per call, so entries are counted directly.)
+#[test]
+fn storage_stays_bounded_over_1000_epochs() {
+    let mut net = Net::new(3, 1_000_000_000, 900_000);
+    let (a, b, d, s) = (net.user(0, 1), net.user(0, 2), net.user(0, 3), net.user(0, 4));
+    for u in [&a, &b, &d] {
+        net.launch(0, u);
+    }
+    net.reg(&s);
+    let entries = |net: &Net| -> usize {
+        // thousands of key probes: a fresh context with room for them
+        let mut b = VMContextBuilder::new();
+        b.current_account_id(net.ids[0].clone()).block_timestamp(net.now * 1_000_000).prepaid_gas(Gas::from_tgas(10_000));
+        testing_env!(b.build());
+        let t = &net.t[0];
+        (0..1_001u64).filter(|e| t.senders.contains_key(e)).count()
+            + (0..1_001u64).filter(|e| t.pools.contains_key(e)).count()
+            + (0..1_001u64).filter(|e| t.dropped.contains_key(e)).count()
+    };
+    for e in 0..1_000u64 {
+        // d feeds once and never comes back; its share waits for it (one pool, bounded)
+        let feeders = if e == 3 { vec![a.clone(), b.clone(), d.clone()] } else { vec![a.clone(), b.clone()] };
+        epoch_with(&mut net, e, &feeders, &s);
+        if e == 10 || e == 999 {
+            println!("per-epoch entries after epoch {e}: {}", entries(&net));
+        }
+    }
+    // only the last epoch's pool (a's and b's shares, paid on their next send); d's share at
+    // epoch 3 expired after 30 epochs and was swept back to food
+    assert!(entries(&net) <= 1, "{} per-epoch entries left", entries(&net));
+    assert!(net.t[0].pool(3).is_none() && net.t[0].pool(500).is_none());
+    net.check_events();
+}
+
+#[test]
+fn reports_carry_the_format() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    net.now += EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(0));
+    assert_eq!(r.format, troll_types::REPORT_FORMAT);
+}
+
+// ---------- claim deadline ----------
+
+/// Two feeders of epoch 0 (a and b); only a takes its share.
+fn deadline_setup(claim_epochs: u64) -> (Net, AccountId, AccountId) {
+    let mut net = Net::with_params(Params { claim_epochs, ..params(3) }, 1_000_000, 900_000);
+    let (a, b, s) = (net.user(0, 1), net.user(0, 2), net.user(0, 4));
+    net.launch(0, &a);
+    net.launch(0, &b);
+    net.reg(&s);
+    epoch_with(&mut net, 0, &[a.clone(), b.clone()], &s);
+    net.as_(0, &a, 0, |t| t.claim(0));
+    (net, a, b)
+}
+
+#[test]
+fn an_expired_pool_is_swept_back_to_food() {
+    let (mut net, _, _) = deadline_setup(30);
+    assert_eq!(net.t[0].pool(0).unwrap().deadline, 31, "applied in epoch 1, plus 30");
+    net.now = START + 32 * EPOCH;
+    let food = net.t[0].food;
+    let anyone = acc("anyone.u");
+    assert_eq!(net.as_(0, &anyone, 0, |t| t.sweep(0)).0, 500);
+    assert!(net.t[0].pool(0).is_none());
+    assert_eq!(net.t[0].food, food + 500);
+    assert!(get_logs().iter().any(|l| l.contains("reward_expired")));
+    net.check_events();
+}
+
+#[test]
+#[should_panic(expected = "claim deadline not passed")]
+fn sweep_before_the_deadline_is_refused() {
+    let (mut net, _, _) = deadline_setup(30);
+    net.now = START + 31 * EPOCH + 999; // still epoch 31, the deadline
+    net.as_(0, &acc("anyone.u"), 0, |t| t.sweep(0));
+}
+
+#[test]
+#[should_panic(expected = "claim deadline passed")]
+fn a_claim_after_the_deadline_is_refused() {
+    let (mut net, _, b) = deadline_setup(30);
+    net.now = START + 32 * EPOCH;
+    net.as_(0, &b, 0, |t| t.claim(0));
+}
+
+#[test]
+fn an_expired_share_is_not_paid_on_the_next_send() {
+    let (mut net, _, b) = deadline_setup(30);
+    let s = net.user(0, 4);
+    net.now = START + 32 * EPOCH;
+    let before = net.bal(0, &b);
+    net.transfer(0, &b, &s, 10);
+    assert_eq!(net.bal(0, &b), before - 10, "no expired share paid");
+    assert!(net.t[0].pool(0).is_none(), "b was the last open slot: pool gone, share in food");
+    assert!(get_logs().iter().any(|l| l.contains("reward_unpaid") && l.contains("\"expired\"")));
+    net.check_events();
+}
+
+#[test]
+fn apply_sweeps_the_pool_that_just_expired() {
+    let (mut net, a, b) = deadline_setup(3);
+    let s = net.user(0, 4);
+    // epoch 0 was applied in epoch 1: deadline 4
+    for e in 1..=3 {
+        epoch_with(&mut net, e, &[a.clone()], &s);
+        assert!(net.t[0].pool(0).is_some(), "applied in epoch {}: not expired yet", e + 1);
+    }
+    // apply(4) runs in epoch 5, just past epoch 0's deadline
+    epoch_with(&mut net, 4, &[a.clone()], &s);
+    let _ = b;
+    assert!(net.t[0].pool(0).is_none());
+    assert!(get_logs().iter().any(|l| l.contains("reward_expired")));
+    net.check_events();
+}
+
+/// A never-claiming feeder every epoch: pools are swept after the deadline, so per-epoch state
+/// stays bounded by the claim window.
+#[test]
+fn storage_stays_bounded_with_a_never_claiming_feeder_every_epoch() {
+    let k = 5;
+    let mut net = Net::with_params(Params { claim_epochs: k, ..params(3) }, 1_000_000_000, 600_000);
+    // s funds a new feeder every epoch; the feeder sends once and never comes back
+    let s = net.user(0, 0);
+    net.launch(0, &s);
+    let mut max_entries = 0;
+    for e in 0..1_000u64 {
+        let f = net.user(0, 10 + e as usize);
+        net.now = START + e * EPOCH + 1;
+        net.transfer(0, &s, &f, 10);
+        epoch_with(&mut net, e, &[f], &s);
+        if e % 100 == 99 {
+            let mut b = VMContextBuilder::new();
+            b.current_account_id(net.ids[0].clone()).block_timestamp(net.now * 1_000_000).prepaid_gas(Gas::from_tgas(10_000));
+            testing_env!(b.build());
+            let t = &net.t[0];
+            let n = (0..=e).filter(|x| t.pools.contains_key(x)).count()
+                + (0..=e).filter(|x| t.senders.contains_key(x)).count()
+                + (0..=e).filter(|x| t.dropped.contains_key(x)).count();
+            max_entries = max_entries.max(n);
+        }
+    }
+    println!("max per-epoch entries with a never-claiming feeder every epoch: {max_entries}");
+    assert!(max_entries <= k as usize + 1, "{max_entries} entries");
+    net.check_events();
+}
+
+// ---------- unregistering with unclaimed rewards ----------
+
+#[test]
+#[should_panic(expected = "with any unclaimed rewards")]
+fn unregister_refuses_while_a_reward_is_unclaimed() {
+    let (mut net, _, b) = deadline_setup(30);
+    let s = net.user(0, 4);
+    let all = net.bal(0, &b);
+    net.now = START + 2 * EPOCH;
+    net.transfer(0, &b, &s, all); // this send pays b's epoch-0 share: move it all again
+    let rest = net.bal(0, &b);
+    net.transfer(0, &b, &s, rest);
+    // b feeds epoch 2; settle it so b holds an unclaimed, still-claimable share
+    net.now = START + 3 * EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(2));
+    net.as_(0, &root(), 0, |t| t.apply(2, Outcome::Reward { amount: U128(1_000), food: r.food }));
+    assert_eq!(net.bal(0, &b), 0);
+    net.as_(0, &b, 1, |t| t.storage_unregister(None));
+}
+
+#[test]
+fn forced_unregister_pays_out_then_burns_unclaimed_rewards() {
+    let (mut net, _, b) = deadline_setup(30);
+    let burned = net.t[0].burned;
+    let balance = net.bal(0, &b);
+    assert!(net.as_(0, &b, 1, |t| t.storage_unregister(Some(true))));
+    // b's 500 share was paid into its balance, then burned with it; nothing dropped silently
+    assert_eq!(net.t[0].burned, burned + balance + 500);
+    assert!(net.t[0].pool(0).is_none());
+    let logs = get_logs().join("\n");
+    assert!(logs.contains("feeding reward") && logs.contains("storage_unregister"));
+    net.check_events();
+}
+
+#[test]
+fn a_late_settlement_still_gives_the_full_claim_window() {
+    let k = 5;
+    let mut net = Net::with_params(Params { claim_epochs: k, ..params(3) }, 1_000_000, 900_000);
+    let (a, b, s) = (net.user(0, 1), net.user(0, 2), net.user(0, 4));
+    net.launch(0, &a);
+    net.launch(0, &b);
+    net.reg(&s);
+    net.now = START + 1;
+    net.transfer(0, &a, &s, 10);
+    net.transfer(0, &b, &s, 10);
+    // epoch 0 is settled k + 3 epochs late, in epoch k + 4
+    net.now = START + (k + 4) * EPOCH;
+    let r = net.as_(0, &root(), 0, |t| t.report(0));
+    net.as_(0, &root(), 0, |t| t.apply(0, Outcome::Reward { amount: U128(1_000), food: r.food }));
+    assert_eq!(net.t[0].pool(0).unwrap().deadline, 2 * k + 4);
+    // a claims at the very end of the window
+    net.now = START + (2 * k + 4) * EPOCH;
+    assert_eq!(net.as_(0, &a, 0, |t| t.claim(0)).0, 500);
+    // one epoch later b is too late
+    net.now = START + (2 * k + 5) * EPOCH;
+    let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| net.as_(0, &b, 0, |t| t.claim(0))));
+    assert!(res.is_err());
+}
+
+#[test]
+#[should_panic(expected = "claim_epochs must be at least 2")]
+fn a_claim_window_of_one_epoch_is_refused() {
+    let ids = vec![acc("troll0.t"), acc("troll1.t")];
+    ctx(&ids[0], &acc("d.t"), START, 0);
+    Troll::new(acc(ROOT), ids, Params { claim_epochs: 1, ..params(2) }, metadata(), START, U128(10), U128(0));
+}
+
+#[test]
+fn unregister_with_an_expired_slot_gives_it_up_visibly() {
+    let (mut net, _, b) = deadline_setup(30);
+    // past the deadline, nobody has swept yet: the pool still exists with b's open slot
+    net.now = START + 32 * EPOCH;
+    assert!(net.t[0].pool(0).is_some());
+    let (burned, food, bal) = (net.t[0].burned, net.t[0].food, net.bal(0, &b));
+    assert!(net.as_(0, &b, 1, |t| t.storage_unregister(Some(true))));
+    assert_eq!(net.t[0].burned, burned + bal, "the expired share was not paid out and burned");
+    assert!(net.t[0].pool(0).is_none());
+    assert_eq!(net.t[0].food, food + 500, "it went back to food");
+    let logs = get_logs().join("\n");
+    assert!(logs.contains("reward_unpaid") && logs.contains("\"expired\""));
+    net.check_events();
+}
+
+#[test]
+fn unregister_before_settlement_logs_the_given_up_slot() {
+    let mut net = Net::new(3, 1_000_000, 900_000);
+    let (a, s) = (net.user(0, 1), net.user(0, 4));
+    net.launch(0, &a);
+    net.reg(&s);
+    net.transfer(0, &a, &s, 10); // a feeds epoch 0, not settled yet
+    assert!(net.as_(0, &a, 1, |t| t.storage_unregister(Some(true))));
+    let logs = get_logs().join("\n");
+    assert!(logs.contains("reward_unpaid") && logs.contains("\"unregistered\""));
 }

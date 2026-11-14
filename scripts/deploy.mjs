@@ -60,9 +60,9 @@ const params = {
   reward_per_epoch: tokens(P.reward_per_epoch), starve_burn_bps: P.starve_burn_bps,
   epoch_ms: epochMs, launch_window_ms: windowMs,
   launch_claim_amount: tokens(P.launch_claim_amount), min_counted_transfer: tokens(P.min_counted_transfer),
-  // NEAR per launch claim, kept by the troll; micro-NEAR precision
+  // NEAR per launch claim; the troll keeps the claim record's storage and forwards the rest to the root's bounty budget; micro-NEAR precision
   claim_fee: (BigInt(Math.round((P.claim_fee_near ?? 0) * 1e6)) * 10n ** 18n).toString(),
-  // NEAR the root pays whoever settles an epoch, from the forwarded claim fees; micro-NEAR precision
+  // NEAR the root pays whoever settles an epoch, only out of its bounty budget (forwarded claim fees); micro-NEAR precision
   settle_bounty: (BigInt(Math.round((P.settle_bounty_near ?? 0) * 1e6)) * 10n ** 18n).toString(),
 };
 const totalSupply = tokens(P.total_supply), launchSupply = tokens(P.launch_supply);

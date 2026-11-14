@@ -7,7 +7,7 @@ use near_sdk::{
     ext_contract, near, require,
 };
 use troll_types::{
-    EpochReport, Outcome, Params, bps_of, emit_ft_burn, launch_closed_by, reward_funding, starve_burned, emit_ft_mint, emit_ft_transfer, emit_troll_event, epoch_at,
+    EpochReport, Outcome, Params, REPORT_FORMAT, bps_of, reward_expired, emit_ft_burn, launch_closed_by, reward_funding, starve_burned, emit_ft_mint, emit_ft_transfer, emit_troll_event, epoch_at,
     home_index, now_ms, validate_metadata_sizes, validate_setup,
 };
 
@@ -33,6 +33,14 @@ pub const GAS_FOR_TRANSFER_CALL_MIN: Gas = Gas::from_tgas(100);
 pub const NOT_CREDITED: u128 = u128::MAX;
 const MAX_RESULT_LEN: usize = 64;
 
+#[ext_contract(ext_root)]
+pub trait RootBounty {
+    fn fund_bounty(&mut self);
+}
+
+/// Gas for forwarding a claim fee into the root's bounty budget.
+pub const GAS_FOR_FUND_BOUNTY: Gas = Gas::from_tgas(3);
+
 #[ext_contract(ext_sibling)]
 pub trait Sibling {
     fn credit(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, toll: U128);
@@ -57,6 +65,12 @@ fn promise_u128() -> Option<u128> {
 pub struct Pool {
     pub share: U128,
     pub remaining: U128,
+    /// Feeder slots that can still take a share. At zero the pool is removed and whatever is
+    /// left (rounding dust, forfeited or abandoned shares) goes back to food.
+    pub open: u32,
+    /// Last epoch in which shares can be taken: the epoch the pool was created in, plus
+    /// `claim_epochs`. After it the pool can be swept back into food.
+    pub deadline: u64,
 }
 
 /// NEP-148 token metadata, same JSON shape as the standard's. `reference_hash` stays the
@@ -135,9 +149,11 @@ pub struct Troll {
     launch_pool: u128,
     /// Tolls eaten from cross-troll transfers arriving here, not yet paid out as rewards.
     food: u128,
-    /// `food` as of the last `report`: what the next `apply` may use, so that the root's
-    /// booking and the troll's payout agree even if more tolls arrive in between.
-    food_reported: u128,
+    /// Feeder slots of a not-yet-applied epoch that were given up (forfeited, or the account
+    /// unregistered) and will never take a share.
+    dropped: Map<u64, u32>,
+    /// Lowest epoch that may still have a reward pool; `apply` sweeps expired pools from here.
+    sweep_cursor: u64,
     initial: u128,
     minted: u128,
     burned: u128,
@@ -199,7 +215,8 @@ impl Troll {
             hoard,
             launch_pool,
             food: 0,
-            food_reported: 0,
+            dropped: Map::new(key(b'd', index)),
+            sweep_cursor: 0,
             initial: launch_pool + hoard,
             minted: 0,
             burned: 0,
@@ -316,10 +333,13 @@ impl Troll {
     /// Unclaimed shares are also paid automatically on the feeder's next counted send.
     pub fn claim(&mut self, epoch: u64) -> U128 {
         let who = env::predecessor_account_id();
-        require!(self.pools.contains_key(&epoch), "no reward for this epoch");
         let mut a = self.accounts.get(&who).unwrap_or_default();
         let slot = a.fed.iter().position(|s| *s == epoch + 1);
         require!(slot.is_some(), "not a feeder or already claimed");
+        // A pool exists while any unexpired slot refers to it, so only an unrewarded or swept
+        // epoch lacks one.
+        require!(self.pools.contains_key(&epoch), "no reward for this epoch");
+        require!(!self.expired(epoch), "claim deadline passed");
         a.fed[slot.unwrap()] = 0;
         let share = self.take_share(epoch, &who);
         a.balance += share;
@@ -329,8 +349,8 @@ impl Troll {
 
     /// One launch claim per account, at its home troll, during the launch window.
     /// Registers the caller if needed. Attach the claim fee, plus `storage_balance_bounds().min` if not
-    /// registered yet; any excess is refunded. The fee goes to the root, less the storage this
-    /// claim's record takes here, which this contract keeps.
+    /// registered yet; any excess is refunded. The fee goes to the root's settle-bounty budget,
+    /// less the storage this claim's record takes here, which this contract keeps.
     #[payable]
     pub fn claim_launch(&mut self) -> U128 {
         let who = env::predecessor_account_id();
@@ -359,7 +379,12 @@ impl Troll {
         }
         let to_root = fee.saturating_sub(record);
         if !to_root.is_zero() {
-            Promise::new(self.root.clone()).transfer(to_root).detach();
+            ext_root::ext(self.root.clone())
+                .with_attached_deposit(to_root)
+                .with_static_gas(GAS_FOR_FUND_BOUNTY)
+                .with_unused_gas_weight(0)
+                .fund_bounty()
+                .detach();
         }
         self.add_balance(&who, amount);
         emit_ft_transfer(&env::current_account_id(), &who, amount, Some("launch claim"));
@@ -485,15 +510,15 @@ impl Troll {
     pub fn report(&mut self, epoch: u64) -> EpochReport {
         self.assert_root();
         require!(epoch < self.current_epoch(), "epoch not finished");
-        self.food_reported = self.food;
         EpochReport {
+            format: REPORT_FORMAT,
             epoch,
             senders: self.senders_in(epoch),
             supply: U128(self.supply),
             in_flight: U128(self.in_flight),
             hoard: U128(self.hoard),
             launch_pool: U128(self.reward_launch_pool(epoch)),
-            food: U128(self.food_reported),
+            food: U128(self.food),
             minted: U128(self.minted),
             burned: U128(self.burned),
         }
@@ -505,7 +530,7 @@ impl Troll {
         require!(epoch < self.current_epoch(), "epoch not finished");
         require!(self.last_applied.is_none_or(|l| epoch > l), "epoch already applied");
         match &outcome {
-            Outcome::Reward { amount } => require!(
+            Outcome::Reward { amount, .. } => require!(
                 amount.0 <= self.params.reward_per_epoch.0 / self.params.troll_count as u128,
                 "reward above params"
             ),
@@ -513,20 +538,41 @@ impl Troll {
             Outcome::NoOp => {}
         }
         self.last_applied = Some(epoch);
-        let food = std::mem::take(&mut self.food_reported);
+        // This epoch's counters are no longer needed once it is applied.
+        let feeders = self.senders_in(epoch);
+        self.senders.remove(&epoch);
+        let dropped = self.dropped.get(&epoch).unwrap_or(0);
+        self.dropped.remove(&epoch);
         let me = env::current_account_id();
+        // Sweep expired pools, oldest first, a few steps per apply. Deadlines follow the order in
+        // which pools were created, so the oldest pool always expires first; the cursor moves at
+        // most 3 epochs per apply and one epoch is added per apply, so it keeps up.
+        for _ in 0..3 {
+            let c = self.sweep_cursor;
+            if c >= epoch {
+                break;
+            }
+            match self.pools.get(&c) {
+                None => self.sweep_cursor += 1,
+                Some(p) if reward_expired(p.deadline, self.current_epoch()) => {
+                    self.sweep_pool(c);
+                    self.sweep_cursor += 1;
+                }
+                Some(_) => break,
+            }
+        }
         match outcome {
-            Outcome::Reward { amount } => {
-                let feeders = self.senders_in(epoch);
-                // Food first, then unclaimed launch tokens, then new tokens. The first two are
-                // already supply held by this troll; they just move into the reward pool.
+            Outcome::Reward { amount, food } => {
+                // Food first (at most what the root booked), then unclaimed launch tokens, then new
+                // tokens. The first two are already supply held by this troll; they just move.
+                let food = food.0.min(self.food);
                 let (from_reserve, minted) = reward_funding(amount.0, feeders, food + self.reward_launch_pool(epoch));
                 let total = from_reserve + minted;
                 if total == 0 {
                     return;
                 }
                 let share = total / feeders as u128;
-                self.pools.insert(&epoch, &Pool { share: U128(share), remaining: U128(total) });
+                let open = feeders.saturating_sub(dropped);
                 let from_food = from_reserve.min(food);
                 let from_pool = from_reserve - from_food;
                 self.food -= from_food;
@@ -542,6 +588,8 @@ impl Troll {
                 if from_pool > 0 {
                     emit_troll_event("reward_from_launch_pool", &format!(r#"{{"epoch":{epoch},"amount":"{from_pool}"}}"#));
                 }
+                let deadline = self.current_epoch() + self.params.claim_epochs;
+                self.store_pool(epoch, Pool { share: U128(share), remaining: U128(total), open, deadline });
             }
             Outcome::Burn { bps } => {
                 let amount = starve_burned(self.hoard, bps);
@@ -557,12 +605,21 @@ impl Troll {
         }
     }
 
+    /// Removes the reward pool of `epoch` once its claim deadline has passed and returns what is
+    /// left to food. Anyone may call it; `apply` does it for one epoch each time.
+    pub fn sweep(&mut self, epoch: u64) -> U128 {
+        require!(self.pools.contains_key(&epoch), "no pool for this epoch");
+        require!(self.expired(epoch), "claim deadline not passed");
+        U128(self.sweep_pool(epoch))
+    }
+
     // ---------- views ----------
 
     pub fn current_epoch(&self) -> u64 {
         epoch_at(now_ms(), self.start_ms, self.params.epoch_ms)
     }
 
+    /// Counted senders of `epoch` until it is applied; zero after that (the entry is pruned).
     pub fn senders_in(&self, epoch: u64) -> u32 {
         self.senders.get(&epoch).unwrap_or(0)
     }
@@ -703,9 +760,57 @@ impl Troll {
         };
         let share = pool.share.0;
         pool.remaining.0 -= share;
-        self.pools.insert(&epoch, &pool);
+        pool.open -= 1;
+        self.store_pool(epoch, pool);
         emit_ft_transfer(&env::current_account_id(), who, share, Some("feeding reward"));
         share
+    }
+
+    /// Keeps a pool while some slot can still take from it; otherwise removes it and returns
+    /// what is left to food (it stays supply held by this troll).
+    fn store_pool(&mut self, epoch: u64, pool: Pool) {
+        if pool.open > 0 {
+            self.pools.insert(&epoch, &pool);
+            return;
+        }
+        self.pools.remove(&epoch);
+        if pool.remaining.0 > 0 {
+            self.food += pool.remaining.0;
+            emit_troll_event("reward_leftover_to_food", &format!(r#"{{"epoch":{epoch},"amount":"{}"}}"#, pool.remaining.0));
+        }
+    }
+
+    /// True if `epoch` has a reward pool whose claim deadline has passed.
+    fn expired(&self, epoch: u64) -> bool {
+        self.pools.get(&epoch).is_some_and(|p| reward_expired(p.deadline, self.current_epoch()))
+    }
+
+    /// Logs a share given up without pay, so lost rewards are visible.
+    fn note_unpaid(&self, who: &AccountId, epoch: u64, reason: &str) {
+        emit_troll_event("reward_unpaid", &format!(r#"{{"account_id":"{who}","epoch":{epoch},"reason":"{reason}"}}"#));
+    }
+
+    /// Deletes the pool of an expired epoch; what is left goes back to food. Slots that still name
+    /// the epoch are cleared without pay when their account next sends, claims or unregisters.
+    fn sweep_pool(&mut self, epoch: u64) -> u128 {
+        let Some(pool) = self.pools.get(&epoch) else { return 0 };
+        self.pools.remove(&epoch);
+        self.food += pool.remaining.0;
+        emit_troll_event("reward_expired", &format!(r#"{{"epoch":{epoch},"amount":"{}"}}"#, pool.remaining.0));
+        pool.remaining.0
+    }
+
+    /// A feeder slot for `epoch` will never be paid (forfeited, or its account left).
+    fn release_slot(&mut self, epoch: u64) {
+        if self.last_applied.is_some_and(|l| epoch <= l) {
+            if let Some(mut pool) = self.pools.get(&epoch) {
+                pool.open -= 1;
+                self.store_pool(epoch, pool);
+            }
+        } else {
+            let n = self.dropped.get(&epoch).unwrap_or(0);
+            self.dropped.insert(&epoch, &(n + 1));
+        }
     }
 
     /// Unclaimed launch tokens available to fund `epoch`'s reward: all of them once the launch
@@ -741,7 +846,12 @@ impl Troll {
         for i in 0..a.fed.len() {
             let tag = a.fed[i];
             if tag != 0 && self.last_applied.is_some_and(|l| tag - 1 <= l) {
-                a.balance += self.take_share(tag - 1, who);
+                if self.expired(tag - 1) {
+                    self.note_unpaid(who, tag - 1, "expired");
+                    self.release_slot(tag - 1);
+                } else {
+                    a.balance += self.take_share(tag - 1, who);
+                }
                 a.fed[i] = 0;
             }
         }
@@ -753,6 +863,7 @@ impl Troll {
                     "reward_forfeited",
                     &format!(r#"{{"account_id":"{who}","epoch":{}}}"#, a.fed[i] - 1),
                 );
+                self.release_slot(a.fed[i] - 1);
                 i
             }
         };
@@ -808,12 +919,30 @@ impl Troll {
     pub fn storage_unregister(&mut self, force: Option<bool>) -> bool {
         assert_one_yocto();
         let who = env::predecessor_account_id();
-        let Some(Account { balance: bal, pending, .. }) = self.accounts.get(&who) else {
+        let Some(Account { balance, pending, fed }) = self.accounts.get(&who) else {
             return false;
         };
         require!(pending == 0, "transfers in flight; try again after they resolve");
+        // Rewards that can still be taken are paid out first, so they are never dropped silently;
+        // the rest (unsettled or expired) are given up and end up back in food.
+        let mut bal = balance;
+        for tag in fed.into_iter().filter(|t| *t != 0) {
+            let e = tag - 1;
+            let settled = self.last_applied.is_some_and(|l| e <= l);
+            if settled && self.pools.contains_key(&e) && !self.expired(e) {
+                bal += self.take_share(e, &who);
+            } else {
+                if !settled || self.pools.contains_key(&e) {
+                    self.note_unpaid(&who, e, if settled { "expired" } else { "unregistered" });
+                }
+                self.release_slot(e);
+            }
+        }
         if bal > 0 {
-            require!(force == Some(true), "token balance is not zero; use force to burn it");
+            require!(
+                force == Some(true),
+                "token balance (with any unclaimed rewards) is not zero; move it first, or use force to burn it"
+            );
             self.supply -= bal;
             self.burned += bal;
             emit_ft_burn(&who, bal, "storage_unregister");

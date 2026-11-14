@@ -5,7 +5,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde_json::{self, json};
 use near_sdk::{AccountId, Gas, NearToken, PanicOnDefault, Promise, env, ext_contract, near, require};
 use troll_types::{
-    EpochReport, Outcome, Params, emit_troll_event, epoch_at, home_index, now_ms, outcome_effect, validate_metadata_sizes,
+    EpochReport, Outcome, Params, REPORT_FORMAT, emit_troll_event, epoch_at, home_index, now_ms, outcome_effect, validate_metadata_sizes,
     validate_setup,
 };
 
@@ -45,6 +45,8 @@ pub struct RootInfo {
     pub troll_supply: Vec<U128>,
     pub troll_in_flight: Vec<U128>,
     pub last_senders: Vec<u32>,
+    /// NEAR (yocto) available for settle bounties: what `fund_bounty` received, less bounties paid.
+    pub bounty_budget: U128,
 }
 
 #[near(contract_state, contract_metadata(standard(standard = "nep148", version = "1.0.0"), standard(standard = "nep297", version = "1.0.0")))]
@@ -73,6 +75,9 @@ pub struct Root {
     attempt: u64,
     /// Who started the latest settlement attempt; paid the settle bounty if it succeeds.
     settler: AccountId,
+    /// NEAR (yocto) set aside for settle bounties. Only `fund_bounty` adds to it (the trolls
+    /// forward claim fees there); other NEAR on this account is never paid out as a bounty.
+    bounty_budget: u128,
 }
 
 #[near]
@@ -111,6 +116,7 @@ impl Root {
             settling_since: 0,
             attempt: 0,
             settler: env::current_account_id(),
+            bounty_budget: 0,
         }
     }
 
@@ -145,6 +151,14 @@ impl Root {
         )
     }
 
+    /// Adds the attached NEAR to the settle-bounty budget. Anyone may fund it; the trolls forward
+    /// launch-claim fees here.
+    #[payable]
+    pub fn fund_bounty(&mut self) -> U128 {
+        self.bounty_budget = self.bounty_budget.saturating_add(env::attached_deposit().as_yoctonear());
+        U128(self.bounty_budget)
+    }
+
     /// Never panics, so a failed report can't leave the settlement locked; the epoch can be retried.
     /// Ignores a stale attempt (one replaced after a timeout).
     #[private]
@@ -161,7 +175,7 @@ impl Root {
                 .ok()
                 .and_then(|b| serde_json::from_slice::<EpochReport>(&b).ok())
             {
-                Some(r) if r.epoch == epoch => reports.push(r),
+                Some(r) if r.epoch == epoch && r.format == REPORT_FORMAT => reports.push(r),
                 _ => break,
             }
         }
@@ -183,7 +197,8 @@ impl Root {
     }
 
     /// Total supply as of the last settlement, including that settlement's own mints and burns.
-    /// Toll burns since then show up at the next settlement. Exact live figures are on each troll.
+    /// Burns since then (starvation, forced unregistering) show up at the next settlement. Exact
+    /// live figures are on each troll.
     pub fn ft_total_supply(&self) -> U128 {
         U128(self.total_supply)
     }
@@ -220,28 +235,35 @@ impl Root {
             troll_supply: self.troll_supply.iter().map(|s| U128(*s)).collect(),
             troll_in_flight: self.troll_in_flight.iter().map(|s| U128(*s)).collect(),
             last_senders: self.last_senders.clone(),
+            bounty_budget: U128(self.bounty_budget),
         }
     }
 }
 
 impl Root {
-    /// Pays the settle bounty to the latest attempt's settler, only if the balance still covers
-    /// storage plus `BOUNTY_RESERVE` afterwards. Checks first, so it never fails `on_reports`.
+    /// Pays the settle bounty to the latest attempt's settler out of the bounty budget, only if
+    /// the budget covers it and the balance still covers storage plus `BOUNTY_RESERVE` afterwards.
+    /// Checks first, so it never fails `on_reports`.
     fn pay_bounty(&mut self, epoch: u64) {
         let bounty = self.params.settle_bounty.0;
         if bounty == 0 {
+            return;
+        }
+        let account_id = self.settler.clone();
+        if self.bounty_budget < bounty {
+            emit_troll_event("settle_bounty_skipped", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty), "reason": "budget" }));
             return;
         }
         let reserve = env::storage_byte_cost()
             .saturating_mul(env::storage_usage() as u128)
             .saturating_add(BOUNTY_RESERVE)
             .as_yoctonear();
-        let account_id = self.settler.clone();
         if env::account_balance().as_yoctonear() >= reserve.saturating_add(bounty) {
+            self.bounty_budget -= bounty;
             Promise::new(account_id.clone()).transfer(NearToken::from_yoctonear(bounty)).detach();
             emit_troll_event("settle_bounty_paid", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty) }));
         } else {
-            emit_troll_event("settle_bounty_skipped", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty) }));
+            emit_troll_event("settle_bounty_skipped", &json_str!({ "epoch": epoch, "account_id": account_id, "amount": U128(bounty), "reason": "balance" }));
         }
     }
 
@@ -258,7 +280,7 @@ impl Root {
             self.streak += 1;
             self.best_streak = self.best_streak.max(self.streak);
             let amount = U128(self.params.reward_per_epoch.0 / self.trolls.len() as u128);
-            vec![Outcome::Reward { amount }; reports.len()]
+            reports.iter().map(|r| Outcome::Reward { amount, food: r.food }).collect()
         } else {
             self.streak = 0;
             reports
