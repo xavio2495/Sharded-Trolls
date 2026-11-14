@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Compare } from "./Compare";
 import { LOCALNET_NOTE } from "./data";
 import { Replay } from "./Replay";
@@ -14,22 +14,24 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-export function EvidenceTabs() {
-  const [tab, setTab] = useState<Tab>("compare");
+// The selected tab is the URL hash, so /evidence#testnet links straight to it and the buttons and
+// the panel always read the same value. The server renders "compare".
+const subscribe = (cb: () => void) => {
+  window.addEventListener("hashchange", cb);
+  return () => window.removeEventListener("hashchange", cb);
+};
+const readHash = (): Tab => {
+  const h = window.location.hash.slice(1);
+  return TABS.some((t) => t.id === h) ? (h as Tab) : "compare";
+};
 
-  // The tab follows the URL hash, so /evidence#testnet links straight to it.
-  useEffect(() => {
-    const read = () => {
-      const h = window.location.hash.slice(1);
-      if (TABS.some((t) => t.id === h)) setTab(h as Tab);
-    };
-    read();
-    window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
-  }, []);
+export function EvidenceTabs() {
+  const tab = useSyncExternalStore(subscribe, readHash, () => "compare" as Tab);
+  // Replace the hash (no history entry, no jump) and tell the store it changed.
   const pick = (t: Tab) => {
-    setTab(t);
+    if (t === tab) return;
     history.replaceState(null, "", `#${t}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
   const current = TABS.find((t) => t.id === tab)!;
 
@@ -39,10 +41,12 @@ export function EvidenceTabs() {
         {TABS.map((t) => (
           <button
             key={t.id}
+            id={`tab-${t.id}`}
             role="tab"
             aria-selected={tab === t.id}
+            aria-controls="evidence-panel"
             onClick={() => pick(t.id)}
-            className={`rounded-[var(--radius-ui)] border-2 px-5 py-2 text-sm font-semibold tracking-wide transition-colors ${
+            className={`rounded-[var(--radius-ui)] border-2 px-5 py-2 text-sm font-semibold tracking-wide ${
               tab === t.id ? "border-accent-deep bg-accent-deep text-paper" : "border-ink-line bg-paper text-ink-0 hover:bg-surface-2"
             }`}
           >
@@ -59,7 +63,7 @@ export function EvidenceTabs() {
           </div>
         )}
       </div>
-      <div role="tabpanel" className="mt-8">
+      <div role="tabpanel" id="evidence-panel" aria-labelledby={`tab-${tab}`} className="mt-8">
         {tab === "compare" && <Compare />}
         {tab === "replay" && <Replay />}
         {tab === "testnet" && <Testnet />}
