@@ -1689,6 +1689,7 @@ dependencies = [
  "cargo-near-build",
  "near-api",
  "near-sandbox",
+ "serde_json",
  "testresult",
  "tokio",
 ]

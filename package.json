@@ -3,6 +3,16 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "workspaces": ["packages/*", "sim"],
-  "engines": { "node": ">=24" }
+  "workspaces": [
+    "packages/*",
+    "sim"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check": "node --dns-result-order=ipv4first packages/layout/check.js",
+    "sim": "node --max-old-space-size=2048 sim/run.js",
+    "test:js": "node --test \"packages/**/*.test.js\" \"sim/**/*.test.js\""
+  }
 }
