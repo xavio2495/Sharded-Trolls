@@ -28,11 +28,9 @@ export default function Hero() {
       if (isReady()) intro.progress(1);
       return whenReady(() => {
         if (intro.progress() < 1) intro.play();
-        // scroll: the title drifts left, the painting right, the sticker spins
+        // scroll: only the title drifts; the painting and the sticker stay put
         const st = { trigger: root.current, start: "top top", end: "bottom top", scrub: true };
         gsap.to(title, { xPercent: -8, ease: "none", scrollTrigger: st });
-        gsap.to(q("[data-frame]"), { xPercent: 6, rotate: 1, ease: "none", scrollTrigger: { ...st } });
-        gsap.to(q("[data-sticker]"), { rotate: 50, ease: "none", scrollTrigger: { ...st } });
         if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
           split.chars.forEach((c) => {
             c.addEventListener("pointerenter", () => gsap.to(c, { y: `-${LIFT}em`, rotate: gsap.utils.random(-8, 8), duration: 0.3, ease: "power2.out" }));
