@@ -1,0 +1,396 @@
+{
+  "pass": 2,
+  "at": "2026-11-14T17:16:14.359Z",
+  "network": "localnet (near-sandbox, mainnet 10-shard layout)",
+  "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+  "all_pass": true,
+  "checks": [
+    {
+      "name": "K7 one global code, 8 trolls, 8 shards",
+      "ok": true,
+      "detail": {
+        "hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk",
+        "spent_near": "23.9057"
+      }
+    },
+    {
+      "name": "K2 fire same-troll",
+      "ok": true,
+      "detail": {
+        "transfers": 50,
+        "of": 50,
+        "tolls": 0,
+        "failed": 0
+      }
+    },
+    {
+      "name": "K2 fire mixed",
+      "ok": true,
+      "detail": {
+        "transfers": 25,
+        "of": 25,
+        "tolls": 8,
+        "failed": 0
+      }
+    },
+    {
+      "name": "K3a cross transfer: −100, toll paid, conserved",
+      "ok": true,
+      "detail": {
+        "events": [
+          "0.ka.sandbox:ft_burn",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:toll_eaten",
+          "0.ka.sandbox:toll"
+        ]
+      }
+    },
+    {
+      "name": "K3b unregistered receiver: credit fails, full refund",
+      "ok": true,
+      "detail": {
+        "errors": [
+          "Smart contract panicked: 6o.ka.sandbox is not registered"
+        ]
+      }
+    },
+    {
+      "name": "K3c transfer_call, no ft_on_transfer: sender −toll",
+      "ok": true,
+      "detail": {
+        "delta": -0.25
+      }
+    },
+    {
+      "name": "K3d1 100 Tgas, msg 4,096 B: credited, sender −toll",
+      "ok": true,
+      "detail": {
+        "delta": -0.25
+      }
+    },
+    {
+      "name": "K3d2 100 Tgas, msg 4,097 B: rejected, nothing debited",
+      "ok": true,
+      "detail": {
+        "errors": [
+          "Smart contract panicked: msg longer than 4096 bytes"
+        ]
+      }
+    },
+    {
+      "name": "settle 249 Tgas refused up front, unlocked",
+      "ok": true,
+      "detail": {
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}"
+        ]
+      }
+    },
+    {
+      "name": "settle 250 Tgas settles",
+      "ok": true,
+      "detail": {
+        "next_epoch": 1
+      }
+    },
+    {
+      "name": "KIT reuses the global code (no code published)",
+      "ok": true,
+      "detail": {
+        "hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      }
+    },
+    {
+      "name": "KIT metadata",
+      "ok": true,
+      "detail": {
+        "name": "Kit Trolls",
+        "symbol": "KIT"
+      }
+    },
+    {
+      "name": "Feeding setup: conserved, nothing in flight, per-troll event replay",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "Feeding E0: conserved, nothing in flight, per-troll event replay",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "Feeding S0: conserved, nothing in flight, per-troll event replay, root = trolls",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "root_troll_supply_matches": true,
+        "root_total_matches": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "Feeding C0: conserved, nothing in flight, per-troll event replay",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "Feeding E1: conserved, nothing in flight, per-troll event replay",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "Feeding S1: conserved, nothing in flight, per-troll event replay, root = trolls",
+      "ok": true,
+      "detail": {
+        "conserved": true,
+        "in_flight_zero": true,
+        "replay_ok": true,
+        "root_troll_supply_matches": true,
+        "root_total_matches": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "E0: every troll fed by one cross-troll sender; food = toll on each",
+      "ok": true,
+      "detail": {
+        "food": [
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25
+        ]
+      }
+    },
+    {
+      "name": "S0: all fed, streak 1",
+      "ok": true,
+      "detail": {
+        "fed": true,
+        "senders": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "streak": 1
+      }
+    },
+    {
+      "name": "S0: rewards draw on food first, then the launch pool",
+      "ok": true,
+      "detail": {
+        "from_food": [
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25
+        ],
+        "from_pool": [
+          31249.75,
+          31249.75,
+          31249.75,
+          31249.75,
+          31249.75,
+          31249.75,
+          31249.75,
+          31249.75
+        ],
+        "food_after": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "S0: settle bounty paid to the settler",
+      "ok": true,
+      "detail": {
+        "bounty_near": 0.005,
+        "gas_burnt_near": 0.0038292786601683,
+        "settler_change_near": 0.0011707213398317
+      }
+    },
+    {
+      "name": "C0: each feeder paid its share",
+      "ok": true,
+      "detail": {
+        "shares": [
+          31250,
+          31250,
+          31250,
+          31250,
+          31250,
+          31250,
+          31250,
+          31250
+        ],
+        "leftover_to_food": []
+      }
+    },
+    {
+      "name": "E1: 7 trolls fed, troll 7 hungry",
+      "ok": true
+    },
+    {
+      "name": "S1: troll 7 starves, burns 1% of its hoard, streak 0",
+      "ok": true,
+      "detail": {
+        "fed": false,
+        "senders": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0
+        ],
+        "burned": 625000,
+        "streak": 0
+      }
+    },
+    {
+      "name": "drill: stuck settlement refused, then expired after 600 blocks and settled",
+      "ok": true,
+      "detail": {
+        "steps": [
+          {
+            "step": "patched",
+            "settling": 0
+          },
+          {
+            "step": "settle while stuck",
+            "hash": "7pXgZqnJW2xE9zj8vwiGb2eDEo9YKAJRqbnpmTLxXEz8",
+            "refused": true,
+            "errors": [
+              "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: settlement in progress\"}}}}",
+              "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: settlement in progress\"}}}}"
+            ],
+            "settling_after": 0
+          },
+          {
+            "step": "fast_forward 601",
+            "height_after": 3517
+          },
+          {
+            "step": "settle after timeout",
+            "hash": "9nCExZijM5p83nUkDD9zQMCx85L8o7XjFQ5qMwqZAg5G",
+            "failed_receipts": 0,
+            "events": [
+              "settle_expired",
+              "troll_starved",
+              "feeding_settled",
+              "streak",
+              "settle_bounty_skipped",
+              "ft_burn"
+            ],
+            "settling_after": null,
+            "next_epoch_after": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "drill: injected 429 at send #7 stops the deploy; resume creates the rest; one code hash",
+      "ok": true,
+      "detail": {
+        "trolls_before_resume": 4,
+        "created_by_resume": 4,
+        "hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      }
+    },
+    {
+      "name": "drill: underfunded parent refused before sending anything",
+      "ok": true,
+      "detail": {
+        "message": "needs 25.0712 more NEAR"
+      }
+    },
+    {
+      "name": "drill: unregister with an unclaimed reward refused; late claim refused; sweep moves the remainder to food",
+      "ok": true,
+      "detail": {
+        "claim_epochs": 2,
+        "deadline_epoch": 3,
+        "unregister_after_events": [],
+        "unregister": "Smart contract panicked: token balance (with any unclaimed rewards) is not zero; move it first, or use force to burn it",
+        "late_claim": "Smart contract panicked: claim deadline passed",
+        "swept": [
+          31250,
+          31250
+        ],
+        "food_change": [
+          31250,
+          31250
+        ],
+        "unregister_after_sweep_failed_receipts": 0
+      }
+    },
+    {
+      "name": "drill: --global-hash differing from the local troll.wasm is refused",
+      "ok": true
+    }
+  ],
+  "kit_cost": {
+    "parent_spent_near": 1.4527,
+    "locked_for_root_storage_near": 1.8919700000000002,
+    "per_token_near": 3.3447
+  },
+  "feeding_params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 1,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 240000,
+    "launch_window_ms": 240000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000",
+    "claim_epochs": 30
+  }
+}

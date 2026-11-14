@@ -1,0 +1,51 @@
+{
+  "epoch": 0,
+  "at": "2026-11-14T17:15:09.714Z",
+  "settler_field": "0st.sandbox",
+  "trailing_bytes": 16,
+  "patched_at_height": 2907,
+  "steps": [
+    {
+      "step": "patched",
+      "settling": 0
+    },
+    {
+      "step": "settle while stuck",
+      "hash": "7pXgZqnJW2xE9zj8vwiGb2eDEo9YKAJRqbnpmTLxXEz8",
+      "refused": true,
+      "errors": [
+        "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: settlement in progress\"}}}}",
+        "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: settlement in progress\"}}}}"
+      ],
+      "settling_after": 0
+    },
+    {
+      "step": "fast_forward 601",
+      "height_after": 3517
+    },
+    {
+      "step": "settle after timeout",
+      "hash": "9nCExZijM5p83nUkDD9zQMCx85L8o7XjFQ5qMwqZAg5G",
+      "failed_receipts": 0,
+      "events": [
+        "settle_expired",
+        "troll_starved",
+        "feeding_settled",
+        "streak",
+        "settle_bounty_skipped",
+        "ft_burn"
+      ],
+      "settling_after": null,
+      "next_epoch_after": 1
+    }
+  ],
+  "conservation_after": {
+    "supply": "995000000000000000000000000000000",
+    "in_flight": "0",
+    "burned": "5000000000000000000000000000000",
+    "minted": "0",
+    "total_supply": "1000000000000000000000000000000000",
+    "conserved": true
+  },
+  "pass": true
+}

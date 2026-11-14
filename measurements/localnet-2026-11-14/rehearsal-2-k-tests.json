@@ -1,0 +1,412 @@
+{
+  "network": "testnet",
+  "root": "ka.sandbox",
+  "trolls": [
+    {
+      "prefix": "0",
+      "account": "0.ka.sandbox",
+      "shard": 10
+    },
+    {
+      "prefix": "7",
+      "account": "7.ka.sandbox",
+      "shard": 11
+    },
+    {
+      "prefix": "ax",
+      "account": "ax.ka.sandbox",
+      "shard": 8
+    },
+    {
+      "prefix": "f",
+      "account": "f.ka.sandbox",
+      "shard": 9
+    },
+    {
+      "prefix": "h",
+      "account": "h.ka.sandbox",
+      "shard": 7
+    },
+    {
+      "prefix": "kz",
+      "account": "kz.ka.sandbox",
+      "shard": 4
+    },
+    {
+      "prefix": "u",
+      "account": "u.ka.sandbox",
+      "shard": 12
+    },
+    {
+      "prefix": "wz",
+      "account": "wz.ka.sandbox",
+      "shard": 13
+    }
+  ],
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 10,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 120000,
+    "launch_window_ms": 120000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000",
+    "claim_epochs": 30
+  },
+  "metadata": {
+    "spec": "ft-1.0.0",
+    "name": "Sharded Trolls",
+    "symbol": "STRL",
+    "icon": null,
+    "reference": null,
+    "reference_hash": null,
+    "decimals": 24
+  },
+  "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+  "root_code_hash": "ec05d61f1945f83cb1fb86549dbd021933123fc6ab44687ce663814819aa8bda",
+  "reused_accounts_from": null,
+  "deploy_resumed": null,
+  "k7": {
+    "parent_funded_near": "40",
+    "parent_left_near": "16.0943",
+    "parent_storage_bytes": 189193,
+    "parent_spent_near": "23.9057",
+    "troll_near_each": "0.2",
+    "troll_code_bytes": 224512,
+    "troll_code_hash": "6fd433736bd3321cc23fd592bf224df7c1f9459451b74ec60bacea62f39ff871",
+    "trolls": [
+      {
+        "account": "0.ka.sandbox",
+        "shard": 10,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "7.ka.sandbox",
+        "shard": 11,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "ax.ka.sandbox",
+        "shard": 8,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "f.ka.sandbox",
+        "shard": 9,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "h.ka.sandbox",
+        "shard": 7,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "kz.ka.sandbox",
+        "shard": 4,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "u.ka.sandbox",
+        "shard": 12,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      },
+      {
+        "account": "wz.ka.sandbox",
+        "shard": 13,
+        "storage_usage": 665,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "8XXviK8PceCwicgzFtKi2VoBNWR7MXFMBkZSDKNuFAEk"
+      }
+    ],
+    "conservation_at_start": {
+      "supply": "1000000000000000000000000000000000",
+      "in_flight": "0",
+      "burned": "0",
+      "minted": "0",
+      "total_supply": "1000000000000000000000000000000000",
+      "conserved": true
+    },
+    "at": "2026-11-14T16:46:36.868Z"
+  },
+  "k2": {
+    "at": "2026-11-14T16:47:18.437Z",
+    "fires": [
+      {
+        "label": "same-troll",
+        "n": 50,
+        "hash": "5pj8GCduYkuL1hP39fTVABmAfCr5HZQhVQTLtej27Nh6",
+        "url": "localnet:5pj8GCduYkuL1hP39fTVABmAfCr5HZQhVQTLtej27Nh6",
+        "ft_transfer_events": 50,
+        "tolls": 0,
+        "failed_receipts": 0,
+        "shards": [
+          "1.ka.sandbox",
+          "0.ka.sandbox"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      },
+      {
+        "label": "mixed",
+        "n": 25,
+        "hash": "5gojb3RVj9p94rbD1LL2gyhzGbwKEZNQrwmw1dRBEPgu",
+        "url": "localnet:5gojb3RVj9p94rbD1LL2gyhzGbwKEZNQrwmw1dRBEPgu",
+        "ft_transfer_events": 25,
+        "tolls": 8,
+        "failed_receipts": 0,
+        "shards": [
+          "1.ka.sandbox",
+          "0.ka.sandbox",
+          "7.ka.sandbox"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      }
+    ]
+  },
+  "k3": {
+    "at": "2026-11-14T16:47:36.802Z",
+    "cases": [
+      {
+        "label": "cross-troll transfer, receiver registered",
+        "expect": "credited, toll paid",
+        "hash": "EQSWZ1juUMUei3CWVXZW4RBLTQn8KJgYinMtzg1D5urc",
+        "url": "localnet:EQSWZ1juUMUei3CWVXZW4RBLTQn8KJgYinMtzg1D5urc",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "-100000000000000000000000000",
+        "events": [
+          "0.ka.sandbox:ft_burn",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:toll_eaten",
+          "0.ka.sandbox:toll"
+        ],
+        "errors": [],
+        "failed_receipts": 0,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll transfer, receiver not registered",
+        "expect": "credit fails, full refund",
+        "hash": "BDibWB8GLa6B367McwEmJPB2jFd1PGLGeihSVPmB3Mrs",
+        "url": "localnet:BDibWB8GLa6B367McwEmJPB2jFd1PGLGeihSVPmB3Mrs",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "0",
+        "events": [
+          "0.ka.sandbox:ft_burn",
+          "0.ka.sandbox:ft_mint",
+          "0.ka.sandbox:credit_refunded"
+        ],
+        "errors": [
+          "Smart contract panicked: 6o.ka.sandbox is not registered"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "DwymrKQf7jTaoczD99EtFwwYsdnu31DfE4rqXVsCmnVK",
+        "url": "localnet:DwymrKQf7jTaoczD99EtFwwYsdnu31DfE4rqXVsCmnVK",
+        "gas_attached_tgas": 150,
+        "msg_bytes": 0,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.ka.sandbox:ft_burn",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:toll_eaten",
+          "7.ka.sandbox:ft_burn",
+          "0.ka.sandbox:ft_mint",
+          "0.ka.sandbox:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6i.ka.sandbox\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,096 B",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "6RY7Np1F4w1B39Z6sW9vmkaqReE7JE4em55eeXphfcZK",
+        "url": "localnet:6RY7Np1F4w1B39Z6sW9vmkaqReE7JE4em55eeXphfcZK",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4096,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.ka.sandbox:ft_burn",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:ft_mint",
+          "7.ka.sandbox:toll_eaten",
+          "7.ka.sandbox:ft_burn",
+          "0.ka.sandbox:ft_mint",
+          "0.ka.sandbox:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6i.ka.sandbox\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,097 B",
+        "expect": "rejected at the source (msg longer than 4096 bytes); nothing debited",
+        "hash": "4uhrPkxZAEVd8ewQigE2KtAefBE2Qv44mtHBBgNHKFYa",
+        "url": "localnet:4uhrPkxZAEVd8ewQigE2KtAefBE2Qv44mtHBBgNHKFYa",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4097,
+        "sender_delta": "0",
+        "events": [],
+        "errors": [
+          "Smart contract panicked: msg longer than 4096 bytes",
+          "Smart contract panicked: msg longer than 4096 bytes"
+        ],
+        "failed_receipts": 2,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      }
+    ]
+  },
+  "settle": {
+    "at": "2026-11-14T17:14:09.677Z",
+    "epoch": 0,
+    "settle_min_tgas": 250,
+    "attempts": [
+      {
+        "label": "1 Tgas below the minimum",
+        "gas_tgas": 249,
+        "hash": "D1UCMDmKSLVQa1Cuh4gs2oh4kXycV1hLCXGivo78KG6R",
+        "url": "localnet:D1UCMDmKSLVQa1Cuh4gs2oh4kXycV1hLCXGivo78KG6R",
+        "failed_receipts": 2,
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}",
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}"
+        ],
+        "settle_receipt_failed": true,
+        "settling_after": null,
+        "next_epoch_before": 0,
+        "next_epoch_after": 0,
+        "receipts": 2,
+        "executors": 1,
+        "events": [],
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "refusal_message_ok": true,
+        "outcome": "refused up front, unlocked",
+        "pass": true
+      },
+      {
+        "label": "at the minimum",
+        "gas_tgas": 250,
+        "hash": "Gk8F9nVFNvu64GUUi65RUY9XYVPo2Uv5fH8WV3mTkYF",
+        "url": "localnet:Gk8F9nVFNvu64GUUi65RUY9XYVPo2Uv5fH8WV3mTkYF",
+        "failed_receipts": 0,
+        "errors": [],
+        "settle_receipt_failed": false,
+        "settling_after": null,
+        "next_epoch_before": 0,
+        "next_epoch_after": 1,
+        "receipts": 38,
+        "executors": 9,
+        "events": [
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:troll_starved",
+          "ka.sandbox:feeding_settled",
+          "ka.sandbox:streak",
+          "ka.sandbox:settle_bounty_paid",
+          "0.ka.sandbox:ft_burn",
+          "7.ka.sandbox:ft_burn",
+          "ax.ka.sandbox:ft_burn",
+          "f.ka.sandbox:ft_burn",
+          "h.ka.sandbox:ft_burn",
+          "kz.ka.sandbox:ft_burn",
+          "u.ka.sandbox:ft_burn",
+          "wz.ka.sandbox:ft_burn"
+        ],
+        "conservation_after": {
+          "supply": "995000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "5000000000000000000000000000000",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "refusal_message_ok": false,
+        "outcome": "settled",
+        "pass": true
+      }
+    ]
+  }
+}
