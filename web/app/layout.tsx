@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import SmoothScroll from "./components/providers/SmoothScroll";
 import "./globals.css";
 
 // Titles: Outlaw Grizzly Hunter (SIL OFL 1.1, Resource Boy). Served unmodified as woff2.
@@ -27,8 +28,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${text.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${display.variable} ${text.variable} antialiased`} suppressHydrationWarning>
+      <body>
+        {/* mark scripts as running before first paint, so revealed elements never flash in their final state */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+        <SmoothScroll>{children}</SmoothScroll>
+      </body>
     </html>
   );
 }
