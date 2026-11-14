@@ -36,8 +36,8 @@
   --radius-card: 1.25rem;
   --sheet: max(28px, 2.6vw);
 
-  /* 1rem = 16px at 1440px wide; the layout scales with the viewport */
-  font-size: calc(100vw / 90);
+  /* 1rem = 16px up to 1440px wide, then the layout scales with the viewport (capped) */
+  font-size: clamp(16px, calc(100vw / 90), 22px);
 }
 @media (max-width: 767px) {
   :root { font-size: 16px; --gutter: 1.25rem; --header: 4.25rem; }
@@ -98,6 +98,11 @@ body {
 .small { font-size: 0.8125rem; line-height: 1.5; margin: 0; color: var(--ink-2); }
 .eyebrow { font-size: 0.75rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-deep); font-weight: 600; }
 .nav { font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .display { font-size: 5.25rem; }
+  .h1 { font-size: 4rem; }
+  .h2 { font-size: 3rem; }
+}
 @media (max-width: 767px) {
   .display { font-size: 4.5rem; }
   .h1 { font-size: 3rem; }

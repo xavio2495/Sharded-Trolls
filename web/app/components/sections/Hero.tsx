@@ -54,7 +54,7 @@ export default function Hero() {
           yPercent: -40,
           opacity: 0,
           ease: "none",
-          scrollTrigger: { trigger: root.current, start: "top top", end: "60% top", scrub: true },
+          scrollTrigger: { trigger: root.current, start: "top top", end: "25% top", scrub: true },
         });
 
         // pointer: the painting leans toward the pointer; letters lift under it
@@ -80,7 +80,7 @@ export default function Hero() {
     <section ref={root} className="tone-light relative h-[200vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
         <div className="container relative z-10 pt-[var(--header)]">
-          <div data-copy className="grid items-end gap-8 pt-6 md:grid-cols-[1fr_minmax(22rem,30rem)]">
+          <div data-copy className="grid items-end gap-8 pt-6 lg:grid-cols-[1fr_minmax(22rem,30rem)]">
             <h1 data-title className="display text-ink-0">
               Pay the troll.
             </h1>

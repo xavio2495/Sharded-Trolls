@@ -131,7 +131,7 @@ export default function Deck() {
       </div>
       <div className="flex items-center justify-between px-10 pb-6 text-sm text-ink-1">
         <span className="font-display text-lg text-ink-0">Sharded Trolls</span>
-        <span>{i + 1} / {SLIDES.length} · ← → or click</span>
+        <span>{i + 1} / {SLIDES.length} · ← → or tap</span>
       </div>
     </div>
   );

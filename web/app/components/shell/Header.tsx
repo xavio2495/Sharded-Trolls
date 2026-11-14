@@ -17,7 +17,7 @@ export default function Header() {
           <Image src="/logo.svg" alt="" width={44} height={44} className="size-11" />
           <span className="font-display text-2xl text-ink-0">Sharded Trolls</span>
         </Link>
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-8 lg:flex">
           {LINKS.map((l) => (
             <a key={l.href} href={l.href} className="nav text-ink-1 hover:text-ink-0">
               <span className="roll" data-text={l.label}>
@@ -31,7 +31,7 @@ export default function Header() {
             </span>
           </Link>
         </div>
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <Link href="/app" className="btn btn-moss">App</Link>
         </div>
       </nav>

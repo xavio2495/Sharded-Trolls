@@ -30,7 +30,7 @@ export default function Toll() {
           <ol className="mt-10 space-y-8">
             {STEPS.map((s, i) => (
               <li key={s.title} className="grid grid-cols-[3rem_1fr] gap-4" data-reveal data-reveal-delay={(i * 0.12).toFixed(2)}>
-                <span className="font-display text-3xl text-accent">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-display text-3xl text-accent-deep">{String(i + 1).padStart(2, "0")}</span>
                 <div>
                   <h3 className="h4">{s.title}</h3>
                   <p className="body mt-2">{s.text}</p>

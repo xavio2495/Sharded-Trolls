@@ -45,7 +45,7 @@ export default function Proof() {
       <h2 className="h2 mt-4 max-w-4xl" data-reveal="lines">
         Run on real NEAR, audited, and rehearsed.
       </h2>
-      <dl className="mt-16 grid gap-10 md:grid-cols-4">
+      <dl className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {FIGURES.map((f, i) => (
           <div key={f.label} className="border-t border-white/15 pt-6" data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
             <dt className="font-display text-7xl text-[#a9cf86]">
