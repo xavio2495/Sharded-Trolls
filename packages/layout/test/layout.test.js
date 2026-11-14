@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shardOf, place, bounds } from '../index.js';
+import { createHash } from 'node:crypto';
+import { shardOf, place } from '../index.js';
 
 // Layouts read from EXPERIMENTAL_protocol_config at protocol 88.
 const MAINNET = {
@@ -65,15 +66,17 @@ test('place: works for any parent', () => {
   for (const t of trolls) assert.equal(shardOf(t.account, MAINNET), t.shard);
 });
 
-test('bounds: every account maps to the troll on its shard, unreachable shards to a neighbour', () => {
-  for (const [parent, layout] of [['shardedtrolls.near', MAINNET], ['shardedtrolls.testnet', TESTNET]]) {
-    const trolls = place(parent, layout);
-    const b = bounds(trolls, layout);
-    assert.equal(b.length, 7);
-    const home = (id) => trolls[b.filter((x) => id >= x).length];
-    for (const t of trolls) assert.equal(home(t.account).shard, t.shard);
-    for (const id of ['alice.near', 'zz.near', '00ff', 'f00d1234', 'kkz.near', 'wallet.kb', 'u.near']) assert.equal(home(id).shard, shardOf(id, layout));
-    assert.equal(home('aurora').shard, 11);
-    assert.equal(home('game.hot.tg').shard, 9);
+test('place: accept() adds a condition and longer prefixes fill in', () => {
+  const trolls = place('sandbox', MAINNET);
+  const taken = trolls.map((t) => t.account);
+  // "home troll (sha256 mod 8) = the troll on this shard": a 1-in-8 condition, 20 rounds deep,
+  // as scripts/load.mjs uses it
+  const home = (id) => Number(BigInt('0x' + createHash('sha256').update(id).digest('hex').slice(0, 32)) % 8n);
+  const accept = (account, shard) => home(account) === trolls.findIndex((t) => t.shard === shard);
+  for (let round = 0; round < 20; round++) {
+    const set = place('sandbox', MAINNET, { taken, accept });
+    assert.equal(set.length, 8);
+    for (const t of set) assert.ok(accept(t.account, t.shard) && shardOf(t.account, MAINNET) === t.shard);
+    taken.push(...set.map((t) => t.account));
   }
 });

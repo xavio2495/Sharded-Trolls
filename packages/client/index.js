@@ -2,19 +2,20 @@
 // registration go there. Works in Node and the browser (fetch only). Writes go through any signer
 // with call(contractId, method, args, { gas, deposit }), e.g. a wallet adapter.
 
-// Must match the contracts' home_index exactly: troll i holds ids in [bounds[i-1], bounds[i]),
-// compared as plain strings (account ids are ASCII, so code-unit order equals byte order).
-export function homeIndex(accountId, bounds) {
-  let i = 0;
-  while (i < bounds.length && accountId >= bounds[i]) i++;
-  return i;
+// Must match the contracts' home_index exactly: the first 16 bytes of sha256(account_id), read
+// as a big-endian integer, modulo the number of trolls. WebCrypto, so it works in Node and browsers.
+export async function homeIndex(accountId, trollCount) {
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(accountId)));
+  let x = 0n;
+  for (let i = 0; i < 16; i++) x = (x << 8n) | BigInt(h[i]);
+  return Number(x % BigInt(trollCount));
 }
 
 const TGAS = 10n ** 12n;
 
 export class TrollClient {
   // rpcUrl: NEAR JSON-RPC endpoint; root: the root contract account.
-  constructor(rpcUrl, root) { this.rpcUrl = rpcUrl; this.root = root; this.trolls = null; this.bounds = null; }
+  constructor(rpcUrl, root) { this.rpcUrl = rpcUrl; this.root = root; this.trolls = null; }
 
   async rpc(method, params) {
     const res = await fetch(this.rpcUrl, {
@@ -34,13 +35,13 @@ export class TrollClient {
     return JSON.parse(new TextDecoder().decode(new Uint8Array(r.result)));
   }
 
-  // Troll list and range bounds from the root (immutable after init, so cached).
+  // Troll list from the root, in home_index order (immutable after init, so cached).
   async load() {
-    if (!this.trolls) [this.trolls, this.bounds] = await Promise.all([this.view(this.root, 'trolls'), this.view(this.root, 'bounds')]);
+    if (!this.trolls) this.trolls = await this.view(this.root, 'trolls');
     return this;
   }
 
-  async homeTroll(accountId) { await this.load(); return this.trolls[homeIndex(accountId, this.bounds)]; }
+  async homeTroll(accountId) { await this.load(); return this.trolls[await homeIndex(accountId, this.trolls.length)]; }
 
   async balanceOf(accountId) { return BigInt(await this.view(await this.homeTroll(accountId), 'ft_balance_of', { account_id: accountId })); }
 

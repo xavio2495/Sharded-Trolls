@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { homeIndex, TrollClient } from '../index.js';
-import { place, bounds, shardOf } from '../../layout/index.js';
 
 const MAINNET = {
   boundary_accounts: ['650', 'aurora', 'aurora-0', 'earn.kaiching', 'game.hot.tg', 'game.hot.tg-0',
@@ -23,25 +22,22 @@ function randomIds(count, seed = 42) {
   ][i % 3]());
 }
 
-test('homeIndex: same cases as the contract unit test', () => {
-  const b = ['650', 'earn.kaiching', 'wallet.ka'];
-  assert.equal(homeIndex('0.shardedtrolls.near', b), 0);
-  assert.equal(homeIndex('650', b), 1);
-  assert.equal(homeIndex('alice.near', b), 1);
-  assert.equal(homeIndex('h.shardedtrolls.near', b), 2);
-  assert.equal(homeIndex('wallet.ka', b), 3);
-  assert.equal(homeIndex('zz.near', b), 3);
-  assert.equal(homeIndex('anyone.near', []), 0);
+// The same vectors are checked by the Rust unit test of home_index; expected values were computed
+// independently (Python hashlib), so the contracts and this client agree byte for byte.
+const VECTORS = JSON.parse(readFileSync(new URL('../../../contracts/types/home_vectors.json', import.meta.url)));
+
+test('homeIndex: shared test vectors (same as the contracts)', async () => {
+  assert.ok(VECTORS.cases.length >= 20);
+  for (const { account_id, home } of VECTORS.cases) assert.equal(await homeIndex(account_id, VECTORS.troll_count), home, account_id);
 });
 
-test('homeIndex: the home troll sits on the holder\'s own shard (reachable shards)', () => {
-  const trolls = place('shardedtrolls.near', MAINNET);
-  const b = bounds(trolls, MAINNET);
-  for (const id of randomIds(600)) {
-    const shard = shardOf(id, MAINNET);
-    if (shard === 1 || shard === 6) continue;
-    assert.equal(trolls[homeIndex(id, b)].shard, shard, id);
-  }
+test('homeIndex: spreads named, implicit and 0x ids evenly over 8 trolls', async () => {
+  const counts = new Array(8).fill(0);
+  // Distinct ids (the seeded generator above repeats ids, which would skew counts).
+  const ids = Array.from({ length: 800 }, (_, i) => [`holder${i}.near`, i.toString(16).padStart(64, '0'), `0x${i.toString(16).padStart(40, '0')}`]).flat();
+  for (const id of ids) counts[await homeIndex(id, 8)]++;
+  for (const c of counts) assert.ok(c > 220 && c < 380, counts.join(','));
+  assert.equal(await homeIndex('anyone.near', 1), 0);
 });
 
 // Live check against the deployed contract: catches any change to the on-chain mapping.

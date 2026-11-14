@@ -22,28 +22,23 @@ function* candidates() {
   yield* PREFERRED;
   for (const a of CHARS) yield a;
   for (const a of CHARS) for (const b of CHARS) yield a + b;
+  for (const a of CHARS) for (const b of CHARS) for (const c of CHARS) yield a + b + c;
 }
 
 // One `<prefix>.<parent>` per reachable shard, sorted by account id. A shard is reachable when
-// some prefix of up to two characters lands on it; shards that admit only one app's own ids
-// (e.g. [aurora, aurora-0)) never match. `taken` lists account ids that already exist.
-export function place(parent, layout, { taken = [] } = {}) {
+// some short prefix lands on it; shards that admit only one app's own ids (e.g. [aurora,
+// aurora-0)) never match. `taken` lists account ids that already exist. `accept(account, shard)`
+// can add a condition, e.g. that the account's home troll is the troll on that shard.
+export function place(parent, layout, { taken = [], accept = () => true } = {}) {
   const used = new Set(taken);
   const byShard = new Map();
   for (const prefix of candidates()) {
     const account = `${prefix}.${parent}`;
     if (used.has(account)) continue;
     const shard = shardOf(account, layout);
-    if (!byShard.has(shard)) byShard.set(shard, { prefix, account, shard });
+    if (!byShard.has(shard) && accept(account, shard)) byShard.set(shard, { prefix, account, shard });
   }
   return [...byShard.values()].sort((x, y) => (x.account < y.account ? -1 : 1));
-}
-
-// Range bounds for the contracts' init args: troll i (in `place` order) holds ids in
-// [bounds[i-1], bounds[i]). Each bound is the layout boundary where that troll's shard starts, so a
-// troll's range covers its shard plus any unreachable shard just below it.
-export function bounds(trolls, { boundary_accounts, shard_ids }) {
-  return trolls.slice(1).map((t) => boundary_accounts[shard_ids.indexOf(t.shard) - 1]);
 }
 
 export async function rpc(url, method, params) {

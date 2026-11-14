@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Load demo on localnet. Same load against the eight trolls or the single control token.
-//   setup: stampede and probe accounts (one homed on each troll's shard), receivers registered with
+//   setup: stampede and probe accounts (one per troll, on that troll's shard and with that troll as
+//          home), receivers registered with
 //          storage_deposit, control token deployed, tokens claimed (trolls) or sent (control).
 //          Run right after deploy.mjs, while the launch window is open. Without a deployment,
 //          setup and run cover the control token only.
@@ -22,6 +23,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fetchLayout, place } from '../packages/layout/index.js';
+import { homeIndex } from '../packages/client/index.js';
 import { Near, Account, KeyPair, action, NEAR, TGAS } from './lib/near.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -43,6 +45,18 @@ const parent = deploy.root;
 const sandbox = new Account(near, parent, KeyPair.fromString(JSON.parse(readFileSync(resolve(ROOT, 'target/localnet/validator_key.json'))).secret_key));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const trollOnShard = (shard) => deploy.trolls.find((t) => t.shard === shard).account;
+// Same formula as the contracts' home_index (sync, for steering name choice); every chosen
+// account is then re-checked with the client's homeIndex.
+const homeSync = (id) => Number(BigInt('0x' + createHash('sha256').update(id).digest('hex').slice(0, 32)) % BigInt(deploy.trolls.length));
+const homedOnShard = (account, shard) => {
+  const i = deploy.trolls.findIndex((t) => t.shard === shard);
+  return i >= 0 && homeSync(account) === i;
+};
+const checkHome = async (h) => {
+  const t = deploy.trolls[await homeIndex(h.account, deploy.trolls.length)].account;
+  if (t !== h.troll) throw new Error(`${h.account}: home ${t}, expected ${h.troll}`);
+  return h;
+};
 
 async function setup() {
   const layout = await fetchLayout(RPC);
@@ -58,14 +72,15 @@ async function setup() {
     await sandbox.send(t.account, acts);
     return { account: t.account, shard: t.shard, troll: trollOnShard(t.shard), secret: key.secretKeyString };
   };
-  // Fresh direct sub-accounts of the parent, one per troll shard, so each is home at a troll.
+  // Fresh direct sub-accounts of the parent, one per troll: on that troll's shard and homed there.
   const taken = deploy.trolls.map((t) => t.account);
-  const nextSet = () => { const set = place(parent, layout, { taken }); taken.push(...set.map((t) => t.account)); return set; };
+  const nextSet = () => { const set = place(parent, layout, { taken, accept: homedOnShard }); taken.push(...set.map((t) => t.account)); return set; };
   const stampedes = [], probes = [];
   for (const t of nextSet()) stampedes.push(await mk(t, true));
   for (const t of nextSet()) probes.push(await mk(t, false));
   const receivers = Array.from({ length: Number(values.receivers) }, nextSet).flat()
     .map((t) => ({ account: t.account, shard: t.shard, troll: trollOnShard(t.shard) }));
+  for (const h of [...stampedes, ...probes, ...receivers]) await checkHome(h);
 
   // Control token, one NEP-141 on one shard.
   const control = place(parent, layout, { taken }).find((t) => t.shard === deploy.trolls[0].shard).account;

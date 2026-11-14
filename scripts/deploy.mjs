@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { fetchLayout, place, bounds } from '../packages/layout/index.js';
+import { fetchLayout, place } from '../packages/layout/index.js';
 import { DEFAULT_PARAMS } from '../sim/model.js';
 import { Near, Account, KeyPair, action, NEAR, TGAS } from './lib/near.mjs';
 
@@ -49,7 +49,6 @@ const totalSupply = tokens(P.total_supply), launchSupply = tokens(P.launch_suppl
 const layout = await fetchLayout(RPC[net]);
 const trolls = place(parent, layout);
 if (trolls.length !== P.troll_count) throw new Error(`only ${trolls.length} reachable shards`);
-const rangeBounds = bounds(trolls, layout);
 for (const t of trolls) if (await near.accountExists(t.account)) throw new Error(`${t.account} already exists`);
 const trollIds = trolls.map((t) => t.account);
 const startMs = values['start-ms'] ? Number(values['start-ms']) : Date.now();
@@ -64,7 +63,7 @@ await signer.send(signerId, [action.deployGlobalContract(trollCode)]);
 
 console.log(`root ${parent}`);
 const metadata = { spec: 'ft-1.0.0', name: 'Sharded Trolls', symbol: values.symbol, icon: null, reference: null, reference_hash: null, decimals: 24 };
-const rootActions = [action.deployContract(rootCode), action.functionCall('new', { params, trolls: trollIds, bounds: rangeBounds, start_ms: startMs, total_supply: totalSupply, metadata }, 100n * TGAS)];
+const rootActions = [action.deployContract(rootCode), action.functionCall('new', { params, trolls: trollIds, start_ms: startMs, total_supply: totalSupply, metadata }, 100n * TGAS)];
 if (parent !== signerId) rootActions.unshift(action.createAccount(), action.transfer(10n * NEAR));
 await signer.send(parent, rootActions);
 
@@ -73,7 +72,7 @@ await new Promise((r) => setTimeout(r, 2000));
 for (const t of trolls) {
   await signer.send(t.account, [
     action.createAccount(), action.transfer(BigInt(values['troll-near']) * NEAR), action.useGlobalContractByHash(codeHash),
-    action.functionCall('new', { root: parent, trolls: trollIds, bounds: rangeBounds, params, start_ms: startMs, total_supply: totalSupply, launch_supply: launchSupply }, 100n * TGAS),
+    action.functionCall('new', { root: parent, trolls: trollIds, params, start_ms: startMs, total_supply: totalSupply, launch_supply: launchSupply }, 100n * TGAS),
   ]);
   console.log(`  ${t.account.padEnd(28)} shard ${t.shard}`);
 }
@@ -93,7 +92,7 @@ if (values.wrapper) {
 
 const out = {
   wrapper,
-  network: net, rpc: RPC[net], root: parent, trolls, bounds: rangeBounds, params, start_ms: startMs,
+  network: net, rpc: RPC[net], root: parent, trolls, params, start_ms: startMs,
   total_supply: totalSupply, launch_supply: launchSupply, troll_code_hash: codeHash.toString('hex'),
   root_code_hash: createHash('sha256').update(rootCode).digest('hex'),
   protocol: layout.protocol, deployed_at: new Date().toISOString(),
