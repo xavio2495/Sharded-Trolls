@@ -202,15 +202,19 @@ export default function Deck() {
           )}
         </div>
         {s.visual && (
-          <div className="slab overflow-x-auto p-5">
-            <div className="min-w-[560px]">{s.visual}</div>
+          <div className="slab p-5">
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px]">{s.visual}</div>
+            </div>
+            <p className="tag mt-3 text-ink-1 sm:hidden">scroll →</p>
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between border-t-[3px] border-ink-0 px-6 py-4 md:px-10">
+      <div className="flex items-center justify-between gap-4 border-t-[3px] border-ink-0 px-6 py-4 md:px-10">
         <span className="font-display text-lg whitespace-nowrap text-ink-0 sm:text-xl">Sharded Trolls</span>
         <span className="tag text-ink-1">
-          {i + 1} / {SLIDES.length} · ← → or tap
+          {i + 1} / {SLIDES.length}
+          <span className="hidden sm:inline"> · ← → or tap</span>
         </span>
       </div>
     </div>
