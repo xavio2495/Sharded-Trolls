@@ -77,3 +77,10 @@ section { background: var(--surface); border: 1px solid var(--border); border-ra
 .ccard .note { font-size: 13px; color: var(--ink2); min-height: 18px; margin: 2px 0 8px; }
 #cmp-ceiling { font-size: 13px; color: var(--ink2); margin: 0 0 14px; }
 .chart .lswatch.s1 { fill: var(--c1); } .chart .lswatch.s2 { fill: var(--c2); } .chart .lswatch.s3 { fill: var(--c3); }
+table.tn { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+table.tn th { text-align: left; color: var(--ink2); font-weight: 400; border-bottom: 1px solid var(--border); padding: 4px 6px 4px 0; }
+table.tn td { border-bottom: 1px solid var(--border); padding: 5px 6px 5px 0; vertical-align: top; font-variant-numeric: tabular-nums; }
+.pass { color: var(--good); font-size: 13px; font-weight: 600; } .fail { color: var(--critical); font-size: 13px; font-weight: 600; }
+#tn-body a { color: inherit; }
+.pass, .fail { white-space: nowrap; }
+#tn-body dd code { word-break: break-all; }

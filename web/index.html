@@ -13,6 +13,7 @@
     <nav class="modes" role="tablist">
       <button role="tab" data-mode="replay" aria-selected="true">Replay a measured run</button>
       <button role="tab" data-mode="compare" aria-selected="false">Compare</button>
+      <button role="tab" data-mode="testnet" aria-selected="false">Testnet checks</button>
       <button role="tab" data-mode="live" aria-selected="false">Live</button>
     </nav>
     <div id="replay-controls" class="controls">
@@ -25,6 +26,7 @@
       <label>RPC <input id="rpc" value="http://127.0.0.1:3040" size="28"></label>
       <label>Root <input id="root" value="sandbox" size="16"></label>
       <button>Connect</button>
+      <button type="button" id="use-testnet">Use the testnet deployment</button>
       <span id="live-status" class="muted"></span>
     </form>
     <p class="honest" id="honest"></p>
@@ -42,6 +44,11 @@
     <h3>Highest shard congestion over time</h3>
     <div id="cmp-chart" class="chart"></div>
     <p class="muted" id="cmp-foot"></p>
+  </section>
+
+  <section id="testnet" class="compare" hidden>
+    <h2>Checks on NEAR testnet</h2>
+    <div id="tn-body"><p class="muted">Loading…</p></div>
   </section>
 
   <main>

@@ -5,9 +5,12 @@
 
 const DIR = '../measurements/localnet-2026-11-14/';
 const SETS = {
-  2000: { control: 'control-run4', same: 'trolls-run4', mixed: 'trolls-mixed-run3' },
-  1000: { control: 'control-run5', same: null, mixed: 'trolls-mixed-1000' },
+  2000: { control: 'control-run4', same: 'trolls-hash-same-2000', mixed: 'trolls-mixed-hash-2000' },
+  1000: { control: 'control-run5', same: null, mixed: 'trolls-mixed-hash-1000' },
 };
+// Every mixed run at the same offered load, current and earlier builds: shown as a range, since
+// past saturation the share of transactions the node silently drops varies from run to run.
+const MIXED_RUNS = { 2000: ['trolls-mixed-hash-2000', 'trolls-mixed-run3', 'trolls-mixed-run2'] };
 const COLS = [
   { key: 'control', title: 'Control token', sub: 'one NEP-141 contract on one shard', cls: 's1' },
   { key: 'same', title: 'Eight trolls, same-troll traffic', sub: 'holders pay others on their own troll', cls: 's2' },
@@ -74,9 +77,14 @@ export async function renderCompare(root, rate) {
   root.querySelector('#cmp-title').textContent = `Same offered load: ${offered} transfers/s`;
   root.querySelector('#cmp-chart').innerHTML = await timeline(set, summary);
   const step = summary['trolls-step6000'];
-  root.querySelector('#cmp-ceiling').textContent = step && control
-    ? `Ceiling run (build ${(step.troll_wasm_sha256 ?? '').slice(0, 8)}, same transfer path): offered 6,000 transfers/s of same-troll traffic, the eight trolls executed ${step.executed_per_s.toLocaleString()}/s (${Math.round(step.inclusion * 100)}% of transactions included, peak congestion ${step.peak_congestion.toFixed(2)}, none rejected), about ${(step.executed_per_s / control.executed_per_s).toFixed(1)}× this control. Mixed traffic is at its ceiling at 2,000/s.`
+  const mixed = (MIXED_RUNS[rate] ?? []).map((id) => summary[id]).filter(Boolean);
+  const lo = Math.min(...mixed.map((r) => r.executed_per_s)), hi = Math.max(...mixed.map((r) => r.executed_per_s));
+  const spread = mixed.length > 1 && control
+    ? `Mixed traffic over ${mixed.length} runs at this load: ${lo.toLocaleString()}–${hi.toLocaleString()} transfers/s executed (${(lo / control.executed_per_s).toFixed(1)}–${(hi / control.executed_per_s).toFixed(1)}× the control), ${Math.round(Math.min(...mixed.map((r) => r.inclusion)) * 100)}–${Math.round(Math.max(...mixed.map((r) => r.inclusion)) * 100)}% of transactions included. `
     : '';
+  root.querySelector('#cmp-ceiling').textContent = spread + (step && control
+    ? `Ceiling run (build ${(step.troll_wasm_sha256 ?? '').slice(0, 8)}, same transfer path): offered 6,000 transfers/s of same-troll traffic, the eight trolls executed ${step.executed_per_s.toLocaleString()}/s (${Math.round(step.inclusion * 100)}% of transactions included, peak congestion ${step.peak_congestion.toFixed(2)}, none rejected), about ${(step.executed_per_s / control.executed_per_s).toFixed(1)}× this control. Mixed traffic is at its ceiling at 2,000/s.`
+    : '');
   const hashes = [...new Set(COLS.map((c) => set[c.key] && summary[set[c.key]]?.troll_wasm_sha256).filter(Boolean))];
   root.querySelector('#cmp-foot').textContent = `Executed = transfers carried out, divided by the time until the busiest shard drained. Included = transactions the network actually put on chain (the rest were accepted by the RPC and silently dropped). Runs: ${Object.values(set).filter(Boolean).join(', ')}. Troll code sha256: ${hashes.map((h) => h.slice(0, 12) + '…').join(', ') || 'n/a'}.`;
 }

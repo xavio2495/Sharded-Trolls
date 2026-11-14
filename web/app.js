@@ -3,11 +3,17 @@
 import { TrollClient, shardSample } from '../packages/client/index.js';
 import { shardOf, place } from '../packages/layout/index.js';
 import { renderCompare } from './compare.js';
+import { renderTestnet } from './testnet.js';
 
 const RUNS = [
-  { id: 'control-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s (final build)' },
-  { id: 'trolls-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, same-troll · 2,000 transfers/s for 90 s (final build)' },
-  { id: 'trolls-mixed-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 2,000 transfers/s for 90 s (final build)' },
+  { id: 'control-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s' },
+  { id: 'trolls-hash-same-2000', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, same-troll · 2,000 transfers/s for 90 s (current build)' },
+  { id: 'trolls-mixed-hash-2000', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 2,000 transfers/s for 90 s (current build)' },
+  { id: 'control-run5', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 1,000 transfers/s for 60 s' },
+  { id: 'trolls-mixed-hash-1000', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 1,000 transfers/s for 60 s (current build)' },
+  { id: 'trolls-run4', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, same-troll · 2,000 transfers/s for 90 s (earlier build, range homes)' },
+  { id: 'trolls-mixed-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 2,000 transfers/s for 90 s (earlier build, range homes, run 3)' },
+  { id: 'trolls-mixed-run2', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls, mixed · 2,000 transfers/s for 90 s (earlier build, range homes, run 2)' },
   { id: 'trolls-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 2,000 transfers/s for 90 s' },
   { id: 'control-run3', dir: '../measurements/localnet-2026-11-14/', label: 'Control token · 2,000 transfers/s for 90 s' },
   { id: 'trolls-run2', dir: '../measurements/localnet-2026-11-14/', label: 'Eight trolls · 1,000 transfers/s for 60 s' },
@@ -52,7 +58,9 @@ function renderShards(frame) {
     s += `<rect class="full" x="${cx + bw / 2 + 3}" y="${base - fh}" width="5" height="${fh}"><title>shard ${id}: chunk ${(sh.fullness * 100).toFixed(1)}% full</title></rect>`;
     if (sh.congestion > 0.005) s += `<text class="ink" x="${cx}" y="${base - h - 6}" text-anchor="middle">${sh.congestion.toFixed(2)}</text>`;
     s += `<text class="ink2" x="${cx}" y="${base + 18}" text-anchor="middle">shard ${id}</text>`;
-    s += `<text x="${cx}" y="${base + 34}" text-anchor="middle">${esc(role.length > 18 ? role.slice(0, 17) + '…' : role)}</text>`;
+    // Short label under each column (full name on hover): "troll h" for a troll account.
+    const short = unreachable ? `${role.split(/[. ]/)[0]} only` : role.includes('.') ? `troll ${role.split('.')[0]}` : role;
+    s += `<text x="${cx}" y="${base + 34}" text-anchor="middle"><title>${esc(role)}</title>${esc(short.length > 13 ? short.slice(0, 12) + '…' : short)}</text>`;
     if (rejecting) s += `<text class="ink" x="${cx}" y="${base + 52}" text-anchor="middle" font-weight="600">✕ rejecting</text>`;
   });
   s += `<line class="axis" x1="${x0}" x2="${W}" y1="${base}" y2="${base}"/>`;
@@ -128,7 +136,7 @@ async function loadRun(run) {
   $('scrub').max = S.blocks.length - 1;
   $('play').textContent = 'Pause';
   const kinds = [...new Set(S.rejections.map((r) => r.kind))];
-  $('honest').textContent = `Synthetic load on a local NEAR network running mainnet's 10-shard layout (measured ${m.started_at.slice(0, 10)}). `
+  $('honest').textContent = `Localnet: synthetic load, single node, running mainnet's 10-shard layout (measured ${m.started_at.slice(0, 10)}). Not mainnet or testnet numbers. `
     + (l.target === 'control' ? 'Control = one NEP-141 contract on one shard. ' : 'Eight trolls, one per reachable shard. ')
     + `"Rejected" counts direct ft_transfer probes the network refused${kinds.length ? ` (${kinds.join(', ')})` : ''}. `
     + 'Same-shard transfers are not faster; the gain is throughput and no congestion rejections.';
@@ -151,7 +159,9 @@ function tick(ts) {
 // ---------- live ----------
 async function connectLive(rpc, root) {
   if (S.live) S.live.stop = true;
-  const live = { stop: false, client: new TrollClient(rpc, root), seen: {} };
+  // Public RPCs are polled gently; a local node can be polled twice a second.
+  const local = /^https?:\/\/(127\.0\.0\.1|localhost)/.test(rpc);
+  const live = { stop: false, client: new TrollClient(rpc, root), seen: {}, pollMs: local ? 500 : 1500, feedMs: local ? 3000 : 10000 };
   S.live = live;
   $('live-status').textContent = 'connecting…';
   const cfg = await live.client.rpc('EXPERIMENTAL_protocol_config', { finality: 'final' });
@@ -170,7 +180,8 @@ async function connectLive(rpc, root) {
     $('feeding-note').textContent = `No Sharded Trolls root at ${root}: showing shard load only.`;
   }
   S.roles = rolesFor(S.layout, marks);
-  $('honest').textContent = `Live data from ${rpc}. Same-shard transfers are not faster; the gain is throughput and no congestion rejections.`;
+  const where = local ? 'a local node' : /testnet/.test(rpc) ? 'NEAR testnet (real chain traffic, no synthetic load)' : rpc;
+  $('honest').textContent = `Live data from ${where}, read-only. Same-shard transfers are not faster; the gain is throughput and no congestion rejections.`;
   $('live-status').textContent = `connected, protocol ${cfg.protocol_version}`;
   pollBlocks(live, cc);
   if (live.params) pollFeeding(live);
@@ -189,7 +200,7 @@ async function pollBlocks(live, cc) {
         if (S.mode === 'live') render();
       }
     } catch (e) { $('live-status').textContent = `error: ${e.message.slice(0, 80)}`; }
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, live.pollMs));
   }
 }
 
@@ -222,7 +233,7 @@ async function pollFeeding(live) {
         seen[k] = ti;
       });
     } catch (e) { $('feeding-note').textContent = `read error: ${e.message.slice(0, 80)}`; }
-    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, live.feedMs));
   }
 }
 
@@ -243,21 +254,28 @@ document.querySelectorAll('.modes button').forEach((b) => (b.onclick = () => {
   $('replay-controls').hidden = S.mode !== 'replay';
   $('live-controls').hidden = S.mode !== 'live';
   $('compare').hidden = S.mode !== 'compare';
-  document.querySelector('main').hidden = S.mode === 'compare';
+  $('testnet').hidden = S.mode !== 'testnet';
+  document.querySelector('main').hidden = S.mode === 'compare' || S.mode === 'testnet';
   if (S.mode !== 'live' && S.live) S.live.stop = true;
   if (S.mode === 'replay') loadRun(RUNS.find((r) => r.id === $('run').value));
   else if (S.mode === 'compare') showCompare();
+  else if (S.mode === 'testnet') showTestnet();
   else { S.blocks = []; render(); }
 }));
 
 let rate = 2000;
 function showCompare() {
-  $('honest').textContent = 'Single-node localnet with mainnet\'s shard layout, synthetic load (measured 2026-11-14). Control = one NEP-141 contract on one shard. '
+  $('honest').textContent = 'Localnet: synthetic load, single node, running mainnet\'s shard layout (measured 2026-11-14). Not mainnet or testnet numbers. Control = one NEP-141 contract on one shard. '
     + 'Same-shard transfers are not faster; the gain is throughput and no congestion rejections.';
   document.querySelectorAll('.rate').forEach((x) => x.setAttribute('aria-pressed', String(Number(x.dataset.rate) === rate)));
   renderCompare($('compare'), rate);
 }
 document.querySelectorAll('.rate').forEach((b) => (b.onclick = () => { rate = Number(b.dataset.rate); showCompare(); }));
+function showTestnet() {
+  $('honest').textContent = 'Real NEAR testnet transactions (a few, not a load test). Throughput numbers on this page come from the localnet, not from testnet.';
+  renderTestnet($('testnet'));
+}
+$('use-testnet').onclick = () => { $('rpc').value = 'https://rpc.testnet.fastnear.com'; $('root').value = 'st.xavio.testnet'; $('live-controls').requestSubmit(); };
 
 const params = new URLSearchParams(location.search);
 if (params.get('mode') === 'live') {
@@ -265,6 +283,8 @@ if (params.get('mode') === 'live') {
   if (params.has('rpc')) $('rpc').value = params.get('rpc');
   if (params.has('root')) $('root').value = params.get('root');
   await connectLive($('rpc').value.trim(), $('root').value.trim());
+} else if (params.get('mode') === 'testnet') {
+  document.querySelector('.modes button[data-mode="testnet"]').click();
 } else if (params.get('mode') === 'compare') {
   if (params.has('rate')) rate = Number(params.get('rate'));
   document.querySelector('.modes button[data-mode="compare"]').click();
