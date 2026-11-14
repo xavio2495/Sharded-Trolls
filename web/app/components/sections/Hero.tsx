@@ -4,7 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { gsap, SplitText, useGSAP } from "@/app/lib/gsap";
-import { whenReady } from "@/app/components/shell/ready";
+import { isReady, whenReady } from "@/app/components/shell/ready";
 
 const LIFT = 0.1;
 
@@ -16,12 +16,18 @@ export default function Hero() {
       const q = gsap.utils.selector(root.current);
       const title = q("[data-title]")[0] as HTMLElement;
       const split = SplitText.create(title, { type: "chars,words", charsClass: "inline-block" });
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      // The entrance is built paused at mount, so its start state is already in place under the preloader;
+      // it plays once, as the preloader opens. Coming back to an already-shown page skips straight to the end.
+      const intro = gsap
+        .timeline({ paused: true })
+        .from(split.chars, { yPercent: 120, rotate: () => gsap.utils.random(-14, 14), duration: 1, stagger: 0.03 }, 0)
+        .from(q("[data-frame]"), { x: 80, rotate: 6, opacity: 0, duration: 1.2 }, 0.2)
+        .from(q("[data-claim], [data-cta]"), { y: 30, opacity: 0, duration: 0.9, stagger: 0.1 }, 0.5)
+        .from(q("[data-sticker]"), { scale: 0, rotate: -40, duration: 0.9, ease: "back.out(1.8)" }, 0.7);
+      if (isReady()) intro.progress(1);
       return whenReady(() => {
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        gsap.from(split.chars, { yPercent: 120, rotate: () => gsap.utils.random(-14, 14), duration: 1, stagger: 0.03 });
-        gsap.from(q("[data-frame]"), { x: 80, rotate: 6, opacity: 0, duration: 1.2, delay: 0.2 });
-        gsap.from(q("[data-sticker]"), { scale: 0, rotate: -40, duration: 0.9, delay: 0.7, ease: "back.out(1.8)" });
-        gsap.from(q("[data-claim], [data-cta]"), { y: 30, opacity: 0, duration: 0.9, stagger: 0.1, delay: 0.5 });
+        if (intro.progress() < 1) intro.play();
         // scroll: the title drifts left, the painting right, the sticker spins
         const st = { trigger: root.current, start: "top top", end: "bottom top", scrub: true };
         gsap.to(title, { xPercent: -8, ease: "none", scrollTrigger: st });

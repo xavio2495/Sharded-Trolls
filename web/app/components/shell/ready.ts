@@ -24,3 +24,8 @@ export function whenReady(cb: () => void) {
   waiting.add(cb);
   return () => waiting.delete(cb);
 }
+
+/** True once the page has been handed over (e.g. when coming back to an already-shown page). */
+export function isReady() {
+  return ready;
+}

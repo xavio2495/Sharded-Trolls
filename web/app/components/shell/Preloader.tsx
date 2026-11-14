@@ -90,7 +90,11 @@ export default function Preloader() {
 
       let filling = false;
       let progress = 0;
-      const fill = () => filling && gsap.to(lit, { v: progress, duration: 0.5, ease: "power2.out", overwrite: true, onUpdate: render });
+      const floor = { v: 0 };
+      const fill = () => filling && gsap.to(lit, { v: Math.max(progress, floor.v), duration: 0.5, ease: "power2.out", overwrite: true, onUpdate: render });
+      // the real progress moves in a few big steps (fonts, the hero image); a floor easing toward 85% keeps the
+      // count moving steadily, and real progress takes over whenever it is ahead
+      gsap.to(floor, { v: 0.85, duration: 1.6, ease: "power1.out", onUpdate: () => fill() });
       const stopProgress = onProgress((p) => {
         progress = p;
         fill();
@@ -122,6 +126,7 @@ export default function Preloader() {
         .to(q("[data-counter], [data-title]"), { autoAlpha: 0, y: -12, duration: 0.4, ease: "power2.in" }, "+=0.1")
         // the streams spread apart and fade as the sheet opens from the centre onto the page
         .to(q("[data-streams]"), { scaleX: 3.2, autoAlpha: 0, duration: 0.8, ease: "trollInOut" }, "<0.1")
+        .call(() => signalReady(), [], "<0.2")
         .fromTo(
           root.current,
           { clipPath: "circle(150% at 50% 50%)" },
