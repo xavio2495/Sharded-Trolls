@@ -1,51 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ROOT, accountUrl, fmtDuration, fmtNear, fmtTokens, homeIndex } from "../lib/near";
+import { ROOT, accountUrl, fmtDuration, homeIndex } from "../lib/near";
+import { useMe } from "../lib/useMe";
 import { useNetwork, useNow } from "../lib/useNetwork";
 import { useWallet } from "../lib/wallet";
 import { EventFeed } from "./EventFeed";
-import { Keeper } from "./Keeper";
-import { TrollCard } from "./TrollCard";
-import { YourTroll } from "./YourTroll";
+import { GuidedAction, TrollStrip } from "./GuidedAction";
+import { KeeperCall, SendToFriend } from "./Secondary";
 
-function Panel({ title, kicker, children }: { title: string; kicker?: string; children: React.ReactNode }) {
+/** Testnet with shortened demo parameters, said plainly. */
+function NetworkLine({
+  epochMinutes,
+  feedTarget,
+  left,
+  round,
+  streak,
+}: {
+  epochMinutes?: number;
+  feedTarget?: number;
+  left?: number | null;
+  round?: number;
+  streak?: number;
+}) {
   return (
-    <section className="rounded-[var(--radius-card)] border-2 border-ink-line bg-surface-1 p-5 shadow-[4px_4px_0_0_var(--ink-line)] md:p-6">
-      {kicker && <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-deep">{kicker}</p>}
-      <h2 className="font-display text-3xl text-ink-0 md:text-4xl">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-/** Makes clear this is a testnet deployment with shortened demo parameters, not mainnet. */
-function NetworkBadge({ epochMinutes, feedTarget }: { epochMinutes?: number; feedTarget?: number }) {
-  const demo = epochMinutes !== undefined ? ` · ${epochMinutes >= 60 ? `${epochMinutes / 60} h` : `${epochMinutes} min`} epochs, ${feedTarget} feeder${feedTarget === 1 ? "" : "s"} per troll` : "";
-  return (
-    <p className="flex flex-wrap items-center gap-2 text-sm text-ink-1">
-      <span className="rounded-[var(--radius-ui)] border-2 border-teal-deep px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-teal-deep">
-        testnet · demo parameters
-      </span>
-      <span>
-        <a className="underline" href={accountUrl(ROOT)} target="_blank" rel="noreferrer">
-          {ROOT}
-        </a>
-        {demo}
-      </span>
+    <p className="tag flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-1">
+      <span className="border-2 border-ink-0 bg-ink-0 px-2 py-0.5 text-paper">testnet · demo parameters</span>
+      <a className="-my-[13px] inline-block py-[13px] underline" href={accountUrl(ROOT)} target="_blank" rel="noreferrer">
+        {ROOT}
+      </a>
+      {epochMinutes !== undefined && (
+        <span>
+          {epochMinutes}-min rounds · {feedTarget} feeder{feedTarget === 1 ? "" : "s"} per troll
+        </span>
+      )}
+      {round !== undefined && (
+        <span>
+          round {round}
+          {left !== undefined && left !== null ? ` ends in ${fmtDuration(left)}` : ""} · streak {streak}
+        </span>
+      )}
     </p>
-  );
-}
-
-function Figure({ label, value, coin }: { label: string; value: string; coin?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-1">{label}</dt>
-      <dd className="mt-1 flex items-center gap-2 font-display text-xl text-ink-0 [overflow-wrap:anywhere] sm:text-2xl md:text-3xl">
-        {coin && <span aria-hidden className="inline-block size-4 shrink-0 rounded-full border-2 border-ink-line bg-gold" />}
-        {value}
-      </dd>
-    </div>
   );
 }
 
@@ -53,7 +48,10 @@ export function Dashboard() {
   const { stat, live, error } = useNetwork();
   const wallet = useWallet();
   const now = useNow();
+  const { me, optimistic } = useMe(wallet.accountId, stat, live);
   const [home, setHome] = useState<{ account: string; index: number } | null>(null);
+  const [activity, setActivity] = useState(false);
+
   useEffect(() => {
     const account = wallet.accountId;
     if (!stat || !account) return;
@@ -63,83 +61,42 @@ export function Dashboard() {
 
   if (!stat) {
     return (
-      <div className="space-y-8" aria-busy="true">
-        <section className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5 shadow-[5px_5px_0_0_var(--ink-line)] md:p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h1 className="font-display text-5xl leading-none text-ink-0 md:text-6xl">The Feeding</h1>
-            <NetworkBadge />
-          </div>
-          <p className="mt-5 text-ink-1" role="status">
-            {error ? `Could not reach the trolls: ${error}` : `Waking the trolls on ${ROOT}…`}
+      <div className="space-y-6" aria-busy="true">
+        <NetworkLine />
+        <section className="border-[3px] border-ink-0 p-8">
+          <h1 className="font-display text-4xl text-ink-0 md:text-6xl">Waking the trolls…</h1>
+          <p className="mt-3 text-ink-1" role="status">
+            {error ? `Could not reach the trolls: ${error}` : `Reading ${ROOT} on NEAR testnet.`}
           </p>
         </section>
-        <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 8 }, (_, i) => (
-            <TrollCard key={i} index={i} feedTarget={0} symbol="STRL" />
-          ))}
-        </ul>
       </div>
     );
   }
 
-  const { params, metadata, trolls, shards, startMs } = stat;
+  const { params, startMs } = stat;
   const root = live?.root;
-  const nextEpochAt = startMs !== null && root ? startMs + (root.current_epoch + 1) * params.epoch_ms : null;
-  const fedAll = live ? live.trolls.every((t) => t.senders_this_epoch >= params.feed_target) : false;
+  const left = startMs !== null && root && now !== null ? startMs + (root.current_epoch + 1) * params.epoch_ms - now : null;
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5 shadow-[5px_5px_0_0_var(--ink-line)] md:p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="font-display text-5xl leading-none text-ink-0 md:text-6xl">The Feeding</h1>
-          <NetworkBadge epochMinutes={params.epoch_ms / 60_000} feedTarget={params.feed_target} />
-        </div>
-        <dl className="mt-5 grid grid-cols-2 gap-5 md:grid-cols-4">
-          <Figure
-            label={root ? `Epoch ${root.current_epoch} ends in` : "Epoch"}
-            value={nextEpochAt !== null && now !== null ? fmtDuration(nextEpochAt - now) : "—"}
-          />
-          <Figure label="Streak (best)" value={root ? `${root.streak} (${root.best_streak})` : "—"} />
-          <Figure label="Bounty budget" value={root?.bounty_budget !== undefined ? fmtNear(root.bounty_budget) : "—"} coin />
-          <Figure label={`Total supply (${metadata.symbol})`} value={root ? fmtTokens(root.total_supply, metadata.decimals) : "—"} />
-        </dl>
-        <p className="mt-4 text-ink-1">
-          {live
-            ? fedAll
-              ? "Every troll has enough feeders this epoch. Keep it up and the streak grows."
-              : `Each troll needs ${params.feed_target} feeder${params.feed_target === 1 ? "" : "s"} this epoch, or it starves and burns ${params.starve_burn_bps / 100}% of its hoard.`
-            : "Counting feeders…"}
-          {error && <span className="ml-2 text-starve">(last refresh failed; retrying)</span>}
+    <div className="space-y-6">
+      <NetworkLine epochMinutes={params.epoch_ms / 60_000} feedTarget={params.feed_target} left={left} round={root?.current_epoch} streak={root?.streak} />
+      <GuidedAction wallet={wallet} stat={stat} live={live} me={me} optimistic={optimistic} now={now} />
+      <KeeperCall wallet={wallet} stat={stat} live={live} />
+      <TrollStrip stat={stat} live={live} mine={mine} />
+      <SendToFriend wallet={wallet} stat={stat} me={me} />
+      <section className="border-[3px] border-ink-0 bg-surface-1 p-5">
+        <h2 className="font-display text-2xl text-ink-0">Buy STRL?</h2>
+        <p className="mt-2 max-w-2xl text-ink-1">
+          No market yet: STRL is earned by claiming and feeding. Trading would go through a single-shard wrapper, which is built but not deployed.
         </p>
       </section>
-
-      <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {trolls.map((t, i) => (
-          <TrollCard
-            key={t}
-            index={i}
-            account={t}
-            shard={shards[i]}
-            info={live?.trolls[i]}
-            feedTarget={params.feed_target}
-            symbol={metadata.symbol}
-            mine={mine === i}
-          />
-        ))}
-      </ul>
-
-      <Panel kicker="Your troll" title="Feed your troll">
-        <YourTroll wallet={wallet} stat={stat} live={live} now={now} />
-      </Panel>
-
-      <div className="grid items-start gap-8 lg:grid-cols-2">
-        <Panel kicker="Keeper" title="Anyone can close the day">
-          <Keeper wallet={wallet} stat={stat} live={live} />
-        </Panel>
-        <Panel kicker="Live" title="What the trolls are doing">
-          <EventFeed trolls={trolls} decimals={metadata.decimals} />
-        </Panel>
-      </div>
+      <details className="group border-[3px] border-ink-0 bg-paper" onToggle={(e) => setActivity((e.target as HTMLDetailsElement).open)}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 font-semibold text-ink-0 hover:bg-surface-1">
+          What the trolls are doing <span aria-hidden className="group-open:hidden">+</span>
+          <span aria-hidden className="hidden group-open:inline">−</span>
+        </summary>
+        <div className="border-t-[3px] border-ink-0 p-4">{activity && <EventFeed trolls={stat.trolls} decimals={stat.metadata.decimals} />}</div>
+      </details>
     </div>
   );
 }

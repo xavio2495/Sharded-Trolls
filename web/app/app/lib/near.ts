@@ -2,7 +2,7 @@
 // troll (same hash as the contracts), shard layout, and the root's epoch start parsed from its state.
 
 export const NETWORK = "testnet" as const;
-export const ROOT = process.env.NEXT_PUBLIC_STRL_ROOT ?? "v2.strl.testnet";
+export const ROOT = process.env.NEXT_PUBLIC_STRL_ROOT || "play.strl.testnet";
 export const RPC = process.env.NEXT_PUBLIC_NEAR_RPC ?? "https://test.rpc.fastnear.com";
 export const TX_API = "https://tx.test.fastnear.com/v0";
 export const EXPLORER = "https://testnet.nearblocks.io";
@@ -210,3 +210,8 @@ export const accountUrl = (id: string) => `${EXPLORER}/address/${id}`;
 
 /** Troll keepers, by index (the contracts' home order). */
 export const TROLL_NAMES = ["Beanie", "Lantern", "Fisher", "Straw Hat", "Scholar", "Kettle", "Oar", "Mushroom"];
+
+/** `amount * bps / 10_000`, rounded down, as the contracts compute the toll. */
+export function bps_of(amount: bigint, bps: number): bigint {
+  return (amount * BigInt(bps)) / BigInt(10_000);
+}

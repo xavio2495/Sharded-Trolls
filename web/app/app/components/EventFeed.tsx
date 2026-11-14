@@ -96,7 +96,7 @@ export function EventFeed({ trolls, decimals }: { trolls: string[]; decimals: nu
           <span className="w-20 shrink-0 font-semibold text-ink-0 sm:w-24">{label(e.who, trolls)}</span>
           <span className="rounded-[var(--radius-ui)] bg-surface-2 px-2 py-0.5 font-mono text-xs text-ink-0">{e.event}</span>
           <span className="order-last basis-full truncate pl-16 text-ink-1 sm:order-none sm:basis-0 sm:flex-1 sm:pl-0">{summary(e, decimals)}</span>
-          <a className="text-teal-deep underline" href={txUrl(e.hash)} target="_blank" rel="noreferrer">
+          <a className="-my-3 inline-flex min-h-11 min-w-11 items-center justify-center text-teal-deep underline" href={txUrl(e.hash)} target="_blank" rel="noreferrer" aria-label={`transaction for ${e.event}`}>
             tx
           </a>
         </li>
