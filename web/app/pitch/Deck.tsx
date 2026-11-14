@@ -41,8 +41,8 @@ function Architecture() {
 
 function Sequence() {
   const cols = [
-    { x: 90, label: "your troll (shard A)" },
-    { x: 330, label: "their troll (shard B)" },
+    { x: 90, label: "you · shard A" },
+    { x: 330, label: "them · shard B" },
     { x: 560, label: "receiver" },
   ];
   const arrow = (x1: number, x2: number, y: number, t: string, bold = false) => (
@@ -63,7 +63,7 @@ function Sequence() {
           <g key={c.label}>
             <rect x={c.x - 80} y="8" width="160" height="34" fill="#fff" stroke={INK} strokeWidth="3" />
             <text x={c.x} y="30" textAnchor="middle">{c.label}</text>
-            <line x1={c.x} y1="42" x2={c.x} y2="340" stroke={INK} strokeWidth="1.5" strokeDasharray="4 4" />
+            <line x1={c.x} y1="42" x2={c.x} y2="236" stroke={INK} strokeWidth="1.5" strokeDasharray="4 4" />
           </g>
         ))}
         <rect x="60" y="62" width="60" height="22" fill={MOSS} />
@@ -201,10 +201,14 @@ export default function Deck() {
             </ul>
           )}
         </div>
-        {s.visual && <div className="slab p-5">{s.visual}</div>}
+        {s.visual && (
+          <div className="slab overflow-x-auto p-5">
+            <div className="min-w-[560px]">{s.visual}</div>
+          </div>
+        )}
       </div>
       <div className="flex items-center justify-between border-t-[3px] border-ink-0 px-6 py-4 md:px-10">
-        <span className="font-display text-xl text-ink-0">Sharded Trolls</span>
+        <span className="font-display text-lg whitespace-nowrap text-ink-0 sm:text-xl">Sharded Trolls</span>
         <span className="tag text-ink-1">
           {i + 1} / {SLIDES.length} · ← → or tap
         </span>

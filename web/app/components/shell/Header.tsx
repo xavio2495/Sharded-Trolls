@@ -13,7 +13,7 @@ export default function Header() {
       <nav className="flex h-[var(--header)] w-full px-[var(--gutter)] items-center justify-between gap-4">
         <Link href="/" className="flex min-h-11 min-w-0 items-center gap-3">
           <Image src="/logo.svg" alt="" width={44} height={44} className="size-10 flex-none md:size-11" />
-          <span className="truncate font-display text-xl text-ink-0 md:text-2xl">Sharded Trolls</span>
+          <span className="hidden font-display text-xl whitespace-nowrap text-ink-0 min-[400px]:inline md:text-2xl">Sharded Trolls</span>
         </Link>
         <div className="flex flex-none items-center gap-5 md:gap-8">
           {LINKS.map((l) => (
