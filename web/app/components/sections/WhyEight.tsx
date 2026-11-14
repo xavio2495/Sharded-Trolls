@@ -47,7 +47,7 @@ export default function WhyEight() {
             </div>
           </div>
         </div>
-        <div data-frame className="slab relative aspect-[4/5] max-h-[78svh] w-full justify-self-end overflow-hidden md:w-auto">
+        <div data-frame className="slab relative mx-auto aspect-[4/5] w-full max-w-[min(100%,62svh)] overflow-hidden">
           <Image src="/art/one-river-v1.webp" alt="One river flowing out of a lake, jammed bank to bank with coin boats; its troll holds its head." fill sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />
           <div data-eight className="absolute inset-0" style={{ clipPath: "inset(0% 100% 0% 0%)" }}>
             <Image src="/art/eight-streams-v1.webp" alt="Eight streams flowing out of the same lake, boats in every one, a happy troll beside each." fill sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />

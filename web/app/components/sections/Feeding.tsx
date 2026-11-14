@@ -50,7 +50,7 @@ export default function Feeding() {
   return (
     <section id="feeding" ref={root} className="tone-light">
       <div data-pin className="flex min-h-svh flex-col justify-center gap-10 py-[calc(var(--header)+1rem)]">
-        <div className="container grid gap-10 lg:grid-cols-[1fr_1.4fr]">
+        <div className="grid gap-10 px-[var(--gutter)] lg:grid-cols-[1fr_1.4fr]">
           <div>
             <h2 className="h1" data-reveal="lines">
               The game on top: feed them all, or they starve.

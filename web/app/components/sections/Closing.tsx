@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function Closing() {
   return (
-    <section className="tone-light container py-32">
+    <section className="tone-light px-[var(--gutter)] py-32">
       <div className="grid items-center gap-12 md:grid-cols-[1fr_auto]">
         <div>
           <h2 className="display max-w-5xl" data-reveal="lines">

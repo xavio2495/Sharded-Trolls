@@ -38,7 +38,7 @@ export default function Proof() {
   );
 
   return (
-    <section id="proof" ref={root} className="tone-dark container py-32">
+    <section id="proof" ref={root} className="tone-dark px-[var(--gutter)] py-32">
       <h2 className="h1 max-w-5xl" data-reveal="lines">
         Run on real NEAR, audited, and rehearsed.
       </h2>
@@ -57,7 +57,7 @@ export default function Proof() {
         Honest limits: not faster per transfer, wallets list one entry per troll, the Feeding is a game and not
         Sybil-proof, and DEX trading goes through a single-shard wrapper.
       </p>
-      <a href="/evidence" className="btn btn-line mt-10 text-white" data-reveal data-magnetic>
+      <a href="/evidence" className="btn btn-line mt-10" style={{ color: "#18211b" }} data-reveal data-magnetic>
         See every measurement
       </a>
     </section>

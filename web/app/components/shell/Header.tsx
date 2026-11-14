@@ -10,7 +10,7 @@ const LINKS = [
 export default function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b-[3px] border-ink-0 bg-paper">
-      <nav className="container flex h-[var(--header)] items-center justify-between gap-4">
+      <nav className="flex h-[var(--header)] w-full px-[var(--gutter)] items-center justify-between gap-4">
         <Link href="/" className="flex min-h-11 min-w-0 items-center gap-3">
           <Image src="/logo.svg" alt="" width={44} height={44} className="size-10 flex-none md:size-11" />
           <span className="truncate font-display text-xl text-ink-0 md:text-2xl">Sharded Trolls</span>
@@ -24,7 +24,8 @@ export default function Header() {
             </Link>
           ))}
           <Link href="/app" className="btn btn-moss" data-magnetic>
-            Open the app
+            <span className="sm:hidden">App</span>
+            <span className="hidden sm:inline">Open the app</span>
           </Link>
         </div>
       </nav>
