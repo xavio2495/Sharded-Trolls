@@ -41,17 +41,17 @@ function Hero() {
   return (
     <section className="relative isolate overflow-hidden">
       <Image
-        src="/art/hero-bridges.webp"
-        alt="A misty valley where a river splits into eight streams, each with its own little bridge and a cute moss troll beneath it."
+        src="/art/hero-streams.webp"
+        alt="Eight parallel streams, each carrying little coin boats at the same time, each kept by its own moss troll on the bank. One bridge leaps across several streams, and the troll at its far end takes a single coin."
         width={1536}
         height={1024}
         priority
-        className="h-[min(82vh,860px)] min-h-[600px] w-full object-cover object-[50%_70%]"
+        className="h-[min(82vh,860px)] min-h-[600px] w-full object-cover object-[50%_60%]"
       />
       <div className="absolute left-4 top-8 max-w-xl rounded-[var(--radius-card)] border-2 border-ink-line bg-paper/92 p-7 shadow-[5px_5px_0_0_var(--ink-line)] md:left-14 md:top-12 md:p-9">
         <h1 className="font-display text-6xl leading-[0.95] text-ink-0 md:text-8xl">Pay the troll.</h1>
         <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-0">
-          A memecoin split across eight NEAR shards. Every bridge has a troll. Feed them all, or they starve.
+          A memecoin split across eight NEAR shards: eight streams flowing side by side, each kept by its own troll. Cross to another stream and its troll takes a toll. Feed them all, or they starve.
         </p>
         <div className="mt-7 flex gap-3">
           <Link href="/app" className="rounded-[var(--radius-ui)] bg-terracotta-deep px-5 py-3 font-semibold text-paper hover:brightness-110">
@@ -107,16 +107,20 @@ export default function Home() {
               spreads evenly.
             </Card>
           </div>
+          <figure className="mt-10">
+            <Image src="/art/why-eight.webp" alt="Left: one river jammed bank to bank with coin boats and a troll clutching his head. Right: the same boats flowing down eight parallel streams, each with a happy troll." width={1536} height={768} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
+            <figcaption className="mt-3 text-sm text-ink-1">One contract is one river: a claim rush jams it. Eight trolls are eight streams flowing at once.</figcaption>
+          </figure>
         </Section>
 
         <Section id="toll" kicker="The Troll Toll" title="Cross a bridge, feed the troll.">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <ol className="space-y-4 text-lg leading-relaxed text-ink-1">
-              <li><span className="font-display text-2xl text-ink-0">1.</span> Your troll sends the coins on.</li>
-              <li><span className="font-display text-2xl text-ink-0">2.</span> The troll on the other side pays your friend and keeps 0.25% as food.</li>
-              <li><span className="font-display text-2xl text-ink-0">3.</span> If the friend isn&apos;t there, every coin comes back.</li>
+              <li><span className="font-display text-2xl text-ink-0">Same stream:</span> no troll, no toll. Most of the time the eight streams just flow side by side.</li>
+              <li><span className="font-display text-2xl text-ink-0">Another stream:</span> one bridge, straight there. It skips every stream in between.</li>
+              <li><span className="font-display text-2xl text-ink-0">The toll:</span> the troll at the far end keeps 0.25% as food. If your friend isn&apos;t registered there, every coin comes back.</li>
             </ol>
-            <Image src="/art/troll-sheet.webp" alt="The same cute troll in six poses: front, side, holding a gold coin, hungry, fed and chewing." width={1536} height={1024} className="w-full mix-blend-multiply" />
+            <Image src="/art/toll.webp" alt="A traveller crosses one long bridge from the second stream straight to the sixth, over the streams between, and tosses a single coin to the sixth stream's troll. In front, a boat stays in its own stream and its troll just waves." width={1536} height={1024} className="w-full rounded-[var(--radius-card)] border-2 border-ink-line shadow-[4px_4px_0_0_var(--ink-line)]" />
           </div>
         </Section>
 

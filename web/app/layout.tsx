@@ -22,7 +22,7 @@ const text = localFont({
 export const metadata: Metadata = {
   title: "Sharded Trolls: pay the troll",
   description:
-    "A NEAR memecoin split across eight shards. Every bridge has a troll. Feed them all, or they starve.",
+    "A NEAR memecoin split across eight shards: eight streams, eight troll keepers. Cross a stream, pay the troll. Feed them all, or they starve.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
