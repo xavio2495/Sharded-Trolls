@@ -2,7 +2,7 @@
 // Splits by: signer == receiver, signer on receiver's shard (different account), and cross-shard.
 // Settles whether "co-location" (same shard) or only "self-call" (signer == receiver) saves a block.
 // Run: node --dns-result-order=ipv4first scripts/mainnet-probes/tx-first-receipt.mjs [blocks=60] > measurements/mainnet/tx-first-receipt-<date>.json
-const RPC = process.env.RPC || 'https://rpc.mainnet.fastnear.com';
+const RPC = process.env.RPC || 'https://free.rpc.fastnear.com';
 const call = async (m, p) => { for (let a = 0; a < 4; a++) { try { const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: m, params: p }) }); const j = await r.json(); if (j.error) throw new Error(JSON.stringify(j.error).slice(0, 160)); return j.result; } catch (e) { if (a === 3) throw e; await new Promise(r => setTimeout(r, 600 * (a + 1))); } } };
 const pool = async (xs, n, f) => { const out = []; let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < xs.length) { const k = i++; try { out[k] = await f(xs[k]); } catch { out[k] = null; } } })); return out; };
 const N = +(process.argv[2] || 60);

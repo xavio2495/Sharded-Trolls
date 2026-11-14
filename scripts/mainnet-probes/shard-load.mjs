@@ -2,7 +2,7 @@
 // 1) gas price + protocol layout; 2) per-shard gas_used from sampled block headers; 3) receiver breakdown of recent chunks on intents.near's shard.
 import { writeFileSync } from 'node:fs';
 const [out, N = 300, STRIDE = 20, CB = 150] = process.argv.slice(2).map((x, i) => i ? Number(x) : x);
-const RPC = 'https://rpc.mainnet.fastnear.com';
+const RPC = 'https://free.rpc.fastnear.com';
 let rid = 0;
 const rpc = async (method, params) => {
   for (let t = 0; t < 4; t++) {
