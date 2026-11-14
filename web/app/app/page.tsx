@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 export default function AppPage() {
   return (
     <div className="min-h-full bg-paper">
-      <header className="sticky top-0 z-40 border-b-[3px] border-ink-0 bg-paper">
-        <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2 sm:px-6">
+      <header className="sticky top-0 z-40 h-16 border-b-[3px] border-ink-0 bg-paper">
+        <nav className="mx-auto flex h-full max-w-[96rem] items-center justify-between px-4">
           <Link href="/" className="flex min-h-11 items-center gap-3 font-display text-2xl tracking-wide text-ink-0">
             <Image src="/logo.svg" alt="" width={40} height={40} className="size-10" />
             Sharded Trolls
@@ -22,7 +22,8 @@ export default function AppPage() {
           </Link>
         </nav>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      {/* desktop and tablet: one screen, no page scroll; phones stack and scroll */}
+      <main className="mx-auto max-w-[96rem] p-3 md:h-[calc(100svh-4rem)] md:overflow-hidden md:p-4">
         <Dashboard />
       </main>
     </div>

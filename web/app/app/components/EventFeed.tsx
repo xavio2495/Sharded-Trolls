@@ -33,7 +33,7 @@ function summary(e: Event, decimals: number): string {
 }
 
 /** Latest NEP-297 events from the root and the eight trolls, newest first. */
-export function EventFeed({ trolls, decimals }: { trolls: string[]; decimals: number }) {
+export function EventFeed({ trolls, decimals, limit = SHOW }: { trolls: string[]; decimals: number; limit?: number }) {
   const [events, setEvents] = useState<Event[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +68,7 @@ export function EventFeed({ trolls, decimals }: { trolls: string[]; decimals: nu
         }
         out.sort((a, b) => b.at - a.at);
         if (!stop) {
-          setEvents(out.slice(0, SHOW));
+          setEvents(out.slice(0, limit));
           setError(null);
         }
       } catch (e) {
@@ -81,13 +81,13 @@ export function EventFeed({ trolls, decimals }: { trolls: string[]; decimals: nu
       stop = true;
       clearInterval(t);
     };
-  }, [trolls]);
+  }, [trolls, limit]);
 
   if (error && !events) return <p className="text-starve">Could not load events: {error}</p>;
   if (!events) return <p className="text-ink-1">Loading events…</p>;
   if (events.length === 0) return <p className="text-ink-1">No events yet.</p>;
   return (
-    <ul className="max-h-[32rem] divide-y divide-hairline overflow-y-auto pr-2">
+    <ul className="divide-y divide-hairline">
       {events.map((e) => (
         <li key={e.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-sm">
           <time className="w-16 shrink-0 tabular-nums text-ink-1 sm:w-20" dateTime={new Date(e.at).toISOString()}>
