@@ -156,7 +156,7 @@ export function GuidedAction({
         <h1 className="mt-2 font-display text-4xl leading-[0.95] text-ink-0 xl:text-5xl [@media(min-height:900px)]:xl:text-6xl">{title}</h1>
         <p className="mt-3 max-w-xl leading-relaxed text-ink-1 xl:text-lg">{lead}</p>
         {action && (
-          <button className="rounded-none btn btn-moss mt-5 w-full sm:w-auto sm:self-start" onClick={action.run} disabled={action.disabled || status?.kind === "busy"}>
+          <button className="rounded-none btn btn-moss mt-5 min-h-11 w-full sm:w-auto sm:self-start" onClick={action.run} disabled={action.disabled || status?.kind === "busy"}>
             {action.label}
           </button>
         )}

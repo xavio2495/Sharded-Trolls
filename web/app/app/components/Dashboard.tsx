@@ -78,8 +78,8 @@ export function Dashboard() {
           title={`${ROOT} on the explorer`}
         >
           <span className="bg-ink-0 px-1.5 text-paper">testnet</span>
-          <span className="truncate">
-            {minutes}-min rounds · {params.feed_target} feeder{params.feed_target === 1 ? "" : "s"} per troll
+          <span className="min-w-0">
+            {minutes}-min rounds · {params.feed_target} feeder{params.feed_target === 1 ? "" : "s"}/troll
           </span>
         </a>
         <div>
@@ -115,7 +115,7 @@ export function Dashboard() {
       </Cell>
 
       <Cell className="flex flex-col">
-        <h2 className="border-b-[3px] border-ink-0 px-4 py-2 font-display text-xl text-ink-0">What the trolls are doing</h2>
+        <h2 className="border-b-[3px] border-ink-0 px-4 py-2 font-display text-xl text-ink-0">Live activity</h2>
         {/* the only scrolling area on desktop */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 max-md:max-h-96">
           <EventFeed trolls={stat.trolls} decimals={metadata.decimals} limit={8} />
