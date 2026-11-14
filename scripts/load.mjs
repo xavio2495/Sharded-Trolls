@@ -11,6 +11,11 @@
 // Usage: node --dns-result-order=ipv4first scripts/load.mjs setup
 //        node --dns-result-order=ipv4first scripts/load.mjs run --target trolls|control
 //          [--seconds 60] [--fires-per-sec 10] [--n 50] [--call-tgas 5] [--probe-per-sec 4] [--out file]
+//          [--mix same|uniform] [--amount <yocto>]
+//   --mix uniform: each stampede pays receivers on all eight trolls (mostly cross-troll transfers,
+//   which need ~16 Tgas per call). The run snapshots receiver balances, burned tolls and in-flight
+//   amounts before and after, looks up every fire to see whether it was included, and compares the
+//   balances with what the included fires should produce.
 // Run scripts/measure.mjs alongside to record per-shard gas and congestion.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -27,6 +32,7 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   'fires-per-sec': { type: 'string', default: '10' }, n: { type: 'string', default: '50' },
   'call-tgas': { type: 'string', default: '5' }, 'probe-per-sec': { type: 'string', default: '4' },
   receivers: { type: 'string', default: '16' }, out: { type: 'string' },
+  mix: { type: 'string', default: 'same' }, amount: { type: 'string', default: '1' },
 } });
 const near = new Near(RPC);
 // Without a troll deployment, only the control baseline runs; troll names still decide homes.
@@ -102,17 +108,22 @@ async function run() {
   const seconds = Number(values.seconds), firesPerSec = Number(values['fires-per-sec']), n = Number(values.n);
   const callTgas = BigInt(values['call-tgas']), probePerSec = Number(values['probe-per-sec']);
   const tokenFor = (h) => (target === 'control' ? S.control : h.troll);
-  const recvFor = (h) => S.receivers.filter((r) => target === 'control' || r.troll === h.troll).map((r) => r.account);
+  const mix = values.mix, amount = BigInt(values.amount);
+  if (!['same', 'uniform'].includes(mix)) throw new Error('--mix same|uniform');
+  const recvObjs = (h) => S.receivers.filter((r) => target === 'control' || mix === 'uniform' || r.troll === h.troll);
+  const recvFor = (h) => recvObjs(h).map((r) => r.account);
+  const toll = target === 'trolls' ? (amount * BigInt(deploy.params.toll_bps)) / 10_000n : 0n;
+  // Per fire from stampede h: receivers[j % len] for j < n; count the cross-troll ones.
+  const crossPerFire = (h) => { const R = recvObjs(h); let c = 0; for (let j = 0; j < n; j++) if (target === 'trolls' && R[j % R.length].troll !== h.troll) c++; return c; };
   // Each child call also prepays ~1.2 Tgas of send and execution fees on top of its own gas.
   const fireGas = (BigInt(n) * (callTgas * 10n + 15n) * TGAS) / 10n + 20n * TGAS;
 
   const stampedes = S.stampedes.map((h) => ({ ...h, acct: new Account(near, h.account, KeyPair.fromString(h.secret)) }));
   const probes = S.probes.map((h) => ({ ...h, acct: new Account(near, h.account, KeyPair.fromString(h.secret)) }));
+  const fireArgs = (s) => ({ target: tokenFor(s), receivers: recvFor(s), amount: amount.toString(), n, gas_per_call_tgas: Number(callTgas) });
+  const before = await snapshot(S, target);
   // Preflight: fires are sent without waiting below, so check one fire fully succeeds first.
-  {
-    const s = stampedes[0];
-    await s.acct.send(s.account, [action.functionCall('fire', { target: tokenFor(s), receivers: recvFor(s), amount: '1', n, gas_per_call_tgas: Number(callTgas) }, fireGas)], 'FINAL');
-  }
+  await stampedes[0].acct.send(stampedes[0].account, [action.functionCall('fire', fireArgs(stampedes[0]), fireGas)], 'FINAL');
   let blockHash = await near.latestBlockHash();
   const t0 = Date.now(), end = t0 + seconds * 1000;
   const log = { fires: [], probes: [] };
@@ -123,9 +134,9 @@ async function run() {
     const interval = (1000 * stampedes.length) / firesPerSec;
     for (let next = Date.now(); Date.now() < end; next += interval) {
       await sleep(Math.max(0, next - Date.now()));
-      const signed = await s.acct.sign(s.account, [action.functionCall('fire', { target: tokenFor(s), receivers: recvFor(s), amount: '1', n, gas_per_call_tgas: Number(callTgas) }, fireGas)], blockHash);
+      const signed = await s.acct.sign(s.account, [action.functionCall('fire', fireArgs(s), fireGas)], blockHash);
       const t = Date.now() - t0;
-      try { await near.sendSigned(signed, 'NONE'); log.fires.push({ t, shard: s.shard, ok: true }); }
+      try { await near.sendSigned(signed, 'NONE'); log.fires.push({ t, shard: s.shard, ok: true, hash: signed.hash }); }
       catch (e) { log.fires.push({ t, shard: s.shard, ok: false, kind: e.kind ?? 'error', msg: e.message.slice(0, 300) }); }
     }
   }));
@@ -148,13 +159,53 @@ async function run() {
   }));
   await Promise.all([firing, probing, refresher]);
 
+  // Settle: wait for in-flight credits to resolve, then compare with what the accepted fires imply.
+  let after;
+  for (let i = 0; i < 60; i++) { await sleep(2000); after = await snapshot(S, target); if (after.in_flight === 0n && i >= 2) break; }
+  // Inclusion: send_tx with wait NONE accepts a transaction that may never be included, so look
+  // every fire up afterwards. Dropped fires explain any landed shortfall.
+  const fireOk = log.fires.filter((f) => f.ok);
+  for (let i = 0; i < fireOk.length; i += 25) {
+    await Promise.all(fireOk.slice(i, i + 25).map(async (f) => {
+      const sender = stampedes.find((s) => s.shard === f.shard).account;
+      try { await near.rpc('EXPERIMENTAL_tx_status', { tx_hash: f.hash, sender_account_id: sender, wait_until: 'NONE' }); f.included = true; }
+      catch { f.included = false; }
+    }));
+  }
+  let expLanded = 0n, expBurned = 0n, crossSent = 0;
+  stampedes.forEach((s, idx) => {
+    const fires = log.fires.filter((f) => f.included && f.shard === s.shard).length + (idx === 0 ? 1 : 0);
+    const cross = crossPerFire(s);
+    crossSent += fires * cross;
+    expLanded += BigInt(fires) * (BigInt(n) * amount - BigInt(cross) * toll);
+    expBurned += BigInt(fires * cross) * toll;
+  });
+  expLanded += BigInt(log.probes.filter((p) => p.ok).length); // probes send 1 (toll rounds to 0)
+  const check = {
+    mix, amount: amount.toString(), fires_accepted: fireOk.length, fires_included: fireOk.filter((f) => f.included).length, cross_transfers_sent: crossSent,
+    landed: (after.landed - before.landed).toString(), landed_expected: expLanded.toString(),
+    burned: (after.burned - before.burned).toString(), burned_expected: expBurned.toString(),
+    in_flight_after: after.in_flight.toString(),
+  };
   const count = (xs) => xs.reduce((m, x) => ((m[x.ok ? 'ok' : x.kind] = (m[x.ok ? 'ok' : x.kind] ?? 0) + 1), m), {});
-  const summary = { target, seconds, fires_per_sec: firesPerSec, n, call_tgas: Number(callTgas), probe_per_sec: probePerSec, fires: count(log.fires), probes: count(log.probes) };
+  const summary = { target, seconds, fires_per_sec: firesPerSec, n, call_tgas: Number(callTgas), probe_per_sec: probePerSec, fires: count(log.fires), probes: count(log.probes), check };
   const file = values.out ?? resolve(ROOT, `target/load-${target}-${new Date(t0).toISOString().replace(/[:.]/g, '-')}.json`);
   const code = target === 'trolls' ? { troll_wasm_sha256: deploy.troll_code_hash, root_wasm_sha256: deploy.root_code_hash } : {};
   writeFileSync(file, JSON.stringify({ ...summary, ...code, started_at: new Date(t0).toISOString(), ...log }));
   console.log(JSON.stringify(summary));
   console.log(`wrote ${file}`);
+}
+
+// Σ receiver balances (at each receiver's home troll, or on the control), Σ troll burned, Σ in-flight.
+async function snapshot(S, target) {
+  const bal = async (r) => BigInt(await near.view(target === 'control' ? S.control : r.troll, 'ft_balance_of', { account_id: r.account }));
+  let landed = 0n;
+  for (let i = 0; i < S.receivers.length; i += 16) for (const b of await Promise.all(S.receivers.slice(i, i + 16).map(bal))) landed += b;
+  let burned = 0n, in_flight = 0n;
+  if (target === 'trolls') {
+    for (const ti of await Promise.all(deploy.trolls.map((t) => near.view(t.account, 'info')))) { burned += BigInt(ti.burned); in_flight += BigInt(ti.in_flight); }
+  }
+  return { landed, burned, in_flight };
 }
 
 if (positionals[0] === 'setup') await setup();
