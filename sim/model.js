@@ -21,6 +21,7 @@ export const DEFAULT_PARAMS = {
   reward_cap_per_feeder: Infinity, // tokens; the part of a troll's pool above the cap is not paid
   reward_source: 'mint', // 'mint' | 'toll' (the epoch's tolls fund the reward instead of burning) | 'launch_pool'
   unclaimed_at_close: 'locked', // launch pool at window close: 'locked' | 'hoard' | 'burn' | 'reward'
+  claim_fee_near: 0, // NEAR paid (not refunded) per launch claim
 };
 
 // Cost assumptions for a bot farmer, in NEAR. Gas: ~2.5 Tgas per counted transfer at the 1e8
@@ -73,7 +74,7 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
         const k = Math.floor((launchPool[t] / P.launch_claim_amount) * scenario.launchFarm);
         launchPool[t] -= k * P.launch_claim_amount;
         farm.launch += k * P.launch_claim_amount;
-        farm.cost += k * COSTS.setup_per_bot;
+        farm.cost += k * (COSTS.setup_per_bot + P.claim_fee_near);
       }
     }
     if (day === P.launch_window_epochs) {
@@ -201,7 +202,8 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
         }
         if (P.reward_source === 'toll') { tollBy[t] -= total; continue; } // paid out of the tolls, not minted
         let fromLaunch = 0;
-        if (fromPool && day >= P.launch_window_epochs) {
+        // 'launch_pool' pays from the pool from launch day; 'reward' only after the window closes
+        if (fromPool && (P.reward_source === 'launch_pool' || day >= P.launch_window_epochs)) {
           fromLaunch = Math.min(launchPool[t], total);
           launchPool[t] -= fromLaunch;
           poolPaid += fromLaunch;

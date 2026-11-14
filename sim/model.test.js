@@ -79,3 +79,12 @@ test('stake split: bots holding the minimum earn almost nothing, the ledger stay
   close(x.ledger, x.supply_end, 1e-2);
   assert.ok(x.farm_reward < 1e-3 * x.honest_reward);
 });
+
+test('launch-pool reward pays from launch day; claim fee adds to the launch farmer cost', () => {
+  const r = simulate({ reward_source: 'launch_pool', feed_target: 1 }, { ...always(0.5), holders: 500 }, { days: 5 }).summary;
+  close(r.reward_from_launch_pool, P.reward_per_epoch * 5, 1e-2);
+  assert.equal(r.minted, 0);
+  const free = simulate({}, { ...SCENARIOS.enthusiastic, launchFarm: 1 }, { days: 2 }).summary;
+  const paid = simulate({ claim_fee_near: 0.01 }, { ...SCENARIOS.enthusiastic, launchFarm: 1 }, { days: 2 }).summary;
+  close(paid.farm_cost_near - free.farm_cost_near, 0.01 * (P.launch_supply / P.launch_claim_amount), 1e-6);
+});
