@@ -1,0 +1,80 @@
+{
+  "generated": "2026-11-14",
+  "days": 60,
+  "seeds": 30,
+  "params": {
+    "troll_count": 8,
+    "total_supply": 1000000000,
+    "launch_supply": 500000000,
+    "toll_bps": 25,
+    "feed_target": 10,
+    "reward_per_epoch": 250000,
+    "starve_burn_bps": 100,
+    "launch_claim_amount": 100000,
+    "min_counted_transfer": 1,
+    "launch_window_epochs": 1
+  },
+  "costs": {
+    "fee_per_transfer": 0.00025,
+    "setup_per_bot": 0.002
+  },
+  "sybil_full": {
+    "near_per_day": 0.02,
+    "setup_near": 0.16,
+    "tokens_per_day": 250000
+  },
+  "scenarios": {
+    "enthusiastic": {
+      "note": "4,000 holders spread evenly over the trolls, ~30% active every day",
+      "fed_share": 1,
+      "best_streak": 60,
+      "supply_change": 0.011776631464619032,
+      "minted": 15000000,
+      "toll_burned": 3223368.535380965,
+      "starve_burned": 0,
+      "launch_unclaimed": 0.2000000000000001,
+      "sybil_gap_near": 0,
+      "farm_reward": 0,
+      "max_ledger_error": 0.0000021457672119140625
+    },
+    "decaying": {
+      "note": "4,000 holders, activity falls from ~40% to a 2% floor (half-life ~8 days)",
+      "fed_share": 0.7616666666666667,
+      "best_streak": 40.2,
+      "supply_change": -0.0056486141359912475,
+      "minted": 11425000,
+      "toll_burned": 1036480.6944144866,
+      "starve_burned": 16037133.441576771,
+      "launch_unclaimed": 0.2000000000000001,
+      "sybil_gap_near": 0.06488333333333333,
+      "farm_reward": 0,
+      "max_ledger_error": 0.0000021457672119140625
+    },
+    "bot-farmed": {
+      "note": "1,500 decaying holders; a farmer tops every troll up to the target with bots",
+      "fed_share": 1,
+      "best_streak": 60,
+      "supply_change": 0.014605043051964927,
+      "minted": 15000000,
+      "toll_burned": 394956.94803507865,
+      "starve_burned": 0,
+      "launch_unclaimed": 0.6999999999999996,
+      "sybil_gap_near": 0.39547499999999913,
+      "farm_reward": 3220937.5,
+      "max_ledger_error": 4.76837158203125e-7
+    },
+    "one-troll-dominant": {
+      "note": "4,000 holders, 85% homed on one troll, 85% of their transfers stay local, ~30% active",
+      "fed_share": 0.9966666666666666,
+      "best_streak": 55.766666666666666,
+      "supply_change": 0.01473488813028594,
+      "minted": 14950000,
+      "toll_burned": 90320.20304740875,
+      "starve_burned": 124791.66666666667,
+      "launch_unclaimed": 0.7555066666666668,
+      "sybil_gap_near": 0.0008333333333333334,
+      "farm_reward": 0,
+      "max_ledger_error": 4.76837158203125e-7
+    }
+  }
+}
