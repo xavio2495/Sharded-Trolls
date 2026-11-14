@@ -250,6 +250,15 @@ fn metadata_json_matches_the_standard_shape() {
 }
 
 #[test]
+#[should_panic(expected = "metadata icon over 1024 bytes")]
+fn init_rejects_a_large_icon() {
+    let ids = vec![acc("troll0.t"), acc("troll1.t")];
+    ctx(&ids[0], &acc("d.t"), START, 0);
+    let m = FungibleTokenMetadata { icon: Some("x".repeat(1025)), ..metadata() };
+    Troll::new(acc(ROOT), ids, params(2), m, START, U128(10), U128(0));
+}
+
+#[test]
 fn init_splits_supply_and_launch_pool() {
     let net = Net::new(3, 1_000, 400);
     let pools: Vec<_> = net.t.iter().map(|t| (t.index, t.launch_pool, t.hoard, t.supply)).collect();
@@ -1068,7 +1077,8 @@ fn settle(net: &mut Net, root: &mut root::Root, epoch: u64) {
     let mut b = VMContextBuilder::new();
     b.current_account_id(acc(ROOT)).predecessor_account_id(acc(ROOT)).block_timestamp(net.now * 1_000_000);
     testing_env!(b.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), results);
-    assert!(root.on_reports(epoch));
+    // one settlement attempt per epoch in these tests
+    assert!(root.on_reports(epoch, epoch + 1));
     let applies: Vec<(usize, Outcome)> = get_created_receipts()
         .into_iter()
         .map(|rc| {

@@ -5,12 +5,19 @@ use near_sdk::json_types::U128;
 use near_sdk::serde_json::{self, json};
 use near_sdk::{AccountId, Gas, PanicOnDefault, Promise, env, ext_contract, near, require};
 use troll_types::{
-    EpochReport, Outcome, Params, emit_troll_event, epoch_at, home_index, now_ms, outcome_effect, validate_setup,
+    EpochReport, Outcome, Params, emit_troll_event, epoch_at, home_index, now_ms, outcome_effect, validate_metadata_sizes,
+    validate_setup,
 };
 
 pub const GAS_FOR_REPORT: Gas = Gas::from_tgas(10);
 pub const GAS_FOR_APPLY: Gas = Gas::from_tgas(10);
 pub const GAS_FOR_ON_REPORTS: Gas = Gas::from_tgas(110);
+/// Minimum gas for `settle`: the report calls, `on_reports` and `settle`'s own work, with margin.
+/// A call with less fails up front instead of starting a settlement `on_reports` can't finish.
+pub const GAS_FOR_SETTLE_MIN: Gas = Gas::from_tgas(250);
+/// Blocks after which an unfinished settlement may be started again. A settlement normally
+/// finishes within a few blocks; this only matters if `on_reports` never completes.
+pub const SETTLE_TIMEOUT_BLOCKS: u64 = 600;
 const MAX_REPORT_LEN: usize = 1_024;
 
 /// `json!` serialized to a `String`.
@@ -58,6 +65,10 @@ pub struct Root {
     next_epoch: u64,
     /// Set while a settlement's reports are in flight.
     settling: Option<u64>,
+    /// Block height at which the current settlement started.
+    settling_since: u64,
+    /// Counts settlement attempts; `on_reports` acts only for the latest one.
+    attempt: u64,
 }
 
 #[near]
@@ -74,6 +85,7 @@ impl Root {
     ) -> Self {
         validate_setup(&params, &trolls);
         metadata.assert_valid();
+        validate_metadata_sizes(&metadata.name, &metadata.symbol, metadata.icon.as_ref(), metadata.reference.as_ref());
         let n = trolls.len();
         let share = total_supply.0 / n as u128;
         let mut troll_supply = vec![share; n];
@@ -92,26 +104,49 @@ impl Root {
             best_streak: 0,
             next_epoch: 0,
             settling: None,
+            settling_since: 0,
+            attempt: 0,
         }
     }
 
     /// Anyone may settle the next finished epoch. Asks every troll for its report,
-    /// then decides fed/starved in `on_reports`. Attach about 250 Tgas.
+    /// then decides fed/starved in `on_reports`. Attach at least 250 Tgas.
+    /// If a settlement started more than `SETTLE_TIMEOUT_BLOCKS` ago never finished, this starts
+    /// it again; the earlier attempt's `on_reports`, if it still arrives, is ignored.
     pub fn settle(&mut self, epoch: u64) -> Promise {
-        require!(self.settling.is_none(), "settlement in progress");
+        require!(env::prepaid_gas() >= GAS_FOR_SETTLE_MIN, "attach at least 250 Tgas");
+        if let Some(e) = self.settling {
+            require!(env::block_height() >= self.settling_since + SETTLE_TIMEOUT_BLOCKS, "settlement in progress");
+            emit_troll_event("settle_expired", &json_str!({ "epoch": e, "attempt": self.attempt }));
+            self.settling = None;
+        }
         require!(epoch == self.next_epoch, "settle the next unsettled epoch");
         require!(epoch < self.current_epoch(), "epoch not finished");
         self.settling = Some(epoch);
-        let mut reports = ext_troll::ext(self.trolls[0].clone()).with_static_gas(GAS_FOR_REPORT).report(epoch);
+        self.settling_since = env::block_height();
+        self.attempt += 1;
+        // Reports have a fixed cost; any gas left over goes to `on_reports`.
+        let report = |t: &AccountId| ext_troll::ext(t.clone()).with_static_gas(GAS_FOR_REPORT).with_unused_gas_weight(0).report(epoch);
+        let mut reports = report(&self.trolls[0]);
         for t in &self.trolls[1..] {
-            reports = reports.and(ext_troll::ext(t.clone()).with_static_gas(GAS_FOR_REPORT).report(epoch));
+            reports = reports.and(report(t));
         }
-        reports.then(Self::ext(env::current_account_id()).with_static_gas(GAS_FOR_ON_REPORTS).on_reports(epoch))
+        reports.then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(GAS_FOR_ON_REPORTS)
+                .with_unused_gas_weight(1)
+                .on_reports(epoch, self.attempt),
+        )
     }
 
     /// Never panics, so a failed report can't leave the settlement locked; the epoch can be retried.
+    /// Ignores a stale attempt (one replaced after a timeout).
     #[private]
-    pub fn on_reports(&mut self, epoch: u64) -> bool {
+    pub fn on_reports(&mut self, epoch: u64, attempt: u64) -> bool {
+        if self.settling != Some(epoch) || self.attempt != attempt {
+            emit_troll_event("settle_stale", &json_str!({ "epoch": epoch, "attempt": attempt }));
+            return false;
+        }
         self.settling = None;
         let n = self.trolls.len() as u64;
         let mut reports = Vec::with_capacity(n as usize);
@@ -216,11 +251,11 @@ impl Root {
         };
         // Book the outcomes exactly as each troll will apply them (shared rounding).
         let effects: Vec<(u128, u128)> = reports.iter().zip(&outcomes).map(|(r, o)| outcome_effect(r, o)).collect();
-        let minted: u128 = reports.iter().zip(&effects).map(|(r, (m, _))| r.minted.0 + m).sum();
-        let burned: u128 = reports.iter().zip(&effects).map(|(r, (_, b))| r.burned.0 + b).sum();
-        // Saturating so that a bad report can never make on_reports panic and lock settlement.
-        self.total_supply = (self.initial_supply + minted).saturating_sub(burned);
-        self.troll_supply = reports.iter().zip(&effects).map(|(r, (m, b))| (r.supply.0 + m).saturating_sub(*b)).collect();
+        // Saturating throughout so that a bad report can never make on_reports panic.
+        let minted = reports.iter().zip(&effects).fold(0u128, |s, (r, (m, _))| s.saturating_add(r.minted.0.saturating_add(*m)));
+        let burned = reports.iter().zip(&effects).fold(0u128, |s, (r, (_, b))| s.saturating_add(r.burned.0.saturating_add(*b)));
+        self.total_supply = self.initial_supply.saturating_add(minted).saturating_sub(burned);
+        self.troll_supply = reports.iter().zip(&effects).map(|(r, (m, b))| r.supply.0.saturating_add(*m).saturating_sub(*b)).collect();
         emit_troll_event(
             "feeding_settled",
             &json_str!({ "epoch": epoch, "fed": fed, "senders": self.last_senders, "total_supply": U128(self.total_supply) }),

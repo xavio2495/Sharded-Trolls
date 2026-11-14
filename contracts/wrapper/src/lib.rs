@@ -43,6 +43,10 @@ impl Wrapper {
     #[init]
     pub fn new(troll: AccountId, metadata: FungibleTokenMetadata) -> Self {
         metadata.assert_valid();
+        // Metadata sits in the state every call reads and writes, including the fixed-gas callback.
+        require!(metadata.name.len() <= 64 && metadata.symbol.len() <= 16, "metadata name or symbol too long");
+        require!(metadata.icon.as_ref().is_none_or(|i| i.len() <= 1024), "metadata icon over 1024 bytes");
+        require!(metadata.reference.as_ref().is_none_or(|r| r.len() <= 1024), "metadata reference over 1024 bytes");
         Self { token: FungibleToken::new(b"t".to_vec()), metadata, troll, unwrapping: LookupMap::new(b"u".to_vec()) }
     }
 

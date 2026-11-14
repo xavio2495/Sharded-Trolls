@@ -86,6 +86,20 @@ pub fn home_index(n: usize, account_id: &str) -> usize {
     (u128::from_be_bytes(first) % n as u128) as usize
 }
 
+/// Bounds on token metadata strings. Metadata sits in the contract state that every call reads
+/// and writes, so its size is a fixed gas cost on every call, including fixed-gas callbacks.
+pub const MAX_METADATA_NAME: usize = 64;
+pub const MAX_METADATA_SYMBOL: usize = 16;
+pub const MAX_METADATA_ICON: usize = 1024;
+pub const MAX_METADATA_REFERENCE: usize = 1024;
+
+pub fn validate_metadata_sizes(name: &str, symbol: &str, icon: Option<&String>, reference: Option<&String>) {
+    require!(name.len() <= MAX_METADATA_NAME, "metadata name over 64 bytes");
+    require!(symbol.len() <= MAX_METADATA_SYMBOL, "metadata symbol over 16 bytes");
+    require!(icon.is_none_or(|i| i.len() <= MAX_METADATA_ICON), "metadata icon over 1024 bytes");
+    require!(reference.is_none_or(|r| r.len() <= MAX_METADATA_REFERENCE), "metadata reference over 1024 bytes");
+}
+
 /// `amount * bps / 10_000` rounded down, without overflow.
 pub fn bps_of(amount: u128, bps: u16) -> u128 {
     let bps = bps as u128;

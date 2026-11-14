@@ -69,7 +69,80 @@ fn ok(r: &EpochReport) -> PromiseResult {
 /// Runs `on_reports` as the runtime would after the joined report promises resolve.
 fn resolve(root: &mut Root, epoch: u64, results: Vec<PromiseResult>) -> bool {
     ctx(&root_id(), START + (epoch + 1) * EPOCH, results);
-    root.on_reports(epoch)
+    let attempt = root.attempt;
+    root.on_reports(epoch, attempt)
+}
+
+fn ctx_at(pred: &AccountId, ms: u64, height: u64, tgas: u64, results: Vec<PromiseResult>) {
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(root_id())
+        .predecessor_account_id(pred.clone())
+        .block_timestamp(ms * 1_000_000)
+        .block_height(height)
+        .prepaid_gas(Gas::from_tgas(tgas));
+    testing_env!(b.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), results);
+}
+
+#[test]
+#[should_panic(expected = "attach at least 250 Tgas")]
+fn settle_requires_enough_gas() {
+    let mut r = new_root();
+    ctx_at(&acc("anyone.t"), START + EPOCH, 10, 249, vec![]);
+    let _ = r.settle(0);
+}
+
+#[test]
+#[should_panic(expected = "settlement in progress")]
+fn stuck_settlement_cannot_be_restarted_before_the_timeout() {
+    let mut r = new_root();
+    ctx_at(&acc("anyone.t"), START + EPOCH, 100, 300, vec![]);
+    let _ = r.settle(0);
+    ctx_at(&acc("anyone.t"), START + EPOCH, 100 + SETTLE_TIMEOUT_BLOCKS - 1, 300, vec![]);
+    let _ = r.settle(0);
+}
+
+#[test]
+fn stuck_settlement_restarts_after_the_timeout_and_ignores_the_stale_attempt() {
+    let mut r = new_root();
+    ctx_at(&acc("anyone.t"), START + EPOCH, 100, 300, vec![]);
+    let _ = r.settle(0);
+    // attempt 1's on_reports never completes (for example it ran out of gas)
+    ctx_at(&acc("anyone.t"), START + EPOCH, 100 + SETTLE_TIMEOUT_BLOCKS, 300, vec![]);
+    let _ = r.settle(0);
+    assert!(get_logs().join("").contains("settle_expired"));
+    assert_eq!((r.info().settling, r.attempt), (Some(0), 2));
+    let reps = || (0..3).map(|_| ok(&report(0, 5, 333))).collect::<Vec<_>>();
+    // a late attempt-1 callback changes nothing
+    ctx_at(&root_id(), START + 2 * EPOCH, 700, 300, reps());
+    assert!(!r.on_reports(0, 1));
+    assert!(get_logs().join("").contains("settle_stale"));
+    assert_eq!((r.info().settling, r.info().next_epoch, r.streak()), (Some(0), 0, (0, 0)));
+    // attempt 2 settles
+    ctx_at(&root_id(), START + 2 * EPOCH, 701, 300, reps());
+    assert!(r.on_reports(0, 2));
+    assert_eq!((r.info().settling, r.info().next_epoch, r.streak()), (None, 1, (1, 1)));
+    // and attempt 1 arriving even later is still ignored
+    ctx_at(&root_id(), START + 2 * EPOCH, 702, 300, reps());
+    assert!(!r.on_reports(0, 1));
+    assert_eq!((r.info().next_epoch, r.streak()), (1, (1, 1)));
+}
+
+#[test]
+#[should_panic(expected = "metadata icon over 1024 bytes")]
+fn init_rejects_a_large_icon() {
+    ctx(&acc("deployer.t"), START, vec![]);
+    let m = FungibleTokenMetadata { icon: Some("x".repeat(1025)), ..metadata() };
+    Root::new(params(), trolls(), START, U128(1_000), m);
+}
+
+#[test]
+fn bad_reports_cannot_overflow_the_books() {
+    let mut r = new_root();
+    let mut reps = vec![report(0, 0, u128::MAX), report(0, 0, 1), report(0, 0, 1)];
+    reps[0].minted = U128(u128::MAX);
+    reps[1].minted = U128(u128::MAX);
+    r.decide(0, &reps);
+    assert_eq!(r.ft_total_supply().0, u128::MAX);
 }
 
 #[test]

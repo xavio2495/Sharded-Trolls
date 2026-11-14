@@ -531,3 +531,53 @@ async fn transfer_call_at_minimum_gas_and_msg_bound() -> testresult::TestResult<
     }
     Ok(())
 }
+
+/// A call with exactly `tgas` attached and no deposit.
+async fn call_with_gas(
+    env: &Env,
+    signer: &AccountId,
+    contract: &AccountId,
+    method: &str,
+    args: Value,
+    tgas: u64,
+) -> testresult::TestResult<near_api::types::transaction::result::ExecutionFinalResult> {
+    Ok(Contract(contract.clone())
+        .call_function(method, args)
+        .transaction()
+        .gas(NearGas::from_tgas(tgas))
+        .with_signer(signer.clone(), env.signer.clone())
+        .send_to(&env.network)
+        .await?
+        .into_full()
+        .ok_or("transaction did not reach a final result")?)
+}
+
+/// `settle` needs 250 Tgas up front. At exactly that floor, `on_reports` completes (8 rewards
+/// applied) and the settlement unlocks. Before the floor, the lowest gas `settle` accepted was
+/// about 205 Tgas, which left `on_reports` its 110 Tgas reservation and nothing more.
+#[tokio::test]
+async fn settle_at_minimum_gas() -> testresult::TestResult<()> {
+    let env = common::start_mainnet_layout().await?;
+    let t = deploy(&env, 1).await?;
+    let sink_name = names_at(&env, &t, &t.trolls[0], true, 1, "sink").await?;
+    let sink = user(&env, &t, &sink_name[0]).await?;
+    for (i, troll) in t.trolls.iter().enumerate() {
+        let n = names_at(&env, &t, troll, true, 1, &format!("feed{i}x")).await?;
+        let f = user(&env, &t, &n[0]).await?;
+        claim_launch(&env, &t, &f).await?;
+        assert!(transfer(&env, &t, &f, &sink, 2 * ONE).await?);
+    }
+    wait_for_epoch_end(&env, &t, 0).await?;
+    call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 249).await?.assert_failure();
+    let r = call_with_gas(&env, &sink, &t.root, "settle", json!({ "epoch": 0 }), 250).await?;
+    let on_reports = r.receipt_outcomes().iter().filter(|o| o.executor_id == t.root).nth(1).cloned();
+    let on_reports = on_reports.ok_or("no on_reports receipt")?;
+    println!("settle at 250 Tgas: on_reports burnt {:.2} Tgas (plus 8 x 10 Tgas attached to apply)", on_reports.gas_burnt.as_gas() as f64 / 1e12);
+    assert!(on_reports.is_success());
+    assert!(r.json::<bool>()?);
+    let info: Value = view(&env, &t.root, "info", json!({})).await?;
+    assert_eq!((info["settling"].clone(), info["next_epoch"].as_u64()), (Value::Null, Some(1)));
+    let streak: (u64, u64) = view(&env, &t.root, "streak", json!({})).await?;
+    assert_eq!(streak, (1, 1));
+    Ok(())
+}

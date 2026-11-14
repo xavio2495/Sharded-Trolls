@@ -8,7 +8,7 @@ use near_sdk::{
 };
 use troll_types::{
     EpochReport, Outcome, Params, bps_of, emit_ft_burn, launch_closed_by, reward_funding, starve_burned, emit_ft_mint, emit_ft_transfer, emit_troll_event, epoch_at,
-    home_index, now_ms, validate_setup,
+    home_index, now_ms, validate_metadata_sizes, validate_setup,
 };
 
 mod kv;
@@ -170,6 +170,7 @@ impl Troll {
     ) -> Self {
         validate_setup(&params, &trolls);
         require!(metadata.spec == "ft-1.0.0", "metadata spec must be ft-1.0.0");
+        validate_metadata_sizes(&metadata.name, &metadata.symbol, metadata.icon.as_ref(), metadata.reference.as_ref());
         require!(metadata.reference.is_some() == metadata.reference_hash.is_some(), "reference and reference_hash go together");
         // 32 bytes in padded base64
         require!(metadata.reference_hash.as_ref().is_none_or(|h| h.len() == 44 && h.ends_with('=')), "reference_hash must be 32 bytes");
