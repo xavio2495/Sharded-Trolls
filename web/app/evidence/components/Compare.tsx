@@ -38,20 +38,17 @@ function Card({ col, r, control }: { col: (typeof COLS)[number]; r: RunSummary |
       : "could not keep up: a backlog built up and drained after the load stopped";
   return (
     <div className="slab p-5">
-      <h3 className="flex items-center gap-2 font-display text-2xl text-ink-0">
-        <span aria-hidden className="inline-block size-3" style={{ background: col.color }} />
-        {col.title}
-      </h3>
+      <h3 className="font-display text-2xl text-ink-0">{col.title}</h3>
       <p className="mt-1 text-sm text-ink-2">{col.sub}</p>
       <p className="mt-5 font-display text-5xl leading-none text-ink-0 tabular-nums">
         {r.executed_per_s.toLocaleString("en-US")}
         <span className="mt-1 block font-sans text-sm text-ink-1">transfers/s executed</span>
       </p>
       <p className="mt-2 min-h-10 text-sm text-ink-1">
-        {mult && <strong className="font-semibold text-ink-0">{mult} · </strong>}
+        {mult && <strong className="block font-semibold text-ink-0">{mult}</strong>}
         {verdict}
       </p>
-      <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-hairline pt-3 text-sm">
+      <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         <dt className="text-ink-2">Transactions included</dt>
         <dd className="tabular-nums text-ink-0">
           {Math.round(r.inclusion * 100)}%{" "}
