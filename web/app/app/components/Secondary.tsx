@@ -19,29 +19,29 @@ export function KeeperCell({ wallet, stat, live, left }: { wallet: Wallet; stat:
   return (
     <div className={`flex h-full min-h-0 flex-col justify-between gap-3 p-4 ${due ? "bg-ink-0 text-paper" : ""}`}>
       <div className="min-h-0">
-        <h2 className="font-display text-2xl leading-none">{due && funded ? `Close the day, earn ${fmtNear(bounty)}` : "Close the day"}</h2>
+        <h2 className="font-display text-2xl leading-none">{due && funded ? `Close the round, earn ${fmtNear(bounty)}` : "Close the round"}</h2>
         <p className={`mt-2 text-sm ${due ? "text-mist" : "text-ink-1"}`}>
           {!root
             ? "Reading the root…"
             : root.settling !== null
               ? `Round ${root.settling} is being settled.`
               : due
-                ? `Round ${root.next_epoch} is over${behind > 1 ? ` (${behind} waiting)` : ""}. Settling feeds the fed trolls and starves the rest.${funded ? "" : " The bounty budget is empty right now."}`
+                ? `${behind > 1 ? `${behind} rounds wait to be settled, oldest first.` : "The last round waits to be settled."} Settling rewards the fed trolls and starves the rest.${funded ? "" : " The bounty budget is empty right now."}`
                 : `Anyone can settle a finished round${funded ? ` and earn ${fmtNear(bounty)}` : ""}.`}
         </p>
         <StatusLine status={status} />
       </div>
       <button
-        className={`rounded-none btn ${due ? "btn-line" : "btn-ink"} w-full`}
+        className={`rounded-none btn ${due ? "btn-line" : "btn-ink"} min-h-11 w-full`}
         disabled={!due || status?.kind === "busy"}
         onClick={async () => {
           if (!root) return;
           if (!wallet.accountId) return wallet.connect().catch(() => {});
           const tx = settleTx(ROOT, root.next_epoch);
-          await runAction(setStatus, `Close round ${root.next_epoch}`, () => wallet.send(tx.receiverId, tx.calls));
+          await runAction(setStatus, "Close the round", () => wallet.send(tx.receiverId, tx.calls));
         }}
       >
-        {due ? (wallet.accountId ? "Close the day" : "Connect to close") : `Next settle in ${left !== null ? fmtDuration(left) : "…"}`}
+        {due ? (wallet.accountId ? "Close the round" : "Connect to close") : `This round ends in ${left !== null ? fmtDuration(left) : "…"}`}
       </button>
     </div>
   );

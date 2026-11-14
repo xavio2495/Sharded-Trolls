@@ -62,7 +62,6 @@ export function Dashboard() {
   const root = live?.root;
   const left = startMs !== null && root && now !== null ? startMs + (root.current_epoch + 1) * params.epoch_ms - now : null;
   const minutes = params.epoch_ms / 60_000;
-  const bounty = BigInt(params.settle_bounty ?? "0");
 
   return (
     <div className={GRID}>
@@ -80,7 +79,7 @@ export function Dashboard() {
         >
           <span className="bg-ink-0 px-1.5 text-paper">testnet</span>
           <span className="truncate">
-            {minutes}-min days · {params.feed_target} feeder{params.feed_target === 1 ? "" : "s"} per troll
+            {minutes}-min rounds · {params.feed_target} feeder{params.feed_target === 1 ? "" : "s"} per troll
           </span>
         </a>
         <div>
@@ -93,8 +92,7 @@ export function Dashboard() {
           <dt className="text-ink-1">Streak (best)</dt>
           <dd className="text-right font-semibold tabular-nums text-ink-0">{root ? `${root.streak} (${root.best_streak})` : "—"}</dd>
           <dt className="text-ink-1">Bounty budget</dt>
-          <dd className="flex items-center justify-end gap-1.5 font-semibold tabular-nums text-ink-0">
-            {bounty > BigInt(0) && <span aria-hidden className="inline-block size-3 border-2 border-ink-0 bg-gold" />}
+          <dd className="text-right font-semibold tabular-nums text-ink-0">
             {root?.bounty_budget !== undefined ? fmtNear(root.bounty_budget) : "—"}
           </dd>
           <dt className="text-ink-1">Supply</dt>

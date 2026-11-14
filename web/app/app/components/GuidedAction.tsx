@@ -106,11 +106,11 @@ export function GuidedAction({
         : null;
       break;
     case "wait":
-      title = left !== null && left > 0 ? `Collect in ${fmtDuration(left)}` : "Waiting for the day to close";
+      title = left !== null && left > 0 ? `Collect in ${fmtDuration(left)}` : "Waiting for the round to close";
       lead =
         left !== null && left > 0
-          ? `You fed ${name} this round. When the round ends and someone closes the day, your share pays on your next send, or tap Collect.`
-          : "The round is over. Anyone can close the day (below); then your share is ready.";
+          ? `You fed ${name} this round. When the round ends and someone closes it, your share pays on your next send, or tap Collect.`
+          : "The round is over. Anyone can close the round (below); then your share is ready.";
       break;
     case "collect":
       title = `Collect ${fmtTokens(step.share, metadata.decimals)} ${symbol}`;
@@ -180,8 +180,8 @@ export function TrollStrip({ stat, live, mine }: { stat: Static; live: Live | nu
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between border-b-[3px] border-ink-0 pl-4">
-        <h2 className="font-display text-xl text-ink-0">
-          The trolls <span className="tag text-ink-1">{fedCount}/8 fed this round</span>
+        <h2 className="flex min-w-0 items-baseline gap-x-3 font-display text-xl text-ink-0">
+          The trolls <span className="tag whitespace-nowrap text-ink-1">{fedCount}/8 fed</span>
         </h2>
         <button
           className="min-h-11 border-l-[3px] border-ink-0 px-4 text-sm font-semibold text-ink-0 hover:bg-surface-1"
@@ -198,7 +198,7 @@ export function TrollStrip({ stat, live, mine }: { stat: Static; live: Live | nu
             const info = live?.trolls[i];
             const fed = (info?.senders_this_epoch ?? 0) >= params.feed_target;
             return (
-              <li key={t} className={`flex min-h-0 min-w-0 flex-col items-center justify-center px-1 py-2 text-center ${fed ? "bg-accent-tint" : "bg-paper"}`}>
+              <li key={t} className={`flex min-h-0 min-w-0 flex-col items-center justify-center px-0.5 py-2 text-center ${fed ? "bg-accent-tint" : "bg-paper"}`}>
                 <Image
                   src={`/art/trolls-v3/troll-${i + 1}.webp`}
                   alt={`${TROLL_NAMES[i]}${fed ? ", fed" : ", hungry"}`}
@@ -206,7 +206,7 @@ export function TrollStrip({ stat, live, mine }: { stat: Static; live: Live | nu
                   height={720}
                   className={`aspect-square min-h-0 w-full max-w-16 flex-1 object-contain mix-blend-multiply transition ${fed ? "" : "opacity-55 grayscale"}`}
                 />
-                <span className="mt-1 w-full truncate font-display text-[0.7rem] leading-tight tracking-tight text-ink-0 xl:text-xs">{TROLL_NAMES[i]}</span>
+                <span className="mt-1 w-full truncate font-sans text-[0.7rem] font-bold leading-tight tracking-tight text-ink-0 xl:text-xs">{TROLL_NAMES[i]}</span>
                 <span className={`tag text-[0.65rem] ${fed ? "text-accent-deep" : "text-ink-2"}`}>
                   {mine === i ? "yours · " : ""}
                   {fed ? "fed" : `${info?.senders_this_epoch ?? 0}/${params.feed_target}`}
