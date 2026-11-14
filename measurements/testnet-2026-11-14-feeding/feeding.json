@@ -1,0 +1,1100 @@
+{
+  "network": "testnet",
+  "label": null,
+  "demo_params_note": "Demo parameters: feed_target 1, 10-minute epochs, launch window of one epoch. Launch values differ (feed_target 10, 24 h epochs).",
+  "root": "feed.strl.testnet",
+  "trolls": [
+    {
+      "prefix": "0",
+      "account": "0.feed.strl.testnet",
+      "shard": 10
+    },
+    {
+      "prefix": "7",
+      "account": "7.feed.strl.testnet",
+      "shard": 11
+    },
+    {
+      "prefix": "ax",
+      "account": "ax.feed.strl.testnet",
+      "shard": 12
+    },
+    {
+      "prefix": "e",
+      "account": "e.feed.strl.testnet",
+      "shard": 13
+    },
+    {
+      "prefix": "f",
+      "account": "f.feed.strl.testnet",
+      "shard": 9
+    },
+    {
+      "prefix": "h",
+      "account": "h.feed.strl.testnet",
+      "shard": 7
+    },
+    {
+      "prefix": "kz",
+      "account": "kz.feed.strl.testnet",
+      "shard": 4
+    },
+    {
+      "prefix": "u",
+      "account": "u.feed.strl.testnet",
+      "shard": 5
+    }
+  ],
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 1,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 600000,
+    "launch_window_ms": 600000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000",
+    "settle_bounty": "5000000000000000000000"
+  },
+  "start_ms": 1794666133588,
+  "metadata": {
+    "spec": "ft-1.0.0",
+    "name": "Sharded Trolls",
+    "symbol": "STRL",
+    "icon": null,
+    "reference": null,
+    "reference_hash": null,
+    "decimals": 24
+  },
+  "troll_code_hash": "eea98db9b0a590431f8e7070bb36610511d61e5281fcb77c5537568db8c42ffd",
+  "root_code_hash": "074aa1b9525bb7d3b355e8a4da46de9ca3bc04ee47b484228d75b1790a3298dc",
+  "global_hash_reused": null,
+  "feeders": [
+    {
+      "account": "feeder7.feed.strl.testnet",
+      "troll": 0
+    },
+    {
+      "account": "feeder0.feed.strl.testnet",
+      "troll": 1
+    },
+    {
+      "account": "feeder1.feed.strl.testnet",
+      "troll": 2
+    },
+    {
+      "account": "feeder15.feed.strl.testnet",
+      "troll": 3
+    },
+    {
+      "account": "feeder4.feed.strl.testnet",
+      "troll": 4
+    },
+    {
+      "account": "feeder8.feed.strl.testnet",
+      "troll": 5
+    },
+    {
+      "account": "feeder2.feed.strl.testnet",
+      "troll": 6
+    },
+    {
+      "account": "feeder6.feed.strl.testnet",
+      "troll": 7
+    }
+  ],
+  "settler": "settler.feed.strl.testnet",
+  "deploy_resumed": {
+    "note": "deploy.mjs stopped after the 5th troll: send_tx for h.feed.strl.testnet got HTTP 429 from rpc.testnet.near.org ('endpoint is DEPRECATED'). The transaction never reached the chain (h.feed did not exist afterwards). h, kz and u were then created in separate transactions on test.rpc.fastnear.com with byte-identical init args read from f.feed's init tx; all 8 trolls share the same global hash.",
+    "deploy_started": "2026-11-14T14:22:13.588Z",
+    "separate_txs": {
+      "h": "47Vh7bcVwzqqUUXnz829F2T8FoVXTgaKBpt9gjeYAYCJ",
+      "kz": "DM6Vr1cLhBMMBeqBqKE4nDPa7Jsy9ifAvNRVWnZgGKMb",
+      "u": "DXAp1recZFzzYXK1Kxwx54ZQ4osb8A4BNcNEeWjY5A3v"
+    },
+    "separate_txs_at": "2026-11-14T14:25:04Z/14:25:22Z",
+    "init_args_source_tx": "41VGupE1AM51rkH2DQ6R5jvzigNdz5hBvURHhy7MpPB1",
+    "root_init_tx": "FHaxenkW3cWabTfaboD9GEKdPgmZT4aUBRsSEZGwsLAj",
+    "checks": {
+      "init_args_byte_identical": true,
+      "global_contract_hashes": [
+        "H4dzCPS5jwbXWnD2m5jNwbUCvrYT9yUCTM5AHJm8jfuW"
+      ],
+      "equals_local_troll_wasm_sha256": "eea98db9"
+    },
+    "stopped": "2026-11-14T14:28Z: testnet transactions halted by the user after E0 (before S0). The deployment stays as it is."
+  },
+  "k7": null,
+  "setup": {
+    "before": {
+      "at": "2026-11-14T14:25:37.929Z",
+      "root": {
+        "next_epoch": 0,
+        "current_epoch": 0,
+        "settling": null,
+        "streak": 0,
+        "best_streak": 0,
+        "total_supply": "1000000000000000000000000000000000",
+        "troll_supply": [
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000"
+        ],
+        "troll_in_flight": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "last_senders": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "trolls": [
+        {
+          "account": "0.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "7.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "ax.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "e.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "f.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "h.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "kz.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "u.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62500000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        }
+      ],
+      "feeders": [],
+      "settler_near_yocto": null,
+      "conservation": {
+        "supply": "1000000000000000000000000000000000",
+        "in_flight": "0",
+        "burned": "0",
+        "minted": "0",
+        "total_supply": "1000000000000000000000000000000000",
+        "conserved": true
+      }
+    },
+    "after": {
+      "at": "2026-11-14T14:27:32.457Z",
+      "root": {
+        "next_epoch": 0,
+        "current_epoch": 0,
+        "settling": null,
+        "streak": 0,
+        "best_streak": 0,
+        "total_supply": "1000000000000000000000000000000000",
+        "troll_supply": [
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000"
+        ],
+        "troll_in_flight": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "last_senders": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "trolls": [
+        {
+          "account": "0.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "7.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "ax.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "e.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "f.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "h.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "kz.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "u.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        }
+      ],
+      "feeders": [
+        {
+          "account": "feeder7.feed.strl.testnet",
+          "troll": 0,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder0.feed.strl.testnet",
+          "troll": 1,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder1.feed.strl.testnet",
+          "troll": 2,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder15.feed.strl.testnet",
+          "troll": 3,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder4.feed.strl.testnet",
+          "troll": 4,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder8.feed.strl.testnet",
+          "troll": 5,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder2.feed.strl.testnet",
+          "troll": 6,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder6.feed.strl.testnet",
+          "troll": 7,
+          "balance": "1000000000000000000000000000"
+        }
+      ],
+      "settler_near_yocto": "400000000000000000000000",
+      "conservation": {
+        "supply": "1000000000000000000000000000000000",
+        "in_flight": "0",
+        "burned": "0",
+        "minted": "0",
+        "total_supply": "1000000000000000000000000000000000",
+        "conserved": true
+      }
+    },
+    "txs": [
+      {
+        "step": "create",
+        "account": "feeder7.feed.strl.testnet",
+        "hash": "AEvKArnvYzqW4JENSX2H6E2R2CRpYHj2W7w5sSsVG8Tm"
+      },
+      {
+        "step": "create",
+        "account": "feeder0.feed.strl.testnet",
+        "hash": "361qdbfudL3R2R6tkVQm5bDaajsypwGg2QhvZhadbQDK"
+      },
+      {
+        "step": "create",
+        "account": "feeder1.feed.strl.testnet",
+        "hash": "7akYsfhnG8UBouqrUiVDtF9fC1owMuL5id6Nszj38huL"
+      },
+      {
+        "step": "create",
+        "account": "feeder15.feed.strl.testnet",
+        "hash": "SZpr4DRTVK5AquMUtyh4rLPwSkK6CQJetvBSSPx7jM4"
+      },
+      {
+        "step": "create",
+        "account": "feeder4.feed.strl.testnet",
+        "hash": "8f6MehrJZeE6W3zR4VEKWfQFaNsd7dxmAmBPgPbDmfyM"
+      },
+      {
+        "step": "create",
+        "account": "feeder8.feed.strl.testnet",
+        "hash": "BqoPWK772CsYhqDNDtWAGPhUYwJKYzkoHUKmvbt546Gd"
+      },
+      {
+        "step": "create",
+        "account": "feeder2.feed.strl.testnet",
+        "hash": "56jDRRGXtyaQptAfovqvibbyuG3P57i9WFoQPiwXFzwN"
+      },
+      {
+        "step": "create",
+        "account": "feeder6.feed.strl.testnet",
+        "hash": "Gf4o6fB3pCsySeLgHkfsdMNAGTm2dXUsvw2P66MK2m1N"
+      },
+      {
+        "step": "create",
+        "account": "settler.feed.strl.testnet",
+        "hash": "43FXtUJnSgCg1BWefnpycoJ6SMDpAr9SFNk1gbxzgxxK"
+      },
+      {
+        "step": "register",
+        "account": "feeder7.feed.strl.testnet",
+        "hash": "5Q1HDRgnx2esBiWzSp1c4r8GURvESreWxJUB1rpPD6Ay"
+      },
+      {
+        "step": "register",
+        "account": "feeder0.feed.strl.testnet",
+        "hash": "G47h7K7P4yKLncy9T3vc8xChaEaiH6qMs56WJmEQ8r2Z"
+      },
+      {
+        "step": "register",
+        "account": "feeder1.feed.strl.testnet",
+        "hash": "2j1fMhtE9TezjMpznbkjhWRbTvGNCmqpv14wfdMAZjxa"
+      },
+      {
+        "step": "register",
+        "account": "feeder15.feed.strl.testnet",
+        "hash": "DpXFM1NbYDrJvtQzo3rLF8ZegAEH7c4MehfnBBeLKwTt"
+      },
+      {
+        "step": "register",
+        "account": "feeder4.feed.strl.testnet",
+        "hash": "EXQWv728sHq9R1w7Fvi6LLQR2ZbF6wExXWpt6PQxofj7"
+      },
+      {
+        "step": "register",
+        "account": "feeder8.feed.strl.testnet",
+        "hash": "8BEbNcqCFSM8gfyeovpNUmMKWwrLowxcoxd7KPH5WN1p"
+      },
+      {
+        "step": "register",
+        "account": "feeder2.feed.strl.testnet",
+        "hash": "3FJyksdqjdXAWdHW9EyE53P5MMr4BWuin4Pvvt3JoqjK"
+      },
+      {
+        "step": "register",
+        "account": "feeder6.feed.strl.testnet",
+        "hash": "DCyFkznrNfkHrgnXqWs6TK91rc2dunFELcRkbZj1VwVw"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder7.feed.strl.testnet",
+        "hash": "Du6ZAgyGNB8rCjJ8z7oShEkoz4bfz45biGT8MkgqtpZg"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder0.feed.strl.testnet",
+        "hash": "97PFqB8MrN9ijhvsReQRnudvrr3BzTjUdYExTeufN4UM"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder1.feed.strl.testnet",
+        "hash": "79DaDpTZ4PeKo2WgsnG3m8K61FNx1Ps7dHrgagW2xB3S"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder15.feed.strl.testnet",
+        "hash": "8FuivodFjFv5LqjJzWdv28Fm3Hpaa8bEgAcnDoE9nQ2V"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder4.feed.strl.testnet",
+        "hash": "EizFBLNLBavMskBFbbPtSkmNbSDGvXQtnBCFs9UZz4fR"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder8.feed.strl.testnet",
+        "hash": "F6twjbnZNqLg3sn9oCT1pGgjiPCGsmuNPxcEgRd4DzYR"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder2.feed.strl.testnet",
+        "hash": "HEfr8ZF4gw8UuTyhKNPLtyuuo8Eo4vNMeXZmf8avWxfF"
+      },
+      {
+        "step": "claim_launch",
+        "account": "feeder6.feed.strl.testnet",
+        "hash": "GwoVE9nfd2gTLQ1piSEh9zcQsKN9v97nysnFyvmH3HtT"
+      }
+    ]
+  },
+  "E0": {
+    "tag": "E0",
+    "skip": null,
+    "before": {
+      "at": "2026-11-14T14:27:42.446Z",
+      "root": {
+        "next_epoch": 0,
+        "current_epoch": 0,
+        "settling": null,
+        "streak": 0,
+        "best_streak": 0,
+        "total_supply": "1000000000000000000000000000000000",
+        "troll_supply": [
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000"
+        ],
+        "troll_in_flight": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "last_senders": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "trolls": [
+        {
+          "account": "0.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "7.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "ax.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "e.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "f.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "h.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "kz.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "u.feed.strl.testnet",
+          "senders_this_epoch": 0,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "0",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        }
+      ],
+      "feeders": [
+        {
+          "account": "feeder7.feed.strl.testnet",
+          "troll": 0,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder0.feed.strl.testnet",
+          "troll": 1,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder1.feed.strl.testnet",
+          "troll": 2,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder15.feed.strl.testnet",
+          "troll": 3,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder4.feed.strl.testnet",
+          "troll": 4,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder8.feed.strl.testnet",
+          "troll": 5,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder2.feed.strl.testnet",
+          "troll": 6,
+          "balance": "1000000000000000000000000000"
+        },
+        {
+          "account": "feeder6.feed.strl.testnet",
+          "troll": 7,
+          "balance": "1000000000000000000000000000"
+        }
+      ],
+      "settler_near_yocto": "400000000000000000000000",
+      "conservation": {
+        "supply": "1000000000000000000000000000000000",
+        "in_flight": "0",
+        "burned": "0",
+        "minted": "0",
+        "total_supply": "1000000000000000000000000000000000",
+        "conserved": true
+      }
+    },
+    "after": {
+      "at": "2026-11-14T14:28:33.024Z",
+      "root": {
+        "next_epoch": 0,
+        "current_epoch": 0,
+        "settling": null,
+        "streak": 0,
+        "best_streak": 0,
+        "total_supply": "1000000000000000000000000000000000",
+        "troll_supply": [
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000",
+          "125000000000000000000000000000000"
+        ],
+        "troll_in_flight": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "last_senders": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "trolls": [
+        {
+          "account": "0.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "7.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "ax.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "e.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "f.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "h.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "kz.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        },
+        {
+          "account": "u.feed.strl.testnet",
+          "senders_this_epoch": 1,
+          "epoch": 0,
+          "supply": "125000000000000000000000000000000",
+          "food": "250000000000000000000000",
+          "hoard": "62500000000000000000000000000000",
+          "launch_pool": "62499000000000000000000000000000",
+          "minted": "0",
+          "burned": "0",
+          "in_flight": "0"
+        }
+      ],
+      "feeders": [
+        {
+          "account": "feeder7.feed.strl.testnet",
+          "troll": 0,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder0.feed.strl.testnet",
+          "troll": 1,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder1.feed.strl.testnet",
+          "troll": 2,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder15.feed.strl.testnet",
+          "troll": 3,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder4.feed.strl.testnet",
+          "troll": 4,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder8.feed.strl.testnet",
+          "troll": 5,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder2.feed.strl.testnet",
+          "troll": 6,
+          "balance": "999750000000000000000000000"
+        },
+        {
+          "account": "feeder6.feed.strl.testnet",
+          "troll": 7,
+          "balance": "999750000000000000000000000"
+        }
+      ],
+      "settler_near_yocto": "400000000000000000000000",
+      "conservation": {
+        "supply": "1000000000000000000000000000000000",
+        "in_flight": "0",
+        "burned": "0",
+        "minted": "0",
+        "total_supply": "1000000000000000000000000000000000",
+        "conserved": true
+      }
+    },
+    "txs": [
+      {
+        "from": "feeder7.feed.strl.testnet",
+        "to": "feeder0.feed.strl.testnet",
+        "troll_from": 0,
+        "troll_to": 1,
+        "hash": "2Th6GGr5S85nVQW8tDhKh6FZMUZhLFBpjEkND6co8Dtj",
+        "events": [
+          "0.feed.strl.testnet:ft_burn",
+          "7.feed.strl.testnet:ft_mint",
+          "7.feed.strl.testnet:ft_mint",
+          "7.feed.strl.testnet:toll_eaten",
+          "0.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder0.feed.strl.testnet",
+        "to": "feeder1.feed.strl.testnet",
+        "troll_from": 1,
+        "troll_to": 2,
+        "hash": "GH1ZPWNKzV1kAVfRgsrm2VvZQkYmJ2thuaQEv5zQ8miP",
+        "events": [
+          "7.feed.strl.testnet:ft_burn",
+          "ax.feed.strl.testnet:ft_mint",
+          "ax.feed.strl.testnet:ft_mint",
+          "ax.feed.strl.testnet:toll_eaten",
+          "7.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder1.feed.strl.testnet",
+        "to": "feeder15.feed.strl.testnet",
+        "troll_from": 2,
+        "troll_to": 3,
+        "hash": "2ZA5HaxHX7WJzveTXTrkz6pgFcN3kXsM1v7ZvyvJZ2KW",
+        "events": [
+          "ax.feed.strl.testnet:ft_burn",
+          "e.feed.strl.testnet:ft_mint",
+          "e.feed.strl.testnet:ft_mint",
+          "e.feed.strl.testnet:toll_eaten",
+          "ax.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder15.feed.strl.testnet",
+        "to": "feeder4.feed.strl.testnet",
+        "troll_from": 3,
+        "troll_to": 4,
+        "hash": "9nQf9Cyh1c1sfD7WLginq3vJLRTVE3coqLbRu5UUUJ2U",
+        "events": [
+          "e.feed.strl.testnet:ft_burn",
+          "f.feed.strl.testnet:ft_mint",
+          "f.feed.strl.testnet:ft_mint",
+          "f.feed.strl.testnet:toll_eaten",
+          "e.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder4.feed.strl.testnet",
+        "to": "feeder8.feed.strl.testnet",
+        "troll_from": 4,
+        "troll_to": 5,
+        "hash": "CMxdPUnjUtansv9JPN6CxsZJiDnGPXFKah4Fvp62BYxb",
+        "events": [
+          "f.feed.strl.testnet:ft_burn",
+          "h.feed.strl.testnet:ft_mint",
+          "h.feed.strl.testnet:ft_mint",
+          "h.feed.strl.testnet:toll_eaten",
+          "f.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder8.feed.strl.testnet",
+        "to": "feeder2.feed.strl.testnet",
+        "troll_from": 5,
+        "troll_to": 6,
+        "hash": "5w15wV9DnfyxEUYyG95eQaRJGuu8WetGktDgmeSEpmRG",
+        "events": [
+          "h.feed.strl.testnet:ft_burn",
+          "kz.feed.strl.testnet:ft_mint",
+          "kz.feed.strl.testnet:ft_mint",
+          "kz.feed.strl.testnet:toll_eaten",
+          "h.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder2.feed.strl.testnet",
+        "to": "feeder6.feed.strl.testnet",
+        "troll_from": 6,
+        "troll_to": 7,
+        "hash": "ACjpyxaYCtrYauZLauCzb4HVXd2NmbgZ6ArFANCBtcMQ",
+        "events": [
+          "kz.feed.strl.testnet:ft_burn",
+          "u.feed.strl.testnet:ft_mint",
+          "u.feed.strl.testnet:ft_mint",
+          "u.feed.strl.testnet:toll_eaten",
+          "kz.feed.strl.testnet:toll"
+        ]
+      },
+      {
+        "from": "feeder6.feed.strl.testnet",
+        "to": "feeder7.feed.strl.testnet",
+        "troll_from": 7,
+        "troll_to": 0,
+        "hash": "9wtoyhhiQZNBZXHDmR1wvjchy7AyehjAPXTqCDSSgm7C",
+        "events": [
+          "u.feed.strl.testnet:ft_burn",
+          "0.feed.strl.testnet:ft_mint",
+          "0.feed.strl.testnet:ft_mint",
+          "0.feed.strl.testnet:toll_eaten",
+          "u.feed.strl.testnet:toll"
+        ]
+      }
+    ]
+  },
+  "S0": null,
+  "C0": null,
+  "E1": null,
+  "S1": null
+}
