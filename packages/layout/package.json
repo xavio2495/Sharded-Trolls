@@ -2,5 +2,11 @@
   "name": "@sharded-trolls/layout",
   "private": true,
   "type": "module",
-  "description": "shardOf, place and check: map account ids to NEAR shards from the live layout"
+  "description": "shardOf, place and check: map account ids to NEAR shards from the live layout",
+  "exports": "./index.js",
+  "bin": { "troll-check": "./check.js" },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --dns-result-order=ipv4first check.js"
+  }
 }
