@@ -160,7 +160,7 @@ export function YourTroll({ wallet, stat, live, now }: { wallet: Wallet; stat: S
     <div>
       <div className="flex flex-wrap items-center gap-4">
         {me && (
-          <Image src={`/art/trolls/troll-${me.index + 1}.webp`} alt={`${TROLL_NAMES[me.index]}, your home troll`} width={720} height={720} className="size-24 mix-blend-multiply" />
+          <Image src={`/art/trolls-v2/troll-${me.index + 1}.webp`} alt={`${TROLL_NAMES[me.index]}, your home troll`} width={720} height={720} className="size-24 mix-blend-multiply" />
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-ink-0">{accountId}</p>

@@ -19,11 +19,29 @@ function Panel({ title, kicker, children }: { title: string; kicker?: string; ch
   );
 }
 
+/** Makes clear this is a testnet deployment with shortened demo parameters, not mainnet. */
+function NetworkBadge({ epochMinutes, feedTarget }: { epochMinutes?: number; feedTarget?: number }) {
+  const demo = epochMinutes !== undefined ? ` · ${epochMinutes >= 60 ? `${epochMinutes / 60} h` : `${epochMinutes} min`} epochs, ${feedTarget} feeder${feedTarget === 1 ? "" : "s"} per troll` : "";
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-sm text-ink-1">
+      <span className="rounded-[var(--radius-ui)] border-2 border-teal-deep px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-teal-deep">
+        testnet · demo parameters
+      </span>
+      <span>
+        <a className="underline" href={accountUrl(ROOT)} target="_blank" rel="noreferrer">
+          {ROOT}
+        </a>
+        {demo}
+      </span>
+    </p>
+  );
+}
+
 function Figure({ label, value, coin }: { label: string; value: string; coin?: boolean }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-1">{label}</dt>
-      <dd className="mt-1 flex items-center gap-2 truncate font-display text-2xl text-ink-0 md:text-3xl">
+      <dd className="mt-1 flex items-center gap-2 font-display text-xl text-ink-0 [overflow-wrap:anywhere] sm:text-2xl md:text-3xl">
         {coin && <span aria-hidden className="inline-block size-4 shrink-0 rounded-full border-2 border-ink-line bg-gold" />}
         {value}
       </dd>
@@ -45,9 +63,22 @@ export function Dashboard() {
 
   if (!stat) {
     return (
-      <p className="py-20 text-center text-ink-1">
-        {error ? `Could not reach the trolls: ${error}` : `Waking the trolls on ${ROOT}…`}
-      </p>
+      <div className="space-y-8" aria-busy="true">
+        <section className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5 shadow-[5px_5px_0_0_var(--ink-line)] md:p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h1 className="font-display text-5xl leading-none text-ink-0 md:text-6xl">The Feeding</h1>
+            <NetworkBadge />
+          </div>
+          <p className="mt-5 text-ink-1" role="status">
+            {error ? `Could not reach the trolls: ${error}` : `Waking the trolls on ${ROOT}…`}
+          </p>
+        </section>
+        <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 8 }, (_, i) => (
+            <TrollCard key={i} index={i} feedTarget={0} symbol="STRL" />
+          ))}
+        </ul>
+      </div>
     );
   }
 
@@ -61,12 +92,7 @@ export function Dashboard() {
       <section className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5 shadow-[5px_5px_0_0_var(--ink-line)] md:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="font-display text-5xl leading-none text-ink-0 md:text-6xl">The Feeding</h1>
-          <p className="text-sm text-ink-1">
-            testnet ·{" "}
-            <a className="underline" href={accountUrl(ROOT)} target="_blank" rel="noreferrer">
-              {ROOT}
-            </a>
-          </p>
+          <NetworkBadge epochMinutes={params.epoch_ms / 60_000} feedTarget={params.feed_target} />
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-5 md:grid-cols-4">
           <Figure
@@ -81,7 +107,7 @@ export function Dashboard() {
           {live
             ? fedAll
               ? "Every troll has enough feeders this epoch. Keep it up and the streak grows."
-              : `Each troll needs ${params.feed_target} feeders this epoch, or it starves and burns ${params.starve_burn_bps / 100}% of its hoard.`
+              : `Each troll needs ${params.feed_target} feeder${params.feed_target === 1 ? "" : "s"} this epoch, or it starves and burns ${params.starve_burn_bps / 100}% of its hoard.`
             : "Counting feeders…"}
           {error && <span className="ml-2 text-starve">(last refresh failed; retrying)</span>}
         </p>

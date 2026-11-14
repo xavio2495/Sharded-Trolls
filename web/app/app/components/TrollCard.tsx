@@ -50,8 +50,8 @@ export function TrollCard({
   mine,
 }: {
   index: number;
-  account: string;
-  shard: number;
+  account?: string;
+  shard?: number;
   info?: TrollInfo;
   feedTarget: number;
   symbol: string;
@@ -71,20 +71,28 @@ export function TrollCard({
       )}
       <div className="flex items-center gap-3">
         <Image
-          src={`/art/trolls/troll-${index + 1}.webp`}
-          alt={`${TROLL_NAMES[index]}, keeper of shard ${shard}`}
+          src={`/art/trolls-v2/troll-${index + 1}.webp`}
+          alt={`${TROLL_NAMES[index]}, troll ${index + 1}`}
           width={720}
           height={720}
           className="size-16 shrink-0 mix-blend-multiply"
         />
         <div className="min-w-0 flex-1">
           <h3 className="font-display text-xl leading-tight text-ink-0 xl:text-lg">{TROLL_NAMES[index]}</h3>
-          <p className="mt-1 text-sm text-ink-1">shard {shard}</p>
-          <a href={accountUrl(account)} target="_blank" rel="noreferrer" className="block truncate text-xs text-ink-1 underline">
-            {account}
-          </a>
+          <p className="mt-1 text-sm text-ink-1">{shard !== undefined ? `shard ${shard}` : "finding its shard…"}</p>
+          {account ? (
+            <a href={accountUrl(account)} target="_blank" rel="noreferrer" className="block truncate text-xs text-ink-1 underline">
+              {account}
+            </a>
+          ) : (
+            <span aria-hidden className="mt-1 block h-3 w-28 animate-pulse rounded bg-surface-2" />
+          )}
         </div>
-        <FeedRing fed={fed} target={feedTarget} />
+        {info ? (
+          <FeedRing fed={fed} target={feedTarget} />
+        ) : (
+          <span aria-hidden className="size-14 shrink-0 animate-pulse rounded-full border-[7px] border-hairline" />
+        )}
       </div>
       <dl className="mt-3">
         <Stat label="Food (tolls eaten)" value={info?.food !== undefined ? fmtTokens(info.food) : "—"} />

@@ -2,7 +2,7 @@
 // troll (same hash as the contracts), shard layout, and the root's epoch start parsed from its state.
 
 export const NETWORK = "testnet" as const;
-export const ROOT = process.env.NEXT_PUBLIC_STRL_ROOT ?? "st2.xavio.testnet";
+export const ROOT = process.env.NEXT_PUBLIC_STRL_ROOT ?? "v2.strl.testnet";
 export const RPC = process.env.NEXT_PUBLIC_NEAR_RPC ?? "https://test.rpc.fastnear.com";
 export const TX_API = "https://tx.test.fastnear.com/v0";
 export const EXPLORER = "https://testnet.nearblocks.io";
@@ -12,11 +12,20 @@ export const MAX_MSG_BYTES = 4096;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** POST JSON with retries on 429 and 5xx: exponential backoff, honouring Retry-After. */
+/** POST JSON with retries on 429, 5xx and network errors: exponential backoff, honouring Retry-After. */
 export async function postJson<T>(url: string, body: unknown, tries = 6): Promise<T> {
   let wait = 500;
   for (let i = 0; ; i++) {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    let res: Response;
+    try {
+      res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    } catch (e) {
+      // A rate-limited reply without CORS headers surfaces as a network error: retry it too.
+      if (i >= tries - 1) throw e;
+      await sleep(wait);
+      wait = Math.min(wait * 2, 8000);
+      continue;
+    }
     if ((res.status === 429 || res.status >= 500) && i < tries - 1) {
       const after = Number(res.headers.get("retry-after"));
       await sleep(after > 0 ? after * 1000 : wait);

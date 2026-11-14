@@ -13,7 +13,7 @@ type Txs = {
   }[];
 };
 
-const POLL_MS = 60_000;
+const POLL_MS = 120_000;
 const SHOW = 40;
 
 function label(who: string, trolls: string[]): string {
@@ -90,12 +90,12 @@ export function EventFeed({ trolls, decimals }: { trolls: string[]; decimals: nu
     <ul className="max-h-[32rem] divide-y divide-hairline overflow-y-auto pr-2">
       {events.map((e) => (
         <li key={e.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-sm">
-          <time className="w-20 shrink-0 tabular-nums text-ink-1" dateTime={new Date(e.at).toISOString()}>
+          <time className="w-16 shrink-0 tabular-nums text-ink-1 sm:w-20" dateTime={new Date(e.at).toISOString()}>
             {new Date(e.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </time>
-          <span className="w-24 shrink-0 font-semibold text-ink-0">{label(e.who, trolls)}</span>
+          <span className="w-20 shrink-0 font-semibold text-ink-0 sm:w-24">{label(e.who, trolls)}</span>
           <span className="rounded-[var(--radius-ui)] bg-surface-2 px-2 py-0.5 font-mono text-xs text-ink-0">{e.event}</span>
-          <span className="min-w-0 flex-1 truncate text-ink-1">{summary(e, decimals)}</span>
+          <span className="order-last basis-full truncate pl-16 text-ink-1 sm:order-none sm:basis-0 sm:flex-1 sm:pl-0">{summary(e, decimals)}</span>
           <a className="text-teal-deep underline" href={txUrl(e.hash)} target="_blank" rel="noreferrer">
             tx
           </a>
