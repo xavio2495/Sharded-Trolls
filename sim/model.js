@@ -14,6 +14,13 @@ export const DEFAULT_PARAMS = {
   launch_claim_amount: 1e5,
   min_counted_transfer: 1,
   launch_window_epochs: 1,
+  // Variants studied for Sybil resistance; the defaults reproduce the contract as built.
+  counted_burn: 0, // tokens burned from the sender on each counted send (0 = off)
+  count_min_age: 0, // a holder counts only after holding tokens this many epochs
+  reward_split: 'equal', // 'equal' per feeder | 'stake': by the feeder's balance at settlement (bots hold min_counted_transfer)
+  reward_cap_per_feeder: Infinity, // tokens; the part of a troll's pool above the cap is not paid
+  reward_source: 'mint', // 'mint' | 'toll' (the epoch's tolls fund the reward instead of burning) | 'launch_pool'
+  unclaimed_at_close: 'locked', // launch pool at window close: 'locked' | 'hoard' | 'burn' | 'reward'
 };
 
 // Cost assumptions for a bot farmer, in NEAR. Gas: ~2.5 Tgas per counted transfer at the 1e8
@@ -44,30 +51,50 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
     return n - 1;
   };
 
-  const holders = Array.from({ length: scenario.holders }, () => ({ home: pickHome(), bal: 0, counted: -1 }));
+  const holders = Array.from({ length: scenario.holders }, () => ({ home: pickHome(), bal: 0, counted: -1, since: Infinity }));
   const byTroll = Array.from({ length: n }, () => []);
   holders.forEach((h, i) => byTroll[h.home].push(i));
 
   const launchPool = Array(n).fill(P.launch_supply / n);
   const hoard = Array(n).fill((P.total_supply - P.launch_supply) / n);
   const bots = Array(n).fill(0); // bot accounts created per troll
-  const farm = { cost: 0, reward: 0, sends: 0 };
+  const farm = { cost: 0, reward: 0, sends: 0, burned: 0, launch: 0 };
+  const honest = { reward: 0, feederDays: 0, burned: 0, topDecile: 0 };
+  const fromPool = P.reward_source === 'launch_pool' || P.unclaimed_at_close === 'reward';
+  let countedBurned = 0, closeBurned = 0, closeToHoard = 0, poolPaid = 0;
   let tollBurned = 0, starveBurned = 0, minted = 0, streak = 0, best = 0, fedEpochs = 0;
   const streaks = []; // completed streak lengths
   const rows = [];
 
   for (let day = 0; day < days; day++) {
+    if (day < P.launch_window_epochs && scenario.launchFarm) {
+      // a farmer's bots claim first: share of each troll's claims taken before holders arrive
+      for (let t = 0; t < n; t++) {
+        const k = Math.floor((launchPool[t] / P.launch_claim_amount) * scenario.launchFarm);
+        launchPool[t] -= k * P.launch_claim_amount;
+        farm.launch += k * P.launch_claim_amount;
+        farm.cost += k * COSTS.setup_per_bot;
+      }
+    }
+    if (day === P.launch_window_epochs) {
+      for (let t = 0; t < n; t++) {
+        if (P.unclaimed_at_close === 'hoard') { hoard[t] += launchPool[t]; closeToHoard += launchPool[t]; launchPool[t] = 0; }
+        if (P.unclaimed_at_close === 'burn') { closeBurned += launchPool[t]; launchPool[t] = 0; }
+      }
+    }
     if (day < P.launch_window_epochs) {
       for (const h of holders) {
         if (h.bal === 0 && launchPool[h.home] >= P.launch_claim_amount) {
           launchPool[h.home] -= P.launch_claim_amount;
           h.bal += P.launch_claim_amount;
+          h.since = day;
         }
       }
     }
 
     const feeders = Array.from({ length: n }, () => []);
     let volume = 0, crossVolume = 0, dayToll = 0;
+    const tollBy = Array(n).fill(0);
     const p = scenario.active(day, rand);
     holders.forEach((h, i) => {
       if (h.bal <= 0 || rand() >= p) return;
@@ -88,18 +115,47 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
           const toll = (amount * P.toll_bps) / 10_000;
           to.bal += amount - toll;
           dayToll += toll;
+          tollBy[h.home] += toll;
           crossVolume += amount;
         }
-        if (amount >= P.min_counted_transfer && h.counted !== day) {
+        if (to.since === Infinity) to.since = day;
+        if (amount >= P.min_counted_transfer && h.counted !== day && day - h.since >= P.count_min_age
+          && h.bal >= P.counted_burn) {
           h.counted = day;
+          h.bal -= P.counted_burn;
+          honest.burned += P.counted_burn;
           feeders[h.home].push(i);
         }
       }
     });
-    tollBurned += dayToll;
-
     const organic = feeders.map((f) => f.length);
     const botSends = Array(n).fill(0);
+    // reward pool each troll would pay if every troll is fed
+    const poolFor = (t) => P.reward_source === 'toll' ? tollBy[t]
+      : P.reward_per_epoch / n;
+    if (scenario.harvest) {
+      // profit-seeking farmer: per troll, the bot count that maximises
+      // price * pool * B / (O + B) - (price * counted_burn + fee) * B, at least the gap to the target
+      const { price } = scenario.harvest;
+      const unit = price * P.counted_burn + COSTS.fee_per_transfer;
+      const plan = organic.map((O, t) => {
+        const R = Math.min(poolFor(t), P.reward_cap_per_feeder * 1e12);
+        const gap = Math.max(0, P.feed_target - O);
+        const best = O > 0 ? Math.floor(Math.sqrt((price * R * O) / unit) - O) : 0;
+        // stake split: extra bots holding the minimum add no weight, so the farmer gains nothing
+        if (P.reward_split === 'stake') return { B: gap, value: -1 };
+        const B = Math.max(gap, best, 0);
+        const share = Math.min(R / Math.max(1, O + B), P.reward_cap_per_feeder);
+        return { B, value: price * share * B - unit * B };
+      });
+      if (plan.reduce((a, x) => a + x.value, 0) > 0) plan.forEach((x, t) => { botSends[t] = x.B; });
+      for (let t = 0; t < n; t++) {
+        if (botSends[t] > bots[t]) { farm.cost += (botSends[t] - bots[t]) * COSTS.setup_per_bot; bots[t] = botSends[t]; }
+        farm.sends += botSends[t];
+        farm.cost += botSends[t] * COSTS.fee_per_transfer;
+        farm.burned += botSends[t] * P.counted_burn;
+      }
+    }
     if (scenario.farm) {
       for (let t = 0; t < n; t++) {
         const gap = Math.max(0, P.feed_target - organic[t]);
@@ -110,6 +166,7 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
         botSends[t] = gap;
         farm.sends += gap;
         farm.cost += gap * COSTS.fee_per_transfer;
+        farm.burned += gap * P.counted_burn;
       }
     }
     const counted = organic.map((c, t) => c + botSends[t]);
@@ -123,10 +180,33 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
       best = Math.max(best, streak);
       for (let t = 0; t < n; t++) {
         if (counted[t] === 0) continue;
-        const share = P.reward_per_epoch / n / counted[t];
-        for (const i of feeders[t]) holders[i].bal += share;
-        farm.reward += share * botSends[t];
-        dayMint += share * counted[t];
+        let share = Math.min(poolFor(t) / counted[t], P.reward_cap_per_feeder);
+        let total = share * counted[t];
+        if (P.reward_split === 'stake') {
+          const bals = feeders[t].map((i) => holders[i].bal);
+          const botW = botSends[t] * P.min_counted_transfer;
+          const W = bals.reduce((a, b) => a + b, 0) + botW;
+          total = poolFor(t);
+          const pays = bals.map((b) => (total * b) / W);
+          feeders[t].forEach((i, k) => { holders[i].bal += pays[k]; });
+          farm.reward += (total * botW) / W;
+          honest.reward += total - (total * botW) / W;
+          const sorted = [...pays].sort((a, b) => b - a);
+          honest.topDecile += sorted.slice(0, Math.ceil(sorted.length / 10)).reduce((a, b) => a + b, 0);
+        } else {
+          for (const i of feeders[t]) holders[i].bal += share;
+          farm.reward += share * botSends[t];
+          honest.reward += share * organic[t];
+          honest.topDecile += share * Math.ceil(organic[t] / 10);
+        }
+        if (P.reward_source === 'toll') { tollBy[t] -= total; continue; } // paid out of the tolls, not minted
+        let fromLaunch = 0;
+        if (fromPool && day >= P.launch_window_epochs) {
+          fromLaunch = Math.min(launchPool[t], total);
+          launchPool[t] -= fromLaunch;
+          poolPaid += fromLaunch;
+        }
+        dayMint += total - fromLaunch;
       }
     } else {
       if (streak > 0) streaks.push(streak);
@@ -138,13 +218,17 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
         dayStarve += burn;
       }
     }
+    // tolls not paid out as reward are burned
+    dayToll = tollBy.reduce((a, b) => a + b, 0);
+    tollBurned += dayToll;
+    honest.feederDays += organic.reduce((a, b) => a + b, 0);
     minted += dayMint;
     starveBurned += dayStarve;
 
     rows.push({
       day,
-      supply: P.total_supply - tollBurned - starveBurned + minted,
-      circulating: holders.reduce((a, h) => a + h.bal, 0) + farm.reward,
+      supply: P.total_supply - tollBurned - starveBurned - (honest.burned + farm.burned) - closeBurned + minted,
+      circulating: holders.reduce((a, h) => a + h.bal, 0) + farm.reward + farm.launch - farm.burned,
       hoard: hoard.reduce((a, b) => a + b, 0),
       minted: dayMint,
       toll_burned: dayToll,
@@ -171,6 +255,10 @@ export function simulate(params, scenario, { days = 60, seed = 1 } = {}) {
       launch_unclaimed: launchPool.reduce((a, b) => a + b, 0),
       bots: bots.reduce((a, b) => a + b, 0),
       farm_cost_near: farm.cost, farm_reward: farm.reward, farm_sends: farm.sends,
+      farm_launch: farm.launch, farm_burned: farm.burned,
+      honest_reward: honest.reward, honest_top_decile_share: honest.reward ? honest.topDecile / honest.reward : 0, honest_feeder_days: honest.feederDays, honest_burned: honest.burned,
+      counted_burned: honest.burned + farm.burned, close_burned: closeBurned, close_to_hoard: closeToHoard,
+      reward_from_launch_pool: poolPaid,
       // ledger check: everything held anywhere equals supply
       ledger: last.circulating + last.hoard + launchPool.reduce((a, b) => a + b, 0),
     },

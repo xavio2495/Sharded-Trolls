@@ -46,3 +46,36 @@ test('farmer keeps every troll at the target and pays for it', () => {
   for (const r of rows) assert.ok(r.min_senders >= P.feed_target);
   assert.ok(summary.farm_cost_near > 0 && summary.farm_reward > 0);
 });
+
+test('variants keep the ledger exact', () => {
+  const variants = [
+    { counted_burn: 500 }, { count_min_age: 2 }, { reward_cap_per_feeder: 1000 },
+    { reward_source: 'toll' }, { unclaimed_at_close: 'hoard' }, { unclaimed_at_close: 'burn' },
+    { unclaimed_at_close: 'reward' },
+  ];
+  const scen = [SCENARIOS.decaying, { ...SCENARIOS.decaying, holders: 1500, harvest: { price: 1e-5 } },
+    { ...SCENARIOS.enthusiastic, launchFarm: 0.5 }];
+  for (const v of variants) for (const s of scen) {
+    const { summary: x } = simulate(v, s, { seed: 5, days: 20 });
+    close(x.ledger, x.supply_end, 1e-2);
+  }
+});
+
+test('toll-funded reward mints nothing; pool-funded reward drains the launch pool first', () => {
+  assert.equal(simulate({ reward_source: 'toll', feed_target: 1 }, always(0.5), { days: 10 }).summary.minted, 0);
+  const r = simulate({ unclaimed_at_close: 'reward', feed_target: 1 }, { ...always(0.5), holders: 500 }, { days: 10 }).summary;
+  assert.ok(r.reward_from_launch_pool > 0);
+  close(r.minted + r.reward_from_launch_pool, P.reward_per_epoch * 10, 1e-2);
+});
+
+test('harvesting farmer adds bots beyond the target when the token has a price', () => {
+  const base = { ...SCENARIOS.enthusiastic, harvest: { price: 1e-4 } };
+  const { summary: x } = simulate({}, base, { seed: 2, days: 10 });
+  assert.ok(x.bots > 8 * P.feed_target && x.farm_reward > x.honest_reward);
+});
+
+test('stake split: bots holding the minimum earn almost nothing, the ledger stays exact', () => {
+  const { summary: x } = simulate({ reward_split: 'stake' }, SCENARIOS['bot-farmed'], { seed: 3, days: 30 });
+  close(x.ledger, x.supply_end, 1e-2);
+  assert.ok(x.farm_reward < 1e-3 * x.honest_reward);
+});

@@ -12,7 +12,12 @@
     "starve_burn_bps": 100,
     "launch_claim_amount": 100000,
     "min_counted_transfer": 1,
-    "launch_window_epochs": 1
+    "launch_window_epochs": 1,
+    "counted_burn": 0,
+    "count_min_age": 0,
+    "reward_cap_per_feeder": null,
+    "reward_source": "mint",
+    "unclaimed_at_close": "locked"
   },
   "costs": {
     "fee_per_transfer": 0.00025,
@@ -30,7 +35,7 @@
       "best_streak": 60,
       "supply_change": 0.011776631464619032,
       "minted": 15000000,
-      "toll_burned": 3223368.535380965,
+      "toll_burned": 3223368.5353809656,
       "starve_burned": 0,
       "launch_unclaimed": 0.2000000000000001,
       "sybil_gap_near": 0,
