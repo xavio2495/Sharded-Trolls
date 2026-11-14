@@ -49,30 +49,27 @@ export default function Feeding() {
 
   return (
     <section id="feeding" ref={root} className="tone-light">
-      <div data-pin className="flex min-h-svh flex-col justify-center gap-10 py-[calc(var(--header)+1rem)]">
-        <div className="grid gap-10 px-[var(--gutter)] lg:grid-cols-[1fr_1.4fr]">
-          <div>
-            <h2 className="h1" data-reveal="lines">
-              The game on top: feed them all, or they starve.
-            </h2>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-3">
+      <div data-pin className="flex flex-col justify-center gap-8 pt-[calc(var(--header)+1.5rem)] pb-8 md:h-svh md:overflow-hidden">
+        <div className="px-[var(--gutter)]">
+          <h2 className="h2 max-w-3xl" data-reveal="lines">
+            Feed them all, or they starve.
+          </h2>
+          <div className="mt-5 grid max-w-5xl gap-x-10 gap-y-3 border-t-[3px] border-ink-0 pt-4 sm:grid-cols-3">
             {RULES.map((r, i) => (
-              <div key={r.title} data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
-                <h3 className="h4">{r.title}</h3>
-                <p className="body mt-2">{r.text}</p>
-              </div>
+              <p key={r.title} className="body" data-reveal data-reveal-delay={(i * 0.1).toFixed(2)}>
+                <span className="font-display text-xl text-ink-0">{r.title}.</span> {r.text}
+              </p>
             ))}
           </div>
         </div>
         <div data-track className="flex gap-6 overflow-x-auto px-[var(--gutter)] md:overflow-visible">
           {TROLLS.map((t, i) => (
-            <figure key={t.name} className={`slab w-[16rem] flex-none p-5 text-center md:w-[19rem] ${i % 2 ? "rotate-2" : "-rotate-1"}`} data-magnetic>
+            <figure key={t.name} className={`slab w-[12rem] flex-none p-4 text-center md:w-[min(15rem,26svh)] ${i % 2 ? "rotate-2" : "-rotate-1"}`} data-magnetic>
               <div data-troll>
                 <Image src={`/art/trolls-v3/troll-${i + 1}.webp`} alt={`${t.name}, the troll of shard ${t.shard}`} width={720} height={720} sizes="20rem" className="w-full" />
               </div>
               <figcaption className="mt-2">
-                <span className="block font-display text-2xl text-ink-0">{t.name}</span>
+                <span className="block font-display text-xl text-ink-0">{t.name}</span>
                 <span className="tag text-ink-1">shard {t.shard}</span>
               </figcaption>
             </figure>
