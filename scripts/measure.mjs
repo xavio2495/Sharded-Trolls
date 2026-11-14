@@ -9,6 +9,7 @@
 import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { Near } from './lib/near.mjs';
+import { shardSample } from '../packages/client/index.js';
 
 const NETWORKS = { localnet: 'http://127.0.0.1:3040', testnet: 'https://rpc.testnet.fastnear.com', mainnet: 'https://free.rpc.fastnear.com' };
 const { values } = parseArgs({ options: {
@@ -22,21 +23,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cfg = await near.rpc('EXPERIMENTAL_protocol_config', { finality: 'final' });
 const cc = cfg.runtime_config.congestion_control_config;
 const layout = cfg.shard_layout[Object.keys(cfg.shard_layout)[0]];
-
-export function shardSample(chunk) {
-  const ci = chunk.congestion_info ?? {};
-  const delayed = Number(ci.delayed_receipts_gas ?? 0);
-  const buffered = Number(ci.buffered_receipts_gas ?? 0);
-  const bytes = Number(ci.receipt_bytes ?? 0);
-  const congestion = Math.min(1, Math.max(delayed / cc.max_congestion_incoming_gas, buffered / cc.max_congestion_outgoing_gas, bytes / cc.max_congestion_memory_consumption));
-  return {
-    gas_used: chunk.gas_used, gas_limit: chunk.gas_limit,
-    fullness: chunk.gas_limit ? +(chunk.gas_used / chunk.gas_limit).toFixed(4) : 0,
-    new_chunk: chunk.height_included === chunk.height_created,
-    delayed_gas: delayed, buffered_gas: buffered, receipt_bytes: bytes,
-    congestion: +congestion.toFixed(4),
-  };
-}
 
 const out = {
   rpc: url, protocol: cfg.protocol_version, shard_ids: layout.shard_ids, boundary_accounts: layout.boundary_accounts,
@@ -57,7 +43,7 @@ while (!stop && Date.now() < deadline && out.blocks.length < maxBlocks) {
     let b;
     try { b = await near.rpc('block', { block_id: next }); }
     catch (e) { if (/UNKNOWN_BLOCK|NOT_SYNCED|DB Not Found/i.test(e.message)) continue; throw e; } // skipped height
-    const shards = Object.fromEntries(b.chunks.map((c) => [c.shard_id, shardSample(c)]));
+    const shards = Object.fromEntries(b.chunks.map((c) => [c.shard_id, shardSample(c, cc)]));
     out.blocks.push({ height: b.header.height, timestamp_ms: Math.round(b.header.timestamp / 1e6), shards });
     const busiest = Object.entries(shards).sort((x, y) => y[1].fullness - x[1].fullness)[0];
     const congested = Object.entries(shards).filter(([, s]) => s.congestion >= cc.reject_tx_congestion_threshold).map(([id]) => id);

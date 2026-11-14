@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sharded Trolls: eight trolls, eight shards</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Sharded Trolls</h1>
+    <p class="sub">A memecoin whose ledger is split across eight contracts, one on each reachable NEAR shard.</p>
+    <nav class="modes" role="tablist">
+      <button role="tab" data-mode="replay" aria-selected="true">Replay a measured run</button>
+      <button role="tab" data-mode="live" aria-selected="false">Live</button>
+    </nav>
+    <div id="replay-controls" class="controls">
+      <label>Run <select id="run"></select></label>
+      <button id="play">Pause</button>
+      <label>Speed <select id="speed"><option>1</option><option selected>4</option><option>10</option></select>×</label>
+      <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Position in the run">
+    </div>
+    <form id="live-controls" class="controls" hidden>
+      <label>RPC <input id="rpc" value="http://127.0.0.1:3040" size="28"></label>
+      <label>Root <input id="root" value="sandbox" size="16"></label>
+      <button>Connect</button>
+      <span id="live-status" class="muted"></span>
+    </form>
+    <p class="honest" id="honest"></p>
+  </header>
+
+  <main>
+    <section class="tiles" aria-label="Headline numbers">
+      <div class="tile"><span class="label">Transactions rejected</span><span class="value" id="t-rejected">0</span><span class="note" id="t-rejected-note"></span></div>
+      <div class="tile"><span class="label">Highest shard congestion</span><span class="value" id="t-congestion">0</span><span class="note">rejects new transactions at <span id="t-threshold">0.8</span></span></div>
+      <div class="tile"><span class="label">Busiest chunk</span><span class="value" id="t-fullness">0%</span><span class="note" id="t-fullness-note">gas used of the 1,000 Tgas limit</span></div>
+      <div class="tile"><span class="label">Time</span><span class="value" id="t-time">0 s</span><span class="note" id="t-block"></span></div>
+    </section>
+
+    <section aria-labelledby="h-shards">
+      <h2 id="h-shards">Congestion per shard</h2>
+      <p class="muted">Bar: congestion level (backlog against the protocol's limit). Thin bar: how full this block's chunk was. Above the dashed line the network rejects new transactions to that shard.</p>
+      <div id="shards" class="chart"></div>
+    </section>
+
+    <section aria-labelledby="h-timeline">
+      <h2 id="h-timeline">Congestion over time</h2>
+      <div id="timeline" class="chart"></div>
+    </section>
+
+    <section aria-labelledby="h-feeding" id="feeding">
+      <h2 id="h-feeding">The Feeding</h2>
+      <p class="muted" id="feeding-note">Live mode only: reads the root and the eight trolls.</p>
+      <div class="streak"><span class="label">Streak</span> <span id="streak" class="value">–</span> <span class="muted">best <span id="best">–</span> · epoch <span id="epoch">–</span></span></div>
+      <div id="rings" class="rings"></div>
+      <h3>Mint and burn log</h3>
+      <ol id="log" class="log"></ol>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

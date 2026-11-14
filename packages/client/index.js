@@ -68,3 +68,22 @@ export class TrollClient {
     return signer.call(await this.homeTroll(accountId), 'claim_launch', {}, { gas: 30n * TGAS });
   }
 }
+
+// One chunk header -> per-shard load sample. Congestion is the larger of delayed-receipt gas,
+// buffered outgoing gas and receipt memory against the protocol's limits (`cc` is
+// runtime_config.congestion_control_config); new transactions to a shard are rejected at or above
+// reject_tx_congestion_threshold.
+export function shardSample(chunk, cc) {
+  const ci = chunk.congestion_info ?? {};
+  const delayed = Number(ci.delayed_receipts_gas ?? 0);
+  const buffered = Number(ci.buffered_receipts_gas ?? 0);
+  const bytes = Number(ci.receipt_bytes ?? 0);
+  const congestion = Math.min(1, Math.max(delayed / cc.max_congestion_incoming_gas, buffered / cc.max_congestion_outgoing_gas, bytes / cc.max_congestion_memory_consumption));
+  return {
+    gas_used: chunk.gas_used, gas_limit: chunk.gas_limit,
+    fullness: chunk.gas_limit ? +(chunk.gas_used / chunk.gas_limit).toFixed(4) : 0,
+    new_chunk: chunk.height_included === chunk.height_created,
+    delayed_gas: delayed, buffered_gas: buffered, receipt_bytes: bytes,
+    congestion: +congestion.toFixed(4),
+  };
+}

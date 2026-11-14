@@ -1,0 +1,57 @@
+[hidden] { display: none !important; }
+:root {
+  color-scheme: light dark;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --other: #c3c2b7; --good: #0ca30c; --critical: #d03b3b;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --s1: #3987e5; --other: #52514e;
+  }
+}
+body { margin: 0; background: var(--page); color: var(--ink); }
+header, main { max-width: 1040px; margin: 0 auto; padding: 16px 20px; }
+h1 { margin: 8px 0 4px; font-size: 26px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 18px 0 6px; }
+.sub, .muted, .note { color: var(--ink2); }
+.muted { font-size: 13px; }
+.modes { display: flex; gap: 4px; margin: 14px 0 10px; }
+.modes button { border: 1px solid var(--border); background: var(--surface); color: var(--ink2); padding: 7px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+.modes button[aria-selected="true"] { color: var(--ink); border-color: var(--ink2); font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 14px; }
+.controls input[type="range"] { flex: 1; min-width: 160px; }
+.controls button, .controls select, .controls input { font: inherit; }
+.honest { font-size: 13px; color: var(--ink2); border-left: 3px solid var(--axis); padding-left: 10px; margin: 12px 0 0; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: none; border: 0; padding: 0; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.tile .label, .streak .label { font-size: 13px; color: var(--ink2); }
+.tile .value, .streak .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .note { font-size: 12px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-size: 12px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .ink2 { fill: var(--ink2); }
+.chart .ink { fill: var(--ink); }
+.chart .grid { stroke: var(--grid); }
+.chart .axis { stroke: var(--axis); }
+.chart .threshold { stroke: var(--critical); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.chart .cong { fill: var(--s1); }
+.chart .cong.rejecting { fill: var(--critical); }
+.chart .full { fill: var(--axis); }
+.chart .line { fill: none; stroke: var(--other); stroke-width: 1.5; }
+.chart .line.hot { stroke: var(--s1); stroke-width: 2; }
+.chart .playhead { stroke: var(--ink2); stroke-width: 1; }
+.chart .unreachable { fill: var(--grid); }
+.rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+.ring { text-align: center; font-size: 12px; color: var(--ink2); }
+.ring svg { width: 72px; height: 72px; }
+.ring .track { stroke: var(--grid); }
+.ring .fill { stroke: var(--s1); }
+.ring.fed .fill { stroke: var(--good); }
+.ring .count { font-size: 15px; fill: var(--ink); font-weight: 600; }
+.log { font-size: 13px; color: var(--ink2); max-height: 200px; overflow: auto; padding-left: 20px; margin: 0; }
+.streak { margin-top: 8px; display: flex; align-items: baseline; gap: 8px; }
