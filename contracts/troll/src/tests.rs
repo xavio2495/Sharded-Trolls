@@ -1092,16 +1092,78 @@ fn cross_troll_transfer_call_returns_unused_to_the_source() {
 }
 
 #[test]
-fn cross_troll_transfer_call_with_failed_credit_refunds_everything() {
+fn cross_troll_transfer_call_to_unregistered_refunds_everything() {
     let mut net = Net::new(3, 1_000_000, 600_000);
     let (a, w) = (net.user(0, 1), net.user(2, 9));
     net.launch(0, &a);
     let to = w.clone();
     net.as_(0, &a, 1, |t| t.ft_transfer_call(to, U128(40_000), None, String::new())); // w unregistered
-    let used = as_cb(&mut net, 0, None, |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
+    // the destination refuses by value, without panicking and without crediting
+    let from = net.ids[0].clone();
+    let (s, r) = (a.clone(), w.clone());
+    let res = net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), String::new()));
+    assert!(matches!(res, PromiseOrValue::Value(U128(NOT_CREDITED))));
+    assert_eq!(net.t[2].supply, 333_333);
+    let refused = format!("\"{NOT_CREDITED}\"");
+    let used = as_cb(&mut net, 0, Some(refused.as_bytes()), |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
     assert_eq!(used.0, 0);
     assert_eq!((net.bal(0, &a), net.t[0].in_flight, net.t[0].burned), (100_000, 0, 0));
+    assert!(get_logs()[0].contains("credit_refunded"));
     assert_eq!(total_books(&net), 1_000_000);
+}
+
+#[test]
+fn cross_troll_resolve_failure_after_credit_refunds_nothing() {
+    // The credit lands and the receiver is called, but the destination's resolve fails (for
+    // example out of gas), so its state change is rolled back and the receiver keeps everything.
+    // The source then sees a failed result. Refunding then would create tokens.
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let (a, w) = (net.user(0, 1), net.user(2, 9));
+    net.launch(0, &a);
+    call(&mut net, 0, &a, &w, 40_000);
+    let from = net.ids[0].clone();
+    let (s, r) = (a.clone(), w.clone());
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(39_900), "wrap".into()));
+    // resolve_credit_call failed: nothing happens at the destination
+    let used = as_cb(&mut net, 0, None, |t| t.on_credit_call(a.clone(), U128(40_000), U128(100)));
+    assert_eq!(used.0, 39_900, "receiver kept everything");
+    assert_eq!((net.bal(0, &a), net.bal(2, &w)), (60_000, 39_900));
+    assert_eq!((net.t[0].in_flight, net.t[0].burned), (0, 100));
+    assert!(get_logs().iter().any(|l| l.contains("credit_unresolved")));
+    assert_eq!(total_books(&net), 1_000_000, "no tokens created");
+    // the sender's pending amount is closed, so it can unregister once its balance is empty
+    assert_eq!(net.t[0].accounts.get(&a).unwrap().pending, 0);
+    // garbage instead of a failure is treated the same way
+    call(&mut net, 0, &a, &w, 1_000);
+    let (s, r) = (a.clone(), w.clone());
+    net.as_(2, &from, 0, |t| t.credit_call(s, r, U128(998), String::new()));
+    as_cb(&mut net, 0, Some(b"oops"), |t| t.on_credit_call(a.clone(), U128(1_000), U128(2)));
+    assert_eq!((net.bal(0, &a), net.bal(2, &w)), (59_000, 40_898));
+    assert_eq!(total_books(&net), 1_000_000);
+}
+
+#[test]
+#[should_panic(expected = "attach at least 100 Tgas")]
+fn transfer_call_requires_enough_gas() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let (a, w) = (net.user(0, 1), net.user(2, 9));
+    net.launch(0, &a);
+    let mut b = VMContextBuilder::new();
+    b.current_account_id(net.ids[0].clone())
+        .predecessor_account_id(a.clone())
+        .attached_deposit(NearToken::from_yoctonear(1))
+        .block_timestamp(net.now * 1_000_000)
+        .prepaid_gas(Gas::from_tgas(99));
+    testing_env!(b.build());
+    net.t[0].ft_transfer_call(w, U128(1_000), None, String::new());
+}
+
+#[test]
+#[should_panic(expected = "only sibling trolls can credit")]
+fn fake_troll_cannot_probe_credit_call_for_unregistered() {
+    let mut net = Net::new(3, 1_000_000, 600_000);
+    let w = net.user(2, 9);
+    net.as_(2, &acc("evil.t"), 0, |t| t.credit_call(acc("x.u"), w, U128(1), String::new()));
 }
 
 #[test]

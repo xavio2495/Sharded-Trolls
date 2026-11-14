@@ -17,9 +17,17 @@ use kv::Map;
 pub const GAS_FOR_CREDIT: Gas = Gas::from_tgas(5);
 pub const GAS_FOR_ON_CREDIT: Gas = Gas::from_tgas(5);
 pub const GAS_FOR_FT_ON_TRANSFER: Gas = Gas::from_tgas(35);
-pub const GAS_FOR_RESOLVE: Gas = Gas::from_tgas(5);
+/// Resolve callbacks: a promise result, one account read and write, one log. Twice the
+/// usual 5 Tgas, because a cross-troll resolve that fails is booked as "receiver kept everything".
+pub const GAS_FOR_RESOLVE: Gas = Gas::from_tgas(10);
 /// `credit_call` itself plus the receiver's `ft_on_transfer` and the destination's resolve.
-pub const GAS_FOR_CREDIT_CALL: Gas = Gas::from_tgas(5 + 35 + 5);
+pub const GAS_FOR_CREDIT_CALL: Gas = Gas::from_tgas(5 + 35 + 10);
+/// Minimum gas for `ft_transfer_call`. With it, `credit_call` always has room to finish its own
+/// work, so it fails only after crediting (see `on_credit_call`).
+pub const GAS_FOR_TRANSFER_CALL_MIN: Gas = Gas::from_tgas(100);
+/// What `credit_call` returns when it did not credit (receiver not registered). Larger than any
+/// real unused amount, which is at most the amount credited.
+pub const NOT_CREDITED: u128 = u128::MAX;
 const MAX_RESULT_LEN: usize = 64;
 
 #[ext_contract(ext_sibling)]
@@ -220,6 +228,7 @@ impl Troll {
         msg: String,
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
+        require!(env::prepaid_gas() >= GAS_FOR_TRANSFER_CALL_MIN, "attach at least 100 Tgas");
         let sender_id = env::predecessor_account_id();
         let amount = amount.0;
         require!(amount > 0, "amount must be > 0");
@@ -331,7 +340,15 @@ impl Troll {
     }
 
     /// Cross-troll leg of `ft_transfer_call`, at the receiver's home troll. Only sibling trolls.
-    pub fn credit_call(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, msg: String) -> Promise {
+    /// Resolves to the unused amount, or to `NOT_CREDITED` if the receiver is not registered here.
+    /// It does not panic on that, so a failed result at the source can only come from a later step,
+    /// after the credit landed.
+    pub fn credit_call(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128> {
+        if !self.accounts.contains_key(&receiver_id) {
+            let caller = env::predecessor_account_id();
+            require!(caller != env::current_account_id() && self.trolls.contains(&caller), "only sibling trolls can credit");
+            return PromiseOrValue::Value(U128(NOT_CREDITED));
+        }
         self.credit(sender_id.clone(), receiver_id.clone(), amount);
         ext_receiver::ext(receiver_id.clone())
             .with_static_gas(GAS_FOR_FT_ON_TRANSFER)
@@ -342,6 +359,7 @@ impl Troll {
                 receiver_id,
                 amount,
             ))
+            .into()
     }
 
     /// Takes back what the receiver did not use and returns that amount to the source troll,
@@ -356,19 +374,29 @@ impl Troll {
         U128(back)
     }
 
-    /// Source side of a cross-troll `ft_transfer_call`. A result means the credit happened and
-    /// carries the unused amount; a failure means it did not, and the sender gets everything back.
+    /// Source side of a cross-troll `ft_transfer_call`.
+    /// - `NOT_CREDITED`: the destination refused before crediting; the sender gets everything back.
+    /// - An amount: the credit happened and this much came back unused; it is refunded.
+    /// - A failure or anything unreadable: the credit happened (`credit_call` only reports refusal
+    ///   by value) but the destination's resolve did not finish, so the receiver kept everything
+    ///   there. Nothing is refunded; refunding would create tokens.
     #[private]
     pub fn on_credit_call(&mut self, sender_id: AccountId, amount: U128, toll: U128) -> U128 {
         self.in_flight -= amount.0;
-        let Some(unused) = promise_u128() else {
-            self.supply += amount.0;
-            self.resolve_pending(&sender_id, amount.0, amount.0);
-            emit_troll_event("credit_refunded", &format!(r#"{{"account_id":"{sender_id}","amount":"{}"}}"#, amount.0));
-            return U128(0);
-        };
         let net = amount.0 - toll.0;
-        let unused = unused.min(net);
+        let unused = match promise_u128() {
+            Some(NOT_CREDITED) => {
+                self.supply += amount.0;
+                self.resolve_pending(&sender_id, amount.0, amount.0);
+                emit_troll_event("credit_refunded", &format!(r#"{{"account_id":"{sender_id}","amount":"{}"}}"#, amount.0));
+                return U128(0);
+            }
+            Some(unused) => unused.min(net),
+            None => {
+                emit_troll_event("credit_unresolved", &format!(r#"{{"account_id":"{sender_id}","amount":"{net}"}}"#));
+                0
+            }
+        };
         self.supply += unused;
         self.resolve_pending(&sender_id, amount.0, unused);
         if toll.0 > 0 {
