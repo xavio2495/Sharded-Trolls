@@ -14,7 +14,8 @@
 //          [--seconds 60] [--fires-per-sec 10] [--n 50] [--call-tgas 5] [--probe-per-sec 4] [--out file]
 //          [--mix same|uniform] [--amount <yocto>]
 //   --mix uniform: each stampede pays receivers on all eight trolls (mostly cross-troll transfers,
-//   which need ~16 Tgas per call). The run snapshots receiver balances, burned tolls and in-flight
+//   which need ~16 Tgas per call). The run snapshots receiver balances, tolls (burned, or with troll
+//   food in the build, fed to the destination troll) and in-flight
 //   amounts before and after, looks up every fire to see whether it was included, and compares the
 //   balances with what the included fires should produce.
 // Run scripts/measure.mjs alongside to record per-shard gas and congestion.
@@ -207,7 +208,10 @@ async function run() {
   const check = {
     mix, amount: amount.toString(), fires_accepted: fireOk.length, fires_included: fireOk.filter((f) => f.included).length, cross_transfers_sent: crossSent,
     landed: (after.landed - before.landed).toString(), landed_expected: expLanded.toString(),
-    burned: (after.burned - before.burned).toString(), burned_expected: expBurned.toString(),
+    // Builds with troll food keep tolls in the destination troll's food instead of burning them.
+    toll_sink: after.hasFood ? 'food' : 'burned',
+    burned: (after.burned - before.burned).toString(), burned_expected: (after.hasFood ? 0n : expBurned).toString(),
+    ...(after.hasFood ? { food: (after.food - before.food).toString(), food_expected: expBurned.toString() } : {}),
     in_flight_after: after.in_flight.toString(),
   };
   const count = (xs) => xs.reduce((m, x) => ((m[x.ok ? 'ok' : x.kind] = (m[x.ok ? 'ok' : x.kind] ?? 0) + 1), m), {});
@@ -219,16 +223,19 @@ async function run() {
   console.log(`wrote ${file}`);
 }
 
-// Σ receiver balances (at each receiver's home troll, or on the control), Σ troll burned, Σ in-flight.
+// Σ receiver balances (at each receiver's home troll, or on the control), Σ troll burned, food and in-flight.
 async function snapshot(S, target) {
   const bal = async (r) => BigInt(await near.view(target === 'control' ? S.control : r.troll, 'ft_balance_of', { account_id: r.account }));
   let landed = 0n;
   for (let i = 0; i < S.receivers.length; i += 16) for (const b of await Promise.all(S.receivers.slice(i, i + 16).map(bal))) landed += b;
-  let burned = 0n, in_flight = 0n;
+  let burned = 0n, in_flight = 0n, food = 0n, hasFood = false;
   if (target === 'trolls') {
-    for (const ti of await Promise.all(deploy.trolls.map((t) => near.view(t.account, 'info')))) { burned += BigInt(ti.burned); in_flight += BigInt(ti.in_flight); }
+    for (const ti of await Promise.all(deploy.trolls.map((t) => near.view(t.account, 'info')))) {
+      burned += BigInt(ti.burned); in_flight += BigInt(ti.in_flight);
+      if (ti.food !== undefined) { hasFood = true; food += BigInt(ti.food); }
+    }
   }
-  return { landed, burned, in_flight };
+  return { landed, burned, in_flight, food, hasFood };
 }
 
 if (positionals[0] === 'setup') await setup();

@@ -10,12 +10,16 @@
 //   plan      read-only: funder balance, placement under the parent, wasm sizes, storage price, budget
 //   parent    funder creates the parent account with a fresh full-access key (target/testnet/parent-key.json)
 //   spare     moves the earlier parent's (--reuse) spare NEAR to this parent; its deployment stays intact
+//   topup     funder sends --topup-near NEAR to the parent
+//   resume-deploy  finishes a deploy that stopped part-way: reads the root's and one troll's init args from
+//             chain (--root-tx, --troll-tx), creates only the missing trolls with the same args and code hash,
+//             and writes deploy.json as deploy.mjs would have
 //   deploy    runs deploy.mjs on testnet with the parent key (LAUNCH_PARAMS; 1 h epochs, launch window
 //             one epoch unless --window-ms), then records K7 (costs, code hashes)
 //   setup     test accounts: one stampede and two holders homed on distinct trolls, receivers, registrations,
 //             launch claims (inside the launch window)
 //   k2        one fire of 50 same-troll transfers, one fire of 25 mixed transfers; counts executed transfers
-//   k3        100 tokens per case: cross-troll transfer (toll burned), transfer to an unregistered receiver (credit fails,
+//   k3        100 tokens per case: cross-troll transfer (toll paid), transfer to an unregistered receiver (credit fails,
 //             full refund), cross-troll ft_transfer_call to an account without ft_on_transfer (refund);
 //             conservation checked over all eight trolls before and after
 //   settle    after epoch 0 ends (--wait polls read-only until it has): settle(0) once at 1 Tgas below
@@ -23,7 +27,9 @@
 //             which must settle (8 applies, books conserved). At most two transactions, no retries.
 //   k7        read-only: records K7 (parent spend, each troll's global code hash and storage)
 //   report    writes measurements/testnet-<date>/k-tests.json from target/testnet/*.json
-// Env: SECRET_PHRASE (funder seed phrase) from .env; never printed.
+// Env: the funder's seed phrase in SECRET_PHRASE, or the variable named by --key-env (e.g. --funder strl.testnet
+// --key-env STRL_SECRET_PHRASE), from the environment or .env; never printed. Parents get fresh keys under
+// target/testnet/<parent>/ (gitignored).
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -31,21 +37,24 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fetchLayout, place } from '../packages/layout/index.js';
 import { homeIndex } from '../packages/client/index.js';
-import { Near, Account, KeyPair, action, NEAR, TGAS } from './lib/near.mjs';
+import { Near, Account, KeyPair, action, NEAR, TGAS, b58encode } from './lib/near.mjs';
 import { keyPairFromSeedPhrase } from './lib/seed.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const RPC = 'https://rpc.testnet.fastnear.com';
+const RPC_DEFAULT = 'https://rpc.testnet.fastnear.com';
 const EXPLORER = 'https://testnet.nearblocks.io/txns/';
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-  send: { type: 'boolean', default: false }, funder: { type: 'string', default: 'xavio.testnet' },
+  send: { type: 'boolean', default: false }, rpc: { type: 'string' }, funder: { type: 'string', default: 'xavio.testnet' },
   parent: { type: 'string', default: 'st.xavio.testnet' }, 'parent-near': { type: 'string', default: '38' },
   'troll-near': { type: 'string', default: '1' }, 'epoch-ms': { type: 'string', default: '3600000' },
   'window-ms': { type: 'string' }, params: { type: 'string', default: 'launch' },
   reuse: { type: 'string' }, 'report-dir': { type: 'string' }, 'spare-near': { type: 'string' },
+  'topup-near': { type: 'string' }, 'key-env': { type: 'string', default: 'SECRET_PHRASE' }, 'root-tx': { type: 'string' }, 'troll-tx': { type: 'string' },
   'settle-min-tgas': { type: 'string', default: '250' }, wait: { type: 'boolean', default: false },
 } });
 const step = positionals[0] ?? 'plan';
+// --rpc: another public testnet RPC when the default one rate-limits.
+const RPC = values.rpc ?? RPC_DEFAULT;
 const SEND = values.send;
 const near = new Near(RPC);
 const DIR = resolve(ROOT, 'target/testnet', values.parent);
@@ -64,15 +73,19 @@ const nearToYocto = (v) => BigInt(Math.round(Number(v) * 1e6)) * 10n ** 18n;
 const dep = () => load('deploy.json');
 const reused = () => JSON.parse(readFileSync(resolve(ROOT, 'target/testnet', values.reuse, 'accounts.json')));
 
+// Funder key from the seed phrase in the environment variable --key-env (default SECRET_PHRASE), read
+// from the environment or .env. Derived in memory only; never printed, logged or written.
 function funderKey() {
-  if (existsSync(resolve(ROOT, '.env'))) {
+  const name = values['key-env'];
+  if (!/^[A-Z0-9_]+$/.test(name)) throw new Error('--key-env must be an environment variable name');
+  if (!process.env[name] && existsSync(resolve(ROOT, '.env'))) {
     for (const l of readFileSync(resolve(ROOT, '.env'), 'utf8').split('\n')) {
-      const m = l.match(/^\s*SECRET_PHRASE\s*=\s*(.*)$/);
-      if (m && !process.env.SECRET_PHRASE) process.env.SECRET_PHRASE = m[1].trim().replace(/^['"]|['"]$/g, '');
+      const m = l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+      if (m && m[1] === name) process.env[name] = m[2].trim().replace(/^['"]|['"]$/g, '');
     }
   }
-  if (!process.env.SECRET_PHRASE) throw new Error('SECRET_PHRASE missing');
-  return keyPairFromSeedPhrase(process.env.SECRET_PHRASE);
+  if (!process.env[name]) throw new Error(`${name} missing`);
+  return keyPairFromSeedPhrase(process.env[name]);
 }
 const parentAccount = () => new Account(near, values.parent, KeyPair.fromString(load('parent-key.json').secret_key));
 // Final state; right after a transaction executes, 'final' can still report a new account as missing
@@ -150,7 +163,7 @@ if (step === 'plan') {
   }
   const key = funderKey();
   const keys = await near.rpc('query', { request_type: 'view_access_key_list', finality: 'final', account_id: values.funder });
-  console.log(`funder key from SECRET_PHRASE is a full-access key on ${values.funder}: ${keys.keys.some((k) => k.public_key === key.publicKeyString && k.access_key.permission === 'FullAccess')}`);
+  console.log(`funder key from ${values['key-env']} is a full-access key on ${values.funder}: ${keys.keys.some((k) => k.public_key === key.publicKeyString && k.access_key.permission === 'FullAccess')}`);
 } else if (step === 'parent') {
   if (await near.accountExists(values.parent)) throw new Error(`${values.parent} already exists`);
   const key = existsSync(file('parent-key.json')) ? KeyPair.fromString(load('parent-key.json').secret_key) : KeyPair.random();
@@ -170,6 +183,42 @@ if (step === 'plan') {
   const amt = values['spare-near'] ? nearToYocto(values['spare-near']) : spare;
   if (amt > spare) throw new Error(`only ${fmt(spare)} NEAR spare on ${values.reuse}`);
   mustSucceed(await submit(from, values.parent, [action.transfer(amt)], `transfer ${fmt(amt)} NEAR (spare after storage + 0.05)`));
+} else if (step === 'topup') {
+  const amt = nearToYocto(values['topup-near'] ?? '0');
+  if (amt <= 0n) throw new Error('--topup-near is required');
+  mustSucceed(await submit(new Account(near, values.funder, funderKey()), values.parent, [action.transfer(amt)], `transfer ${fmt(amt)} NEAR`));
+} else if (step === 'resume-deploy') {
+  if (!values['root-tx'] || !values['troll-tx']) throw new Error('--root-tx and --troll-tx are required');
+  const initArgs = async (hash) => {
+    const t = await near.rpc('EXPERIMENTAL_tx_status', { tx_hash: hash, sender_account_id: values.parent, wait_until: 'FINAL' });
+    return JSON.parse(Buffer.from(t.transaction.actions.find((a) => a.FunctionCall).FunctionCall.args, 'base64'));
+  };
+  const rootArgs = await initArgs(values['root-tx']), trollArgs = await initArgs(values['troll-tx']);
+  if (JSON.stringify(rootArgs.trolls) !== JSON.stringify(trollArgs.trolls) || rootArgs.start_ms !== trollArgs.start_ms
+    || JSON.stringify(rootArgs.params) !== JSON.stringify(trollArgs.params)) throw new Error('root and troll init args differ');
+  const layout = await fetchLayout(RPC);
+  const placed = place(values.parent, layout);
+  if (JSON.stringify(placed.map((t) => t.account)) !== JSON.stringify(trollArgs.trolls)) throw new Error('placement differs from the init args');
+  const trollCode = wasm('troll'), rootCode = wasm('root');
+  const codeHash = sha(trollCode);
+  // The local wasm must be the code already on chain.
+  const existing = [];
+  for (const t of placed) if (await near.accountExists(t.account)) existing.push(await balance(t.account));
+  if (!existing.length || existing.some((a) => a.global_contract_hash !== b58encode(codeHash))) throw new Error('local troll.wasm is not the deployed global code');
+  const rootAcc = await balance(values.parent);
+  if (rootAcc.code_hash !== b58encode(sha(rootCode))) throw new Error('local root.wasm is not the deployed root code');
+  const p = parentAccount();
+  for (const t of placed) {
+    if (await near.accountExists(t.account)) { console.log(`  ${t.account} exists`); continue; }
+    mustSucceed(await submit(p, t.account, [action.createAccount(), action.transfer(nearToYocto(values['troll-near'])), action.useGlobalContractByHash(codeHash),
+      action.functionCall('new', trollArgs, 100n * TGAS)], `create ${t.account} (shard ${t.shard}), ${values['troll-near']} NEAR, global code, new(same args)`));
+  }
+  const out = { wrapper: null, network: 'testnet', rpc: RPC, root: values.parent, trolls: placed, params: trollArgs.params, start_ms: trollArgs.start_ms,
+    total_supply: trollArgs.total_supply, launch_supply: trollArgs.launch_supply, troll_code_hash: codeHash.toString('hex'),
+    root_code_hash: sha(rootCode).toString('hex'), protocol: layout.protocol, deployed_at: new Date(trollArgs.start_ms).toISOString(),
+    resumed: { root_tx: values['root-tx'], troll_args_tx: values['troll-tx'], at: new Date().toISOString() } };
+  if (SEND) save('deploy.json', out);
+  console.log(`deploy.json ${SEND ? 'written' : 'would be written'}: ${placed.length} trolls, start ${out.deployed_at}`);
 } else if (step === 'deploy') {
   const args = ['--dns-result-order=ipv4first', 'scripts/deploy.mjs', '--network', 'testnet', '--parent', values.parent,
     '--key-file', `target/testnet/${values.parent}/parent-key.json`, '--troll-near', values['troll-near'], '--epoch-ms', values['epoch-ms'], '--params', values.params,
@@ -274,7 +323,7 @@ if (step === 'plan') {
     // ft_mint at the destination, plus a toll event.
     const transfers = ev.filter((e) => e.standard === 'nep141' && (e.event === 'ft_transfer' || e.event === 'ft_mint')).length;
     const toll = ev.filter((e) => e.standard === 'shardedtrolls' && e.event === 'toll').length;
-    const fires = { label, n, hash: r.hash, url: EXPLORER + r.hash, ft_transfer_events: transfers, toll_burns: toll,
+    const fires = { label, n, hash: r.hash, url: EXPLORER + r.hash, ft_transfer_events: transfers, tolls: toll,
       failed_receipts: failures(r).length, shards: [...new Set(r.receipts_outcome.map((o) => o.outcome.executor_id))],
       conservation_before: before, conservation_after: await conservation(dep), pass: transfers >= n && failures(r).length === 0 };
     out.fires.push(fires);
@@ -290,7 +339,7 @@ if (step === 'plan') {
   const bal = async (t, id) => BigInt(await near.view(t, 'ft_balance_of', { account_id: id }));
   const out = { at: new Date().toISOString(), cases: [] };
   for (const [label, method, args, gas, expect] of [
-    ['cross-troll transfer, receiver registered', 'ft_transfer', { receiver_id: acc.recvB, amount: amt }, 50n, 'credited, toll burned'],
+    ['cross-troll transfer, receiver registered', 'ft_transfer', { receiver_id: acc.recvB, amount: amt }, 50n, 'credited, toll paid'],
     ['cross-troll transfer, receiver not registered', 'ft_transfer', { receiver_id: acc.unregisteredB, amount: amt }, 50n, 'credit fails, full refund'],
     ['cross-troll ft_transfer_call, receiver has no ft_on_transfer', 'ft_transfer_call', { receiver_id: acc.holderB, amount: amt, msg: '' }, 150n, 'credited, returned unused; sender refunded minus the toll'],
     // At exactly the 100 Tgas floor: the longest allowed msg must still credit and close the books;
@@ -315,7 +364,13 @@ if (step === 'plan') {
 } else if (step === 'settle') {
   const D = dep();
   const root = D.root;
-  const info = () => near.view(root, 'info');
+  // Read-only and retried: a public RPC may rate-limit (HTTP 429) during the long wait.
+  const info = async () => {
+    for (let i = 0; ; i++) {
+      try { return await near.view(root, 'info'); }
+      catch (e) { if (i >= 5) throw e; console.log(`read failed (${e.message.slice(0, 60)}), retrying in ${15 * (i + 1)} s`); await sleep(15_000 * (i + 1)); }
+    }
+  };
   let i0 = await info();
   if (i0.settling !== null) throw new Error(`settling is already locked at epoch ${i0.settling}: stuck before this step`);
   const epoch = i0.next_epoch;
@@ -323,7 +378,7 @@ if (step === 'plan') {
     const endsAt = new Date(D.start_ms + (epoch + 1) * D.params.epoch_ms).toISOString();
     if (!values.wait) { console.log(`epoch ${epoch} ends at ${endsAt}; run again then, or pass --wait`); process.exit(0); }
     console.log(`waiting for epoch ${epoch} to end at ${endsAt} (now epoch ${i0.current_epoch})`);
-    await sleep(60_000);
+    await sleep(90_000);
     i0 = await info();
   }
   const min = BigInt(values['settle-min-tgas']);
@@ -368,6 +423,8 @@ if (step === 'plan') {
   const metadata = await near.view(dep.trolls[0].account, 'ft_metadata');
   const report = { network: 'testnet', root: dep.root, trolls: dep.trolls, params: dep.params, metadata, troll_code_hash: dep.troll_code_hash,
     root_code_hash: dep.root_code_hash, reused_accounts_from: pick('accounts.json')?.reused_from ?? null,
+    // An interrupted deploy finished by resume-deploy is recorded as such.
+    deploy_resumed: pick('resume.json'),
     k7: pick('k7.json'), k2: pick('k2.json'), k3: pick('k3.json'), settle: pick('settle.json') };
   writeFileSync(resolve(dir, 'k-tests.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(`wrote ${dir}/k-tests.json`);

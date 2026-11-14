@@ -1,0 +1,420 @@
+{
+  "network": "testnet",
+  "root": "st2.xavio.testnet",
+  "trolls": [
+    {
+      "prefix": "0",
+      "account": "0.st2.xavio.testnet",
+      "shard": 10
+    },
+    {
+      "prefix": "7",
+      "account": "7.st2.xavio.testnet",
+      "shard": 11
+    },
+    {
+      "prefix": "ax",
+      "account": "ax.st2.xavio.testnet",
+      "shard": 12
+    },
+    {
+      "prefix": "e",
+      "account": "e.st2.xavio.testnet",
+      "shard": 13
+    },
+    {
+      "prefix": "f",
+      "account": "f.st2.xavio.testnet",
+      "shard": 9
+    },
+    {
+      "prefix": "h",
+      "account": "h.st2.xavio.testnet",
+      "shard": 7
+    },
+    {
+      "prefix": "kz",
+      "account": "kz.st2.xavio.testnet",
+      "shard": 4
+    },
+    {
+      "prefix": "u",
+      "account": "u.st2.xavio.testnet",
+      "shard": 5
+    }
+  ],
+  "params": {
+    "troll_count": 8,
+    "toll_bps": 25,
+    "feed_target": 10,
+    "reward_per_epoch": "250000000000000000000000000000",
+    "starve_burn_bps": 100,
+    "epoch_ms": 3600000,
+    "launch_window_ms": 3600000,
+    "launch_claim_amount": "1000000000000000000000000000",
+    "min_counted_transfer": "1000000000000000000000000",
+    "claim_fee": "10000000000000000000000"
+  },
+  "metadata": {
+    "spec": "ft-1.0.0",
+    "name": "Sharded Trolls",
+    "symbol": "STRL",
+    "icon": null,
+    "reference": null,
+    "reference_hash": null,
+    "decimals": 24
+  },
+  "troll_code_hash": "f320487eabd28c465012efb61bd705e6af1bc329bcccbdfa135463675f4f1749",
+  "root_code_hash": "241b97b717cceb22eb49623d6a7c03844dcb14e39535f952e92eee31b651828f",
+  "reused_accounts_from": "st.xavio.testnet",
+  "deploy_resumed": {
+    "note": "deploy.mjs stopped before the 8th troll: creating u.st2.xavio.testnet was rejected at the RPC with InvalidTxError LackBalanceForState (0.086 NEAR short), because prepaid gas of the preceding troll transactions is charged up front and refunded a few blocks later. Nothing executed for u.st2. After a 0.5 NEAR top-up (tx AAYC9qgMZdnw6ztNgkfWFUUzUUkmkNS4mntHSf4tAXAS), u.st2 was created in a separate transaction with the same actions and byte-identical init args (802 B, read from kz.st2's init tx).",
+    "deploy_started": "2026-11-14T13:14:54.896Z",
+    "u_created_tx": "9LJESVQFAiJP5U2CMSgDaTWtJZuSokZNaDSnLNPN8Ma5",
+    "u_created_at": "2026-11-14T13:17:30Z",
+    "init_args_source_tx": "FN2p1gxgpAWxhWTGnx996vabyuhqEyiABEvnKVJmZ3dP",
+    "root_init_tx": "FHUgZNFk87mcUmBgEbfLtwENY2bkNeQ2VzL8rVaQnkNg",
+    "global_deploy_tx": "AwZFkdWL3LaAWguu6n1tPBbMNuC4i48oLKcLpdU3b2f3",
+    "checks": {
+      "init_args_byte_identical": true,
+      "global_contract_hashes": [
+        "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      ],
+      "ft_metadata_identical": true,
+      "u_index": 7,
+      "info_supply_hoard_pool_identical": true
+    }
+  },
+  "k7": {
+    "parent_funded_near": "25.7106",
+    "parent_left_near": "2.4632",
+    "parent_storage_bytes": 184686,
+    "parent_spent_near": "23.2474",
+    "troll_near_each": "0.2",
+    "troll_code_bytes": 215856,
+    "troll_code_hash": "f320487eabd28c465012efb61bd705e6af1bc329bcccbdfa135463675f4f1749",
+    "trolls": [
+      {
+        "account": "0.st2.xavio.testnet",
+        "shard": 10,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "7.st2.xavio.testnet",
+        "shard": 11,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "ax.st2.xavio.testnet",
+        "shard": 12,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "e.st2.xavio.testnet",
+        "shard": 13,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "f.st2.xavio.testnet",
+        "shard": 9,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "h.st2.xavio.testnet",
+        "shard": 7,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "kz.st2.xavio.testnet",
+        "shard": 4,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      },
+      {
+        "account": "u.st2.xavio.testnet",
+        "shard": 5,
+        "storage_usage": 673,
+        "code_hash": "11111111111111111111111111111111",
+        "global_contract_hash": "HN4d5J8yvZqM8GmXLEENpqL4TVkkLTiWgLen9tK5Nquz"
+      }
+    ],
+    "conservation_at_start": {
+      "supply": "1000000000000000000000000000000000",
+      "in_flight": "0",
+      "burned": "0",
+      "minted": "0",
+      "total_supply": "1000000000000000000000000000000000",
+      "conserved": true
+    },
+    "at": "2026-11-14T13:18:07.602Z"
+  },
+  "k2": {
+    "at": "2026-11-14T13:18:35.154Z",
+    "fires": [
+      {
+        "label": "same-troll",
+        "n": 50,
+        "hash": "29y95UuRaCEwxGS4E7puGZSBgLoWY2cNtzwbSbywfm8N",
+        "url": "https://testnet.nearblocks.io/txns/29y95UuRaCEwxGS4E7puGZSBgLoWY2cNtzwbSbywfm8N",
+        "ft_transfer_events": 50,
+        "toll_burns": 0,
+        "failed_receipts": 0,
+        "shards": [
+          "02.st.xavio.testnet",
+          "0.st2.xavio.testnet"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      },
+      {
+        "label": "mixed",
+        "n": 25,
+        "hash": "Gmet5YpMUtEvpJwCKyqocJBRzDMWG8C5aB4F9dsMmEc4",
+        "url": "https://testnet.nearblocks.io/txns/Gmet5YpMUtEvpJwCKyqocJBRzDMWG8C5aB4F9dsMmEc4",
+        "ft_transfer_events": 25,
+        "toll_burns": 8,
+        "failed_receipts": 0,
+        "shards": [
+          "02.st.xavio.testnet",
+          "0.st2.xavio.testnet",
+          "7.st2.xavio.testnet"
+        ],
+        "conservation_before": {
+          "supply": "1000000000000000000000000000000000",
+          "in_flight": "0",
+          "burned": "0",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "conservation_after": {
+          "supply": "999999999980000000000000000000000",
+          "in_flight": "0",
+          "burned": "20000000000000000000000",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "pass": true
+      }
+    ]
+  },
+  "k3": {
+    "at": "2026-11-14T13:19:04.071Z",
+    "cases": [
+      {
+        "label": "cross-troll transfer, receiver registered",
+        "expect": "credited, toll burned",
+        "hash": "BGQWbsgNsyn9NMRm4WfroEuH8MydYD497ZqpSdyPVx17",
+        "url": "https://testnet.nearblocks.io/txns/BGQWbsgNsyn9NMRm4WfroEuH8MydYD497ZqpSdyPVx17",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "-100000000000000000000000000",
+        "events": [
+          "0.st2.xavio.testnet:ft_burn",
+          "7.st2.xavio.testnet:ft_mint",
+          "0.st2.xavio.testnet:toll"
+        ],
+        "errors": [],
+        "failed_receipts": 0,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll transfer, receiver not registered",
+        "expect": "credit fails, full refund",
+        "hash": "4UiQN8gT8WhWDFvUtGT3rzzC3S28MuZZ9JkEJcaLDaQs",
+        "url": "https://testnet.nearblocks.io/txns/4UiQN8gT8WhWDFvUtGT3rzzC3S28MuZZ9JkEJcaLDaQs",
+        "gas_attached_tgas": 50,
+        "msg_bytes": null,
+        "sender_delta": "0",
+        "events": [
+          "0.st2.xavio.testnet:ft_burn",
+          "0.st2.xavio.testnet:ft_mint",
+          "0.st2.xavio.testnet:credit_refunded"
+        ],
+        "errors": [
+          "Smart contract panicked: 6k.st.xavio.testnet is not registered"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call, receiver has no ft_on_transfer",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "FT6dnN4PmuxapwVA2aBzzvh1LB9Yu6rgxULakCYKiqF6",
+        "url": "https://testnet.nearblocks.io/txns/FT6dnN4PmuxapwVA2aBzzvh1LB9Yu6rgxULakCYKiqF6",
+        "gas_attached_tgas": 150,
+        "msg_bytes": 0,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.st2.xavio.testnet:ft_burn",
+          "7.st2.xavio.testnet:ft_mint",
+          "7.st2.xavio.testnet:ft_burn",
+          "0.st2.xavio.testnet:ft_mint",
+          "0.st2.xavio.testnet:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6e.st.xavio.testnet\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,096 B",
+        "expect": "credited, returned unused; sender refunded minus the toll",
+        "hash": "GSzBoYwCvHL2ChBwxifp98MLaZtaKKtY2bGX1y9XdSbK",
+        "url": "https://testnet.nearblocks.io/txns/GSzBoYwCvHL2ChBwxifp98MLaZtaKKtY2bGX1y9XdSbK",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4096,
+        "sender_delta": "-250000000000000000000000",
+        "events": [
+          "0.st2.xavio.testnet:ft_burn",
+          "7.st2.xavio.testnet:ft_mint",
+          "7.st2.xavio.testnet:ft_burn",
+          "0.st2.xavio.testnet:ft_mint",
+          "0.st2.xavio.testnet:toll"
+        ],
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"CompilationError\":{\"CodeDoesNotExist\":{\"account_id\":\"6e.st.xavio.testnet\"}}}}}}"
+        ],
+        "failed_receipts": 1,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      },
+      {
+        "label": "cross-troll ft_transfer_call at 100 Tgas, msg 4,097 B",
+        "expect": "rejected at the source (msg longer than 4096 bytes); nothing debited",
+        "hash": "6b5krG2AXgz7o2ubk93qD7mBjFjG6E1ATBAh744Rnase",
+        "url": "https://testnet.nearblocks.io/txns/6b5krG2AXgz7o2ubk93qD7mBjFjG6E1ATBAh744Rnase",
+        "gas_attached_tgas": 100,
+        "msg_bytes": 4097,
+        "sender_delta": "0",
+        "events": [],
+        "errors": [
+          "Smart contract panicked: msg longer than 4096 bytes",
+          "Smart contract panicked: msg longer than 4096 bytes"
+        ],
+        "failed_receipts": 2,
+        "conserved_before": true,
+        "conserved_after": true,
+        "in_flight_after": "0"
+      }
+    ]
+  },
+  "settle": {
+    "at": "2026-11-14T14:14:58.831Z",
+    "epoch": 0,
+    "settle_min_tgas": 250,
+    "attempts": [
+      {
+        "label": "1 Tgas below the minimum",
+        "gas_tgas": 249,
+        "hash": "8Pq9u4xi9RPgSTJWiSskTNJuC9r5QXTkrvwcJwNzi1tk",
+        "url": "https://testnet.nearblocks.io/txns/8Pq9u4xi9RPgSTJWiSskTNJuC9r5QXTkrvwcJwNzi1tk",
+        "failed_receipts": 2,
+        "errors": [
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}",
+          "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: attach at least 250 Tgas\"}}}}"
+        ],
+        "settle_receipt_failed": true,
+        "settling_after": null,
+        "next_epoch_before": 0,
+        "next_epoch_after": 0,
+        "receipts": 2,
+        "executors": 1,
+        "events": [],
+        "conservation_after": {
+          "supply": "999999999230000000000000000000000",
+          "in_flight": "0",
+          "burned": "770000000000000000000000",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "refusal_message_ok": true,
+        "outcome": "refused up front, unlocked",
+        "pass": true
+      },
+      {
+        "label": "at the minimum",
+        "gas_tgas": 250,
+        "hash": "9pTk2qnkKiccucDP8qRd3mEy4kfgS5WP6e6cdVkZGkyv",
+        "url": "https://testnet.nearblocks.io/txns/9pTk2qnkKiccucDP8qRd3mEy4kfgS5WP6e6cdVkZGkyv",
+        "failed_receipts": 0,
+        "errors": [],
+        "settle_receipt_failed": false,
+        "settling_after": null,
+        "next_epoch_before": 0,
+        "next_epoch_after": 1,
+        "receipts": 36,
+        "executors": 9,
+        "events": [
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:troll_starved",
+          "st2.xavio.testnet:feeding_settled",
+          "st2.xavio.testnet:streak",
+          "0.st2.xavio.testnet:ft_burn",
+          "7.st2.xavio.testnet:ft_burn",
+          "ax.st2.xavio.testnet:ft_burn",
+          "e.st2.xavio.testnet:ft_burn",
+          "f.st2.xavio.testnet:ft_burn",
+          "h.st2.xavio.testnet:ft_burn",
+          "kz.st2.xavio.testnet:ft_burn",
+          "u.st2.xavio.testnet:ft_burn"
+        ],
+        "conservation_after": {
+          "supply": "994999999230000000000000000000000",
+          "in_flight": "0",
+          "burned": "5000000770000000000000000000000",
+          "minted": "0",
+          "total_supply": "1000000000000000000000000000000000",
+          "conserved": true
+        },
+        "refusal_message_ok": false,
+        "outcome": "settled",
+        "pass": true
+      }
+    ]
+  }
+}

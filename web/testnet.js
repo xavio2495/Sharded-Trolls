@@ -37,13 +37,19 @@ export async function renderTestnet(root) {
       <div class="ccard"><h3>K2 · fan-out ${ok(fires.every((f) => f.pass))}</h3>
         <p class="muted">One <code>fire</code> transaction from the stampede contract issues many token transfers.</p>
         <table class="tn"><thead><tr><th>Fire</th><th>Transfers</th><th>Failed receipts</th><th>Tx</th></tr></thead><tbody>
-          ${fires.map((f) => `<tr><td>${esc(f.label)}</td><td>${f.transfers_executed ?? f.ft_transfer_events} of ${f.n}${f.toll_burns ? ` <span class="muted">(${f.toll_burns} cross-troll)</span>` : ''}</td><td>${f.failed_receipts}</td><td>${tx(f.hash)}</td></tr>`).join('')}
+          ${fires.map((f) => `<tr><td>${esc(f.label)}</td><td>${f.transfers_executed ?? f.ft_transfer_events} of ${f.n}${(f.tolls ?? f.toll_burns) ? ` <span class="muted">(${f.tolls ?? f.toll_burns} cross-troll)</span>` : ''}</td><td>${f.failed_receipts}</td><td>${tx(f.hash)}</td></tr>`).join('')}
         </tbody></table></div>
       <div class="ccard"><h3>K3 · conservation and refunds ${ok(conservedAll && cases.every((c) => c.in_flight_after === '0'))}</h3>
         <p class="muted">Σ over the eight trolls of (supply + in flight + burned − minted) equals the total supply before and after every transaction: ${conservedAll ? 'yes, every time' : 'NO'}.</p>
         <table class="tn"><thead><tr><th>Case</th><th>Sender change</th><th>Tx</th></tr></thead><tbody>
           ${cases.map((c) => `<tr><td>${esc(c.label)}<div class="muted">${esc(c.expect)}${c.errors?.length && c.msg_bytes > 4096 ? ` · error: ${esc(c.errors[0])}` : ''}</div></td><td>${tokens(c.sender_delta)} tokens</td><td>${tx(c.hash)}</td></tr>`).join('')}
         </tbody></table></div>
+      ${r.settle ? `<div class="ccard"><h3>Settlement at minimum gas ${ok(r.settle.attempts.every((x) => x.pass))}</h3>
+        <p class="muted">Anyone may settle a finished epoch. Below the minimum gas the root must refuse up front; at the minimum it must settle. Either way it must never stay locked.</p>
+        <table class="tn"><thead><tr><th>Attempt</th><th>Outcome</th><th>Tx</th></tr></thead><tbody>
+          ${r.settle.attempts.map((x) => `<tr><td>epoch ${r.settle.epoch}, ${x.gas_tgas} Tgas</td><td>${esc(x.outcome)}${x.refusal_message_ok ? `<div class="muted">${esc(x.errors[0]?.match(/attach at least \d+ Tgas/)?.[0] ?? '')}</div>` : ''}</td><td>${tx(x.hash)}</td></tr>`).join('')}
+        </tbody></table></div>` : ''}
     </div>
+    ${r.deploy_resumed ? `<p class="muted">Deploy note: ${esc(r.deploy_resumed.note)} Troll created separately: ${tx(r.deploy_resumed.u_created_tx)} at ${esc(r.deploy_resumed.u_created_at)}.</p>` : ''}
     ${r.indexer_check ? `<p class="muted">Indexers: ${esc(r.indexer_check.note)}</p>` : ''}`;
 }
