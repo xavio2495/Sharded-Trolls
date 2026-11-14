@@ -37,7 +37,7 @@ export function EvidenceTabs() {
 
   return (
     <div>
-      <div role="tablist" aria-label="Evidence views" className="flex flex-wrap gap-2 border-b-2 border-ink-line pb-4">
+      <div role="tablist" aria-label="Evidence views" className="flex flex-wrap gap-3 border-b-[3px] border-ink-0 pb-6">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -46,9 +46,9 @@ export function EvidenceTabs() {
             aria-selected={tab === t.id}
             aria-controls="evidence-panel"
             onClick={() => pick(t.id)}
-            className={`inline-flex min-h-11 items-center rounded-[var(--radius-ui)] border-2 px-5 text-sm font-semibold tracking-wide ${
-              tab === t.id ? "border-accent-deep bg-accent-deep text-paper" : "border-ink-line bg-paper text-ink-0 hover:bg-surface-2"
-            }`}
+            className={`btn ${tab === t.id ? "btn-moss" : "btn-line"}`}
+            // no colour fade: the tab picked from the URL must look selected at once
+            style={{ transition: "none" }}
           >
             {t.label}
           </button>

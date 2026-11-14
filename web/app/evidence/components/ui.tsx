@@ -1,9 +1,10 @@
 import { ADDR, TX, short } from "./data";
 
-export function Panel({ title, kicker, children, className = "" }: { title: string; kicker?: string; children: React.ReactNode; className?: string }) {
+/** A white slab with a hard shadow; `tag` is a short label such as a check id ("K7"). */
+export function Panel({ title, tag, children, className = "" }: { title: string; tag?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[var(--radius-card)] border-2 border-ink-line bg-surface-1 p-5 shadow-[4px_4px_0_0_var(--ink-line)] md:p-6 ${className}`}>
-      {kicker && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-deep">{kicker}</p>}
+    <section className={`slab p-5 md:p-6 ${className}`}>
+      {tag && <span className="tag text-accent-deep">{tag}</span>}
       <h3 className="font-display text-2xl leading-tight text-ink-0 md:text-3xl">{title}</h3>
       <div className="mt-4">{children}</div>
     </section>
@@ -14,7 +15,7 @@ export function Panel({ title, kicker, children, className = "" }: { title: stri
 export function Verdict({ ok, children }: { ok: boolean; children?: React.ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-[var(--radius-ui)] border-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.1em] ${
+      className={`tag inline-flex items-center gap-1 border-2 px-2 py-0.5 font-semibold ${
         ok ? "border-accent-deep text-accent-deep" : "border-starve text-starve"
       }`}
     >
@@ -25,7 +26,7 @@ export function Verdict({ ok, children }: { ok: boolean; children?: React.ReactN
 }
 
 export function Note({ children }: { children: React.ReactNode }) {
-  return <p className="border-l-4 border-mist pl-3 text-sm leading-relaxed text-ink-1">{children}</p>;
+  return <p className="text-sm leading-relaxed text-ink-1">{children}</p>;
 }
 
 export function Tx({ hash }: { hash: string }) {

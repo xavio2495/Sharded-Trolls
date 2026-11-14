@@ -5,7 +5,7 @@ import { LOCALNET, RUNS, type Run, getJSON } from "./data";
 
 function Tile({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <div className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-4">
+    <div className="border-[3px] border-ink-0 bg-paper p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-2">{label}</p>
       <p className="mt-1 font-display text-4xl leading-none tabular-nums text-ink-0">{value}</p>
       <p className="mt-1 text-xs text-ink-2">{note}</p>
@@ -145,9 +145,9 @@ export function Replay() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <label className="flex items-center gap-2 text-ink-1">
+        <label className="flex w-full min-w-0 items-center gap-2 text-ink-1 sm:w-auto">
           Run
-          <select value={id} onChange={(e) => setId(e.target.value)} className="min-h-11 rounded-lg border-2 border-ink-line bg-paper px-2 text-ink-0">
+          <select value={id} onChange={(e) => setId(e.target.value)} className="min-h-11 min-w-0 flex-1 border-[3px] border-ink-0 bg-paper px-2 text-ink-0 sm:flex-none">
             {RUNS.map((r) => (
               <option key={r.id} value={r.id}>{r.label}</option>
             ))}
@@ -167,7 +167,7 @@ export function Replay() {
         </button>
         <label className="flex items-center gap-2 text-ink-1">
           Speed
-          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="min-h-11 rounded-lg border-2 border-ink-line bg-paper px-2 text-ink-0">
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="min-h-11 border-[3px] border-ink-0 bg-paper px-2 text-ink-0">
             {[1, 4, 10].map((s) => (
               <option key={s} value={s}>{s}×</option>
             ))}
@@ -198,7 +198,7 @@ export function Replay() {
             <Tile label="Busiest chunk" value={`${Math.round(full * 100)}%`} note="gas used of the 1,000 Tgas limit" />
             <Tile label="Time" value={`${Math.max(0, Math.round(now / 1000))} s`} note={`block ${i + 1} of ${run.blocks.length}`} />
           </div>
-          <div className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-4 md:p-6">
+          <div className="border-[3px] border-ink-0 bg-paper p-4 md:p-6">
             <h3 className="font-display text-2xl text-ink-0">Congestion per shard</h3>
             <p className="mt-1 text-sm text-ink-2">
               Bar: congestion level (backlog against the protocol&apos;s limit). Thin bar: how full this block&apos;s chunk was. Above the dashed line the network rejects new transactions to that shard.
@@ -207,7 +207,7 @@ export function Replay() {
               <Shards run={run} i={i} />
             </div>
           </div>
-          <div className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-4 md:p-6">
+          <div className="border-[3px] border-ink-0 bg-paper p-4 md:p-6">
             <h3 className="font-display text-2xl text-ink-0">Congestion over time</h3>
             <div className="mt-3">
               <Timeline run={run} i={i} />

@@ -22,7 +22,7 @@ type Key = (typeof COLS)[number]["key"];
 function Card({ col, r, control }: { col: (typeof COLS)[number]; r: RunSummary | null; control: RunSummary | null }) {
   if (!r)
     return (
-      <div className="rounded-[var(--radius-card)] border-2 border-dashed border-mist p-5">
+      <div className="border-[3px] border-dashed border-ink-2 p-5">
         <h3 className="font-display text-2xl text-ink-0">{col.title}</h3>
         <p className="mt-1 text-sm text-ink-2">{col.sub}</p>
         <p className="mt-6 text-sm text-ink-2">Not run at this rate.</p>
@@ -37,9 +37,9 @@ function Card({ col, r, control }: { col: (typeof COLS)[number]; r: RunSummary |
       ? "at capacity: the excess was rejected or silently dropped"
       : "could not keep up: a backlog built up and drained after the load stopped";
   return (
-    <div className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5 shadow-[4px_4px_0_0_var(--ink-line)]">
+    <div className="slab p-5">
       <h3 className="flex items-center gap-2 font-display text-2xl text-ink-0">
-        <span aria-hidden className="inline-block size-3 rounded-sm" style={{ background: col.color }} />
+        <span aria-hidden className="inline-block size-3" style={{ background: col.color }} />
         {col.title}
       </h3>
       <p className="mt-1 text-sm text-ink-2">{col.sub}</p>
@@ -148,9 +148,7 @@ export function Compare() {
             key={r}
             onClick={() => setRate(r)}
             aria-pressed={rate === r}
-            className={`inline-flex min-h-11 items-center rounded-[var(--radius-ui)] border-2 px-4 text-sm font-semibold ${
-              rate === r ? "border-ink-line bg-ink-0 text-paper" : "border-ink-line bg-paper text-ink-0 hover:bg-surface-2"
-            }`}
+            className={`btn ${rate === r ? "btn-ink" : "btn-line"}`}
           >
             {r.toLocaleString("en-US")} transfers/s
           </button>
@@ -179,7 +177,7 @@ export function Compare() {
           )}
         </div>
       )}
-      <div className="rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-4 md:p-6">
+      <div className="border-[3px] border-ink-0 bg-paper p-4 md:p-6">
         <h3 className="font-display text-2xl text-ink-0">Highest shard congestion over time</h3>
         <div className="mt-3">{series.length ? <Timeline series={series} /> : <p className="py-16 text-center text-sm text-ink-2">Loading the runs…</p>}</div>
       </div>

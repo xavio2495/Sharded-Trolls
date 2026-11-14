@@ -32,8 +32,7 @@ export default function EvidencePage() {
         </nav>
       </header>
       <main className="mx-auto max-w-7xl px-6 pb-24 pt-12">
-        <p className="eyebrow">Evidence</p>
-        <h1 className="mt-3 max-w-4xl font-display text-5xl leading-[1.02] text-ink-0 md:text-6xl">Measured, not simulated</h1>
+        <h1 className="max-w-4xl font-display text-5xl leading-[1.02] text-ink-0 md:text-6xl">Measured, not simulated</h1>
         <p className="lead mt-4 max-w-3xl">
           Load tests against one ordinary token and against the eight trolls, run on a local NEAR network with mainnet&apos;s shard layout, and the final contracts checked transaction by
           transaction on testnet. Every number here comes from a file in the repository.

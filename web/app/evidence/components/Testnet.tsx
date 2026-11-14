@@ -15,11 +15,10 @@ const EARLIER = [
 
 const ev = (step: J, name: string) => (step?.events ?? []).filter((e: J) => e.event === name).map((e: J) => e.data?.[0] ?? e.data);
 
-function Step({ n, title, ok, children }: { n: string; title: string; ok?: boolean; children: React.ReactNode }) {
+function Step({ title, ok, children }: { title: string; ok?: boolean; children: React.ReactNode }) {
   return (
-    <li className="relative rounded-[var(--radius-card)] border-2 border-ink-line bg-paper p-5">
+    <li className="border-[3px] border-ink-0 bg-paper p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-[var(--radius-ui)] bg-ink-0 px-2.5 py-0.5 font-mono text-xs font-semibold text-paper">{n}</span>
         <h4 className="font-display text-xl text-ink-0">{title}</h4>
         {ok !== undefined && <Verdict ok={ok}>{ok ? "checks pass" : "check failed"}</Verdict>}
       </div>
@@ -71,7 +70,7 @@ export function Testnet() {
       </Note>
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
-        <Panel kicker="Deployment" title={`${f.metadata.symbol} · ${f.metadata.name}`}>
+        <Panel title={`${f.metadata.symbol} · ${f.metadata.name}`}>
           <Facts
             rows={[
               ["Root", <Account key="r" id={k.root} />],
@@ -99,13 +98,13 @@ export function Testnet() {
           </table>
         </Panel>
         <div className="space-y-5">
-          <Panel kicker="K7" title="One code for eight trolls">
+          <Panel tag="K7" title="One code for eight trolls">
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm text-ink-1">Published once as a global contract; all eight trolls use it, each on its own shard.</p>
               <Verdict ok={k7ok} />
             </div>
           </Panel>
-          <Panel kicker="K2" title="Fan-out">
+          <Panel tag="K2" title="Fan-out">
             <ul className="space-y-1.5 text-sm">
               {k.k2.fires.map((x: J) => (
                 <li key={x.label} className="flex flex-wrap items-center justify-between gap-2">
@@ -117,7 +116,7 @@ export function Testnet() {
               ))}
             </ul>
           </Panel>
-          <Panel kicker="Settlement" title="Gas floor">
+          <Panel title="Settlement gas floor">
             <ul className="space-y-1.5 text-sm text-ink-1">
               {below && (
                 <li className="flex flex-wrap items-center justify-between gap-2">
@@ -134,7 +133,7 @@ export function Testnet() {
         </div>
       </div>
 
-      <Panel kicker="K3" title="Conservation and refunds">
+      <Panel tag="K3" title="Conservation and refunds">
         <p className="mb-3 text-sm text-ink-1">
           Σ over the eight trolls of (supply + in flight + burned − minted) equals the total supply before and after every transaction:{" "}
           <strong className="text-ink-0">{conservedK3 ? "yes, every time" : "no"}</strong>.
@@ -167,19 +166,18 @@ export function Testnet() {
       </Panel>
 
       <div>
-        <p className="eyebrow">The Feeding, on chain</p>
-        <h3 className="mt-2 font-display text-3xl text-ink-0">Eight trolls fed, then one goes hungry</h3>
+        <h3 className="font-display text-3xl text-ink-0">Eight trolls fed, then one goes hungry</h3>
         <p className="mt-2 max-w-3xl text-sm text-ink-1">
           After every step: books conserved, nothing left in flight, each troll&apos;s supply change equals the mints and burns it logged, and after each settlement the root agrees with all
           eight trolls.
         </p>
         <ol className="mt-5 grid gap-4 lg:grid-cols-2">
-          <Step n="E0" title="Every troll gets a feeder" ok={E0.assertions?.ok}>
+          <Step title="Every troll gets a feeder" ok={E0.assertions?.ok}>
             <p>Eight feeders each send 100 STRL to the next troll, so every transfer crosses a stream and pays the toll; the toll becomes that troll&apos;s food.</p>
             <p className="tabular-nums text-ink-0">Food per troll: {E0.after.trolls.map((t: J) => fmtTokens(t.food)).join(" · ")} STRL</p>
             <p className="flex flex-wrap gap-2">{E0.txs.map((t: J) => <Tx key={t.hash} hash={t.hash} />)}</p>
           </Step>
-          <Step n="S0" title="Settled: all fed, streak 1" ok={S0.assertions?.ok && S0.failed_receipts === 0}>
+          <Step title="Settled: all fed, streak 1" ok={S0.assertions?.ok && S0.failed_receipts === 0}>
             <p>
               <strong className="text-ink-0">{settled0?.fed ? "All eight trolls fed" : "Not all trolls fed"}</strong> · streak {S0.after.root.streak}. Rewards came from food first ({fmtTokens(fromFood)} STRL), then from the
               launch pool ({fmtTokens(fromPool)} STRL); nothing newly minted.
@@ -189,16 +187,16 @@ export function Testnet() {
             </p>
             <p><Tx hash={S0.hash} /></p>
           </Step>
-          <Step n="C0" title="Feeders claim their share" ok={C0.assertions?.ok}>
+          <Step title="Feeders claim their share" ok={C0.assertions?.ok}>
             <p className="tabular-nums text-ink-0">{C0.txs.map((t: J) => fmtTokens(t.share)).join(" · ")} STRL</p>
             <p className="text-xs text-ink-2">
               Troll 0 had three feeders in that epoch (the fan-out and conservation checks also sent from it), so its share is split three ways.
             </p>
           </Step>
-          <Step n="E1" title="Seven trolls fed, one skipped" ok={E1.assertions?.ok}>
+          <Step title="Seven trolls fed, one skipped" ok={E1.assertions?.ok}>
             <p className="tabular-nums text-ink-0">Feeders per troll: {E1.after.trolls.map((t: J) => t.senders_this_epoch).join(" · ")}</p>
           </Step>
-          <Step n="S1" title="One troll starves: burn, streak resets" ok={S1.assertions?.ok && S1.failed_receipts === 0}>
+          <Step title="One troll starves: burn, streak resets" ok={S1.assertions?.ok && S1.failed_receipts === 0}>
             <p>
               <span className="text-ink-0">{starved?.troll}</span> had {starved?.senders} feeders; it burned{" "}
               <strong className="text-starve">{fmtTokens(burned7)} STRL</strong> (1% of its hoard). {settled1?.fed ? "All fed" : "Not all trolls fed"}, so the streak resets to {S1.after.root.streak}.
@@ -209,7 +207,7 @@ export function Testnet() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Panel kicker="Launch your own" title="A second token on the same code">
+        <Panel title="A second token on the same code">
           {kit && kitDep ? (
             <>
               <Big value={kitCost!.toFixed(2)} unit="testnet NEAR per extra token" />
@@ -226,7 +224,7 @@ export function Testnet() {
             <p className="text-sm text-ink-2">Loading…</p>
           )}
         </Panel>
-        <Panel kicker="Before testnet" title="Rehearsed twice on a local network">
+        <Panel title="Rehearsed twice on a local network">
           {reh ? (
             <>
               <Big value={reh.passes.map((x: J) => `${x.passed}/${x.total}`).join(" · ")} unit="checks passed, two clean runs" />
@@ -245,10 +243,10 @@ export function Testnet() {
       </div>
 
       <div>
-        <p className="eyebrow">Earlier testnet runs</p>
+        <h3 className="font-display text-2xl text-ink-0">Earlier testnet runs</h3>
         <ul className="mt-3 grid gap-3 md:grid-cols-3">
           {EARLIER.map((e, j) => (
-            <li key={e.file} className="rounded-[var(--radius-card)] border-2 border-hairline bg-paper p-4 text-sm">
+            <li key={e.file} className="border-[3px] border-ink-0 bg-paper p-4 text-sm">
               <p className="font-semibold text-ink-0">{e.title}</p>
               <p className="mt-1 text-ink-1">{e.note}</p>
               {earlier[j] && (
