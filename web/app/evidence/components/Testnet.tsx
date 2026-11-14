@@ -15,9 +15,9 @@ const EARLIER = [
 
 const ev = (step: J, name: string) => (step?.events ?? []).filter((e: J) => e.event === name).map((e: J) => e.data?.[0] ?? e.data);
 
-function Step({ title, ok, children }: { title: string; ok?: boolean; children: React.ReactNode }) {
+function Step({ title, ok, children, className = "" }: { title: string; ok?: boolean; children: React.ReactNode; className?: string }) {
   return (
-    <li className="border-[3px] border-ink-0 bg-paper p-5">
+    <li className={`slab p-5 ${className}`}>
       <div className="flex flex-wrap items-center gap-3">
         <h4 className="font-display text-xl text-ink-0">{title}</h4>
         {ok !== undefined && <Verdict ok={ok}>{ok ? "checks pass" : "check failed"}</Verdict>}
@@ -69,7 +69,7 @@ export function Testnet() {
         troll. At launch a day is 24 hours and each troll needs 10 feeders.
       </Note>
 
-      <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+      <div className="grid items-start gap-5 lg:grid-cols-[1.1fr_1fr]">
         <Panel title={`${f.metadata.symbol} · ${f.metadata.name}`}>
           <Facts
             rows={[
@@ -171,7 +171,7 @@ export function Testnet() {
           After every step: books conserved, nothing left in flight, each troll&apos;s supply change equals the mints and burns it logged, and after each settlement the root agrees with all
           eight trolls.
         </p>
-        <ol className="mt-5 grid gap-4 lg:grid-cols-2">
+        <ol className="mt-5 grid gap-5 lg:grid-cols-2">
           <Step title="Every troll gets a feeder" ok={E0.assertions?.ok}>
             <p>Eight feeders each send 100 STRL to the next troll, so every transfer crosses a stream and pays the toll; the toll becomes that troll&apos;s food.</p>
             <p className="tabular-nums text-ink-0">Food per troll: {E0.after.trolls.map((t: J) => fmtTokens(t.food)).join(" · ")} STRL</p>
@@ -196,7 +196,7 @@ export function Testnet() {
           <Step title="Seven trolls fed, one skipped" ok={E1.assertions?.ok}>
             <p className="tabular-nums text-ink-0">Feeders per troll: {E1.after.trolls.map((t: J) => t.senders_this_epoch).join(" · ")}</p>
           </Step>
-          <Step title="One troll starves: burn, streak resets" ok={S1.assertions?.ok && S1.failed_receipts === 0}>
+          <Step className="lg:col-span-2" title="One troll starves: burn, streak resets" ok={S1.assertions?.ok && S1.failed_receipts === 0}>
             <p>
               <span className="text-ink-0">{starved?.troll}</span> had {starved?.senders} feeders; it burned{" "}
               <strong className="text-starve">{fmtTokens(burned7)} STRL</strong> (1% of its hoard). {settled1?.fed ? "All fed" : "Not all trolls fed"}, so the streak resets to {S1.after.root.streak}.
@@ -244,9 +244,9 @@ export function Testnet() {
 
       <div>
         <h3 className="font-display text-2xl text-ink-0">Earlier testnet runs</h3>
-        <ul className="mt-3 grid gap-3 md:grid-cols-3">
+        <ul className="mt-3 grid gap-5 md:grid-cols-3">
           {EARLIER.map((e, j) => (
-            <li key={e.file} className="border-[3px] border-ink-0 bg-paper p-4 text-sm">
+            <li key={e.file} className="slab p-4 text-sm">
               <p className="font-semibold text-ink-0">{e.title}</p>
               <p className="mt-1 text-ink-1">{e.note}</p>
               {earlier[j] && (

@@ -19,6 +19,11 @@ function Shards({ run, i }: { run: Run; i: number }) {
   const y = (v: number) => base - Math.min(1, v) * (base - top);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Congestion per shard at this moment">
+      <defs>
+        <pattern id="unused-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="var(--ink-2)" strokeWidth="2" />
+        </pattern>
+      </defs>
       {[0, 0.25, 0.5, 0.75, 1].map((v) => (
         <g key={v}>
           <line x1={x0} x2={W} y1={y(v)} y2={y(v)} stroke="var(--hairline)" />
@@ -33,7 +38,13 @@ function Shards({ run, i }: { run: Run; i: number }) {
         const unreachable = role.endsWith(" only"), rejecting = cong >= run.threshold, h = base - y(cong);
         return (
           <g key={id}>
-            {unreachable && <rect x={cx - bw / 2} y={top} width={bw} height={base - top} rx="4" fill="var(--surface-2)" />}
+            {/* A shard no troll can live on: a short hatched stub, not a column that reads as a bar. */}
+            {unreachable && (
+              <>
+                <rect x={cx - bw / 2} y={base - 8} width={bw} height="8" fill="url(#unused-hatch)" />
+                <text x={cx} y={base - 16} textAnchor="middle" fontSize="12" fill="var(--ink-2)">not in use</text>
+              </>
+            )}
             {h > 0.5 && (
               <path
                 d={`M${cx - bw / 2},${base}V${base - h + Math.min(4, h)}q0,-4 4,-4h${bw - 8}q4,0 4,4V${base}Z`}
@@ -64,8 +75,10 @@ function Timeline({ run, i }: { run: Run; i: number }) {
   const B = run.blocks, t0 = B[0][0], t1 = B[B.length - 1][0];
   const x = (t: number) => x0 + ((t - t0) / Math.max(1, t1 - t0)) * (W - x0 - 10);
   const y = (v: number) => base - Math.min(1, v) * (base - top);
-  const peak = run.shard_ids.map((_, k) => Math.max(...B.map(([, s]) => s[k][0])));
-  const hot = peak.indexOf(Math.max(...peak));
+  // Shards no troll can be placed on are left out; the busiest of the rest is drawn dark.
+  const used = run.shard_ids.map((id, k) => [id, k] as const).filter(([id]) => !(run.roles[id] ?? "").endsWith(" only"));
+  const peak = used.map(([, k]) => Math.max(...B.map(([, s]) => s[k][0])));
+  const hot = used[peak.indexOf(Math.max(...peak))][1];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Congestion of every shard over the run">
       {[0, 0.5, 1].map((v) => (
@@ -75,15 +88,15 @@ function Timeline({ run, i }: { run: Run; i: number }) {
         </g>
       ))}
       <line x1={x0} x2={W - 10} y1={y(run.threshold)} y2={y(run.threshold)} stroke="var(--starve)" strokeWidth="1.5" strokeDasharray="5 4" />
-      {run.shard_ids.map((id, k) =>
+      {used.map(([id, k]) =>
         k === hot ? null : (
-          <path key={id} d={B.map(([t, s], j) => `${j ? "L" : "M"}${x(t).toFixed(1)},${y(s[k][0]).toFixed(1)}`).join("")} fill="none" stroke="var(--mist)" strokeWidth="1.5" />
+          <path key={id} d={B.map(([t, s], j) => `${j ? "L" : "M"}${x(t).toFixed(1)},${y(s[k][0]).toFixed(1)}`).join("")} fill="none" stroke="var(--ink-2)" strokeOpacity="0.6" strokeWidth="2" />
         ),
       )}
       <path d={B.map(([t, s], j) => `${j ? "L" : "M"}${x(t).toFixed(1)},${y(s[hot][0]).toFixed(1)}`).join("")} fill="none" stroke="var(--teal-deep)" strokeWidth="2" />
       <line x1={x(B[i][0])} x2={x(B[i][0])} y1={top} y2={base} stroke="var(--ink-1)" />
       <text x={x0} y={H - 6} fontSize="12" fill="var(--ink-2)">
-        {`${Math.round((t1 - t0) / 1000)} s shown · dark line: the most congested shard (${run.shard_ids[hot]}) · light: the other shards`}
+        {`${Math.round((t1 - t0) / 1000)} s shown · dark: the most congested shard (${run.shard_ids[hot]}) · grey: the other ${used.length - 1} shards in use · a line on 0 means no backlog`}
       </text>
     </svg>
   );

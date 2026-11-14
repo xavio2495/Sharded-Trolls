@@ -12,7 +12,7 @@ const NEP = (n: string) => `https://github.com/near/NEPs/blob/master/neps/nep-${
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-24 border-t-[3px] border-ink-0 pt-10">
+    <section id={id} className="scroll-mt-24">
       <h2 className="font-display text-3xl leading-tight text-ink-0 md:text-4xl">{title}</h2>
       <div className="mt-6 space-y-5 text-[1.05rem] leading-relaxed text-ink-1">{children}</div>
     </section>
@@ -20,7 +20,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 function List({ children }: { children: React.ReactNode }) {
-  return <ul className="list-[square] space-y-2 pl-5 marker:text-ink-0">{children}</ul>;
+  return <ul className="list-none space-y-4">{children}</ul>;
 }
 
 function Strong({ children }: { children: React.ReactNode }) {
@@ -123,7 +123,7 @@ export default function PaperPage() {
       <Header current="/paper" sticky />
 
       <main className="mx-auto max-w-3xl px-5 pb-28 pt-12 sm:px-6">
-        <h1 className="font-display text-5xl leading-[1.02] text-ink-0 md:text-6xl">Sharded Trolls: a token ledger across eight shards</h1>
+        <h1 className="font-display text-[2.1rem] leading-[1.05] text-ink-0 sm:text-5xl sm:leading-[1.02] md:text-6xl">Sharded Trolls: a token ledger across eight shards</h1>
         <p className="lead mt-5">
           A launch kit for tokens that expect a claim rush. STRL is the first coin on it. This paper describes the design, the protocol and the evidence; every number links back to a
           measurement file or to the <Link className="underline underline-offset-2" href="/evidence">Evidence</Link> page.
@@ -140,7 +140,7 @@ export default function PaperPage() {
           </ul>
         </nav>
 
-        <div className="mt-14 space-y-16">
+        <div className="mt-16 space-y-20">
           <Section id="abstract" title="Abstract">
             <p>
               A NEAR contract lives on one shard, so a token is normally one shard&apos;s worth of capacity. Sharded Trolls splits a token&apos;s ledger into eight contracts, the{" "}

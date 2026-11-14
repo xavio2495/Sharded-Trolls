@@ -87,10 +87,23 @@ function Timeline({ series }: { series: { col: (typeof COLS)[number]; pts: [numb
       ))}
       <line x1={x0} x2={right} y1={y(0.8)} y2={y(0.8)} stroke="var(--starve)" strokeWidth="1.5" strokeDasharray="5 4" />
       <text x={right} y={y(0.8) - 6} textAnchor="end" fontSize="12" fill="var(--ink-1)">rejects new transactions above 0.8</text>
-      {series.map(({ col, pts }) => (
-        <path key={col.key} d={pts.map(([t, v], i) => `${i ? "L" : "M"}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join("")} fill="none" stroke={col.color} strokeWidth="2" strokeDasharray={col.dash} />
-      ))}
       <line x1={x0} x2={right} y1={base} y2={base} stroke="var(--ink-2)" />
+      {/* Series go over the axis. A setup that never congested sits on 0, so it is drawn thicker and
+          lifted 2 px off the axis, with a label, instead of vanishing into it. */}
+      {series.map(({ col, pts }) => {
+        const flat = pts.every(([, v]) => v < 0.005);
+        const yy = (v: number) => (flat ? base - 2.5 : y(v));
+        return (
+          <g key={col.key}>
+            <path d={pts.map(([t, v], i) => `${i ? "L" : "M"}${x(t).toFixed(1)},${yy(v).toFixed(1)}`).join("")} fill="none" stroke={col.color} strokeWidth={flat ? 4 : 2} strokeDasharray={col.dash} />
+            {flat && (
+              <text x={x(165)} y={base - 10} textAnchor="end" fontSize="12" fill="var(--ink-0)">
+                {col.title}: flat at 0, never congested
+              </text>
+            )}
+          </g>
+        );
+      })}
       {[0, 30, 60, 90, 120, 150, 180].map((t) => (
         <text key={t} x={x(t)} y={base + 18} textAnchor="middle" fontSize="12" fill="var(--ink-2)">{t} s</text>
       ))}
@@ -139,17 +152,22 @@ export function Compare() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm text-ink-1">Offered load</span>
+        <span className="w-full text-sm text-ink-1 sm:w-auto">Offered load</span>
+        <div className="grid w-full grid-cols-2 gap-2.5 sm:flex sm:w-auto sm:gap-3">
         {([2000, 1000] as const).map((r) => (
           <button
             key={r}
             onClick={() => setRate(r)}
             aria-pressed={rate === r}
             className={`btn ${rate === r ? "btn-ink" : "btn-line"}`}
+            style={{ paddingInline: "clamp(0.5rem, 3vw, 1.5rem)" }}
           >
-            {r.toLocaleString("en-US")} transfers/s
+            {/* one text node per breakpoint: .btn puts a gap between children */}
+            <span className="sm:hidden">{r.toLocaleString("en-US")}/s</span>
+            <span className="hidden sm:inline">{r.toLocaleString("en-US")} transfers/s</span>
           </button>
         ))}
+        </div>
       </div>
       <div className="grid gap-5 lg:grid-cols-3">
         {COLS.map((col) => (

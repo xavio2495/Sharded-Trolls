@@ -8,9 +8,9 @@ import { Testnet } from "./Testnet";
 import { Note } from "./ui";
 
 const TABS = [
-  { id: "compare", label: "Compare", title: "One shard against eight", blurb: "The same offered load against one ordinary token contract and against the eight trolls." },
-  { id: "replay", label: "Replay a run", title: "Watch a measured run", blurb: "Every block of a load test, shard by shard: congestion, chunk fullness and rejected transactions." },
-  { id: "testnet", label: "Testnet", title: "Checked on NEAR testnet", blurb: "The final contracts deployed on testnet: fan-out, refunds, conservation and the Feeding, transaction by transaction." },
+  { id: "compare", label: "Compare", short: "Compare", title: "One shard against eight", blurb: "The same offered load against one ordinary token contract and against the eight trolls." },
+  { id: "replay", label: "Replay a run", short: "Replay", title: "Watch a measured run", blurb: "Every block of a load test, shard by shard: congestion, chunk fullness and rejected transactions." },
+  { id: "testnet", label: "Testnet", short: "Testnet", title: "Checked on NEAR testnet", blurb: "The final contracts deployed on testnet: fan-out, refunds, conservation and the Feeding, transaction by transaction." },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -37,7 +37,7 @@ export function EvidenceTabs() {
 
   return (
     <div>
-      <div role="tablist" aria-label="Evidence views" className="flex flex-wrap gap-3 border-b-[3px] border-ink-0 pb-6">
+      <div role="tablist" aria-label="Evidence views" className="grid grid-cols-3 gap-2.5 border-b-[3px] border-ink-0 pb-6 sm:flex sm:gap-3">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -47,10 +47,12 @@ export function EvidenceTabs() {
             aria-controls="evidence-panel"
             onClick={() => pick(t.id)}
             className={`btn ${tab === t.id ? "btn-moss" : "btn-line"}`}
-            // no colour fade: the tab picked from the URL must look selected at once
-            style={{ transition: "none" }}
+            // no colour fade: the tab picked from the URL must look selected at once; narrower
+            // padding on phones so the three tabs share one row
+            style={{ transition: "none", paddingInline: "clamp(0.5rem, 3vw, 1.5rem)" }}
           >
-            {t.label}
+            <span className="sm:hidden">{t.short}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>
